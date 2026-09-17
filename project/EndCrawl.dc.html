@@ -1,0 +1,1690 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Archivo:wght@400;500;600;700&family=Archivo+Narrow:wght@400;600;700&family=EB+Garamond:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+--bg-stage:#08090b;--surface-canvas:#0b0d10;--surface-sunken:#0e1114;--surface-raised:#15181d;--surface-overlay:#1b1f25;--surface-hi:#232830;
+--border-hairline:#23272e;--border-strong:#343a44;
+--accent-primary:#d6a44f;--accent-hi:#e8bd6f;--accent-ink:#140f04;--accent-dim:#5e4a21;--accent-wash:rgba(214,164,79,.12);
+--warn:#e2705c;--warn-wash:rgba(226,112,92,.12);
+--text-primary:#f1f2f4;--text-secondary:#9aa1ab;--text-tertiary:#6a7280;--text-disabled:#4a515b;
+--safe-title:rgba(214,164,79,.5);--safe-action:rgba(255,255,255,.22);
+--space-1:4px;--space-2:8px;--space-3:12px;--space-4:16px;--space-5:20px;--space-6:24px;--space-7:32px;--space-8:40px;
+--radius-sm:6px;--radius-md:10px;--radius-lg:14px;--radius-xl:22px;--radius-full:999px;
+--dur-fast:150ms;--dur-base:200ms;--dur-slow:250ms;
+--ease-out:cubic-bezier(.2,.8,.2,1);--ease-spring:cubic-bezier(.2,1.25,.35,1);
+--font-ui:'IBM Plex Sans',system-ui,sans-serif;--font-mono:'IBM Plex Mono',ui-monospace,monospace;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;background:var(--bg-stage);color:var(--text-primary);font-family:var(--font-ui);-webkit-font-smoothing:antialiased}
+a{color:var(--accent-primary);text-decoration:none}
+a:hover{color:var(--accent-hi)}
+button{font-family:inherit;font-size:inherit;color:inherit;border:0;background:none;cursor:pointer;text-align:left}
+input,textarea{font-family:inherit;color:inherit;border:0;background:none;outline:none}
+[data-nosb]::-webkit-scrollbar{display:none}
+[data-nosb]{scrollbar-width:none}
+@keyframes ec-rise{from{transform:translateY(24px)}to{transform:translateY(0)}}
+</style>
+</helmet>
+
+<div style="min-height:100vh;padding:var(--space-6) var(--space-4) var(--space-8);display:flex;flex-direction:column;align-items:center;gap:var(--space-5)">
+
+<div style="width:100%;max-width:1180px;display:flex;align-items:center;justify-content:space-between;gap:var(--space-4);flex-wrap:wrap">
+<div style="display:flex;align-items:baseline;gap:var(--space-4)">
+<div style="font-family:'Archivo Narrow',sans-serif;font-weight:700;font-size:20px;letter-spacing:.26em;text-transform:uppercase">Endcrawl</div>
+<div style="font-size:12px;color:var(--text-tertiary)">End-credit roll studio · interactive prototype</div>
+</div>
+<div style="display:flex;gap:var(--space-3);align-items:center;flex-wrap:wrap">
+<div style="display:flex;background:var(--surface-raised);border:1px solid var(--border-hairline);border-radius:var(--radius-full);padding:3px">
+<button onClick="{{ goProto }}" style="padding:7px 14px;border-radius:var(--radius-full);font-size:12px;font-weight:500;background:{{ tabProtoBg }};color:{{ tabProtoFg }}">Prototype</button>
+<button onClick="{{ goAppendix }}" style="padding:7px 14px;border-radius:var(--radius-full);font-size:12px;font-weight:500;background:{{ tabAppBg }};color:{{ tabAppFg }}">Tokens &amp; components</button>
+</div>
+<sc-if value="{{ isProto }}" hint-placeholder-val="{{ true }}">
+<div style="display:flex;background:var(--surface-raised);border:1px solid var(--border-hairline);border-radius:var(--radius-full);padding:3px">
+<button onClick="{{ devPortrait }}" style="padding:7px 14px;border-radius:var(--radius-full);font-size:12px;font-weight:500;background:{{ devPBg }};color:{{ devPFg }}">Device portrait</button>
+<button onClick="{{ devLandscape }}" style="padding:7px 14px;border-radius:var(--radius-full);font-size:12px;font-weight:500;background:{{ devLBg }};color:{{ devLFg }}">Device landscape</button>
+</div>
+</sc-if>
+</div>
+</div>
+
+<sc-if value="{{ isProto }}" hint-placeholder-val="{{ true }}">
+<div style="position:relative;width:{{ frameW }}px;height:{{ frameH }}px;border-radius:{{ frameR }}px;background:linear-gradient(160deg,#2a2d33,#101216 46%,#26292f);padding:11px;box-shadow:0 40px 80px -30px rgba(0,0,0,.9),0 0 0 1px rgba(255,255,255,.05)">
+<div style="position:relative;width:100%;height:100%;border-radius:{{ screenR }}px;background:var(--surface-canvas);overflow:hidden">
+
+<div style="position:absolute;left:0;top:0;right:0;height:{{ statusH }}px;display:flex;align-items:center;justify-content:space-between;padding:0 26px;font-size:11px;font-weight:500;color:var(--text-secondary);z-index:40;pointer-events:none">
+<span style="font-family:var(--font-mono);letter-spacing:.02em">{{ wallClock }}</span>
+<span style="display:flex;gap:8px;align-items:center;font-size:9px;letter-spacing:.1em">
+<sc-if value="{{ offline }}" hint-placeholder-val="{{ false }}"><span style="color:var(--warn)">OFFLINE</span></sc-if>
+<span>5G</span><span>100%</span>
+</span>
+</div>
+
+<sc-if value="{{ showMonitor }}" hint-placeholder-val="{{ true }}">
+<div style="position:absolute;left:{{ mX }}px;top:{{ mY }}px;width:{{ mW }}px;height:{{ mH }}px;background:#000;z-index:{{ mZ }};overflow:hidden;display:flex;align-items:center;justify-content:center">
+<div style="position:relative;width:{{ dW }}px;height:{{ dH }}px;overflow:hidden;background:{{ canvasBg }}">
+<sc-if value="{{ hasUnderlay }}" hint-placeholder-val="{{ false }}">
+<div style="position:absolute;inset:0;background:linear-gradient(200deg,#30241a 0%,#0d0f14 42%,#16202b 72%,#080a0c 100%)"></div>
+<div style="position:absolute;left:8px;bottom:5px;font-family:var(--font-mono);font-size:8px;color:rgba(255,255,255,.45)">SCENE_042_GRADE.mov</div>
+</sc-if>
+<div style="position:absolute;left:0;top:0;width:{{ renderW }}px;height:{{ renderH }}px;transform:scale({{ canvasScale }});transform-origin:0 0">
+<div style="position:absolute;inset:0;overflow:hidden;perspective:{{ perspective }};perspective-origin:50% 0%">
+<div style="position:absolute;inset:0;transform:{{ tiltTransform }};transform-origin:50% 100%">
+<div ref="{{ setRoll }}" style="position:absolute;left:0;top:0;width:100%;will-change:transform">
+<sc-for list="{{ rollBlocks }}" as="b" hint-placeholder-count="4">
+<div data-blk="{{ b.id }}" style="{{ b.wrap }}">
+<sc-if value="{{ b.isTitle }}" hint-placeholder-val="{{ false }}">
+<div style="{{ b.bannerSt }}">{{ b.banner }}</div>
+<div style="{{ b.titleSt }}">{{ b.title }}</div>
+<div style="{{ b.bySt }}">{{ b.byline }}</div>
+</sc-if>
+<sc-if value="{{ b.isDept }}" hint-placeholder-val="{{ false }}">
+<div style="{{ b.headSt }}">{{ b.header }}</div>
+<sc-for list="{{ b.names }}" as="n" hint-placeholder-count="1"><div style="{{ n.st }}">{{ n.v }}</div></sc-for>
+</sc-if>
+<sc-if value="{{ b.isCast }}" hint-placeholder-val="{{ false }}">
+<div style="{{ b.headSt }}">{{ b.header }}</div>
+<sc-for list="{{ b.rows }}" as="r" hint-placeholder-count="4">
+<div style="{{ r.wrap }}">
+<sc-if value="{{ r.isPair }}" hint-placeholder-val="{{ true }}">
+<div style="{{ r.lSt }}">{{ r.l }}</div>
+<div style="{{ r.gutSt }}"><div style="{{ r.leadSt }}"></div></div>
+<div style="{{ r.rSt }}">{{ r.r }}</div>
+</sc-if>
+<sc-if value="{{ r.isStack }}" hint-placeholder-val="{{ false }}">
+<div style="{{ r.sLSt }}">{{ r.l }}</div>
+<div style="{{ r.sRSt }}">{{ r.r }}</div>
+</sc-if>
+<sc-if value="{{ r.isSpan }}" hint-placeholder-val="{{ false }}">
+<div style="{{ r.spanSt }}">{{ r.text }}</div>
+</sc-if>
+</div>
+</sc-for>
+</sc-if>
+<sc-if value="{{ b.isSong }}" hint-placeholder-val="{{ false }}">
+<div style="{{ b.songSt }}">{{ b.songTitle }}</div>
+<div style="{{ b.artistSt }}">{{ b.artist }}</div>
+<div style="{{ b.courtesySt }}">{{ b.courtesy }}</div>
+</sc-if>
+<sc-if value="{{ b.isLogos }}" hint-placeholder-val="{{ false }}">
+<div style="{{ b.logoRowSt }}">
+<sc-for list="{{ b.logos }}" as="g" hint-placeholder-count="3"><div style="{{ g.st }}">{{ g.v }}</div></sc-for>
+</div>
+</sc-if>
+<sc-if value="{{ b.isThanks }}" hint-placeholder-val="{{ false }}">
+<div style="{{ b.headSt }}">{{ b.header }}</div>
+<div style="{{ b.colsSt }}">
+<sc-for list="{{ b.names }}" as="n" hint-placeholder-count="6"><div style="{{ n.st }}">{{ n.v }}</div></sc-for>
+</div>
+</sc-if>
+</div>
+</sc-for>
+</div>
+</div>
+</div>
+<div ref="{{ setHolds }}">
+<sc-for list="{{ holdCards }}" as="h" hint-placeholder-count="0">
+<div data-holdcard="{{ h.id }}" style="{{ h.wrap }}">
+<sc-for list="{{ h.lines }}" as="l" hint-placeholder-count="2"><div style="{{ l.st }}">{{ l.v }}</div></sc-for>
+</div>
+</sc-for>
+</div>
+<sc-if value="{{ safeOn }}" hint-placeholder-val="{{ true }}">
+<div style="position:absolute;left:5%;top:5%;width:90%;height:90%;border:{{ guideW }}px solid var(--safe-action);pointer-events:none"></div>
+<div style="position:absolute;left:10%;top:10%;width:80%;height:80%;border:{{ guideW }}px dashed var(--safe-title);pointer-events:none"></div>
+</sc-if>
+</div>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ isDevLandscape }}" hint-placeholder-val="{{ false }}">
+<div style="position:absolute;inset:0;z-index:50;pointer-events:none;display:flex;flex-direction:column;justify-content:space-between;padding:var(--space-4) var(--space-6)">
+<div style="display:flex;justify-content:space-between;align-items:flex-start">
+<div style="pointer-events:auto;display:flex;align-items:center;gap:var(--space-2);background:rgba(8,9,11,.7);border:1px solid var(--border-hairline);border-radius:var(--radius-full);padding:6px 12px">
+<span style="width:6px;height:6px;border-radius:var(--radius-full);background:{{ judderDot }}"></span>
+<span style="font-family:var(--font-mono);font-size:10px;color:var(--text-secondary)">{{ statusLine }}</span>
+</div>
+<div style="font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--text-tertiary)">Full-bleed monitor · rotate back to edit</div>
+</div>
+<div style="pointer-events:auto;display:flex;align-items:center;gap:var(--space-4);background:rgba(8,9,11,.7);border:1px solid var(--border-hairline);border-radius:var(--radius-full);padding:8px 14px;align-self:center">
+<button onClick="{{ togglePlay }}" style="width:34px;height:34px;border-radius:var(--radius-full);background:var(--accent-primary);color:var(--accent-ink);display:flex;align-items:center;justify-content:center;font-size:12px">{{ playGlyph }}</button>
+<div ref="{{ setTc2 }}" style="font-family:var(--font-mono);font-size:13px;min-width:104px">00:00:00:00</div>
+<div onPointerDown="{{ scrubDown }}" style="position:relative;width:420px;height:34px;display:flex;align-items:center;touch-action:none">
+<div style="position:absolute;left:0;right:0;height:3px;background:var(--surface-hi);border-radius:var(--radius-full)"></div>
+<div ref="{{ setPh2 }}" style="position:absolute;left:0;top:7px;width:2px;height:20px;background:var(--accent-primary)"></div>
+</div>
+<button onClick="{{ devPortrait }}" style="font-size:11px;color:var(--text-secondary);padding:0 var(--space-2)">Exit</button>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ isDevPortrait }}" hint-placeholder-val="{{ true }}">
+
+<sc-if value="{{ isTemplates }}" hint-placeholder-val="{{ true }}">
+<div data-nosb style="position:absolute;left:0;top:{{ statusH }}px;right:0;bottom:0;overflow-y:auto;padding:var(--space-5) var(--space-4) var(--space-6)">
+<div style="font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--text-tertiary);margin-bottom:var(--space-2)">New project</div>
+<div style="font-family:'Archivo',sans-serif;font-weight:600;font-size:26px;line-height:1.14;letter-spacing:-.015em;margin-bottom:var(--space-5);text-wrap:pretty">Pick a starting point.<br>Change anything later.</div>
+<sc-if value="{{ hasRecovery }}" hint-placeholder-val="{{ true }}">
+<div style="border:1px solid var(--accent-dim);background:var(--accent-wash);border-radius:var(--radius-lg);padding:var(--space-4);margin-bottom:var(--space-4)">
+<div style="font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent-primary);margin-bottom:6px">Recovered after crash</div>
+<div style="font-size:15px;font-weight:500;margin-bottom:2px">THE LONG WAY DOWN</div>
+<div style="font-size:12px;color:var(--text-secondary);margin-bottom:var(--space-3)">14 blocks · autosaved 2 min ago</div>
+<div style="display:flex;gap:var(--space-2)">
+<button onClick="{{ openRecovery }}" style="flex:1;height:44px;border-radius:var(--radius-md);background:var(--accent-primary);color:var(--accent-ink);font-size:14px;font-weight:600;text-align:center">Open recovered</button>
+<button onClick="{{ discardRecovery }}" style="height:44px;padding:0 var(--space-4);border-radius:var(--radius-md);border:1px solid var(--border-strong);color:var(--text-secondary);font-size:14px">Discard</button>
+</div>
+</div>
+</sc-if>
+<div style="display:flex;flex-direction:column;gap:var(--space-3)">
+<sc-for list="{{ templates }}" as="t" hint-placeholder-count="5">
+<button onClick="{{ t.pick }}" style="display:flex;align-items:center;gap:var(--space-4);background:var(--surface-raised);border:1px solid var(--border-hairline);border-radius:var(--radius-lg);padding:var(--space-4);min-height:76px" style-hover="border-color:var(--border-strong)">
+<div style="{{ t.thumbSt }}"><div style="{{ t.thumbInner }}"></div></div>
+<div style="flex:1;min-width:0">
+<div style="font-size:15px;font-weight:600;letter-spacing:-.01em;margin-bottom:3px">{{ t.name }}</div>
+<div style="font-size:12px;color:var(--text-secondary);line-height:1.35;text-wrap:pretty">{{ t.desc }}</div>
+<div style="font-family:var(--font-mono);font-size:10px;color:var(--text-tertiary);margin-top:6px">{{ t.meta }}</div>
+</div>
+</button>
+</sc-for>
+<button onClick="{{ startEmpty }}" style="height:52px;border-radius:var(--radius-lg);border:1px dashed var(--border-strong);color:var(--text-secondary);font-size:14px;text-align:center;display:flex;align-items:center;justify-content:center">Start empty</button>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ isFormat }}" hint-placeholder-val="{{ false }}">
+<div data-nosb style="position:absolute;left:0;top:{{ statusH }}px;right:0;bottom:92px;overflow-y:auto;padding:var(--space-4)">
+<div style="display:flex;align-items:center;gap:var(--space-3);margin-bottom:var(--space-4)">
+<button onClick="{{ backToTemplates }}" style="width:36px;height:36px;border-radius:var(--radius-full);background:var(--surface-raised);display:flex;align-items:center;justify-content:center;font-size:16px;color:var(--text-secondary)">‹</button>
+<div>
+<div style="font-size:16px;font-weight:600;letter-spacing:-.01em">Canvas format</div>
+<div style="font-size:11px;color:var(--text-tertiary)">Independent of how you hold the phone</div>
+</div>
+</div>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-3);margin-bottom:var(--space-5)">
+<sc-for list="{{ formats }}" as="f" hint-placeholder-count="6">
+<button onClick="{{ f.pick }}" style="{{ f.cardSt }}">
+<div style="height:44px;display:flex;align-items:center;justify-content:center;margin-bottom:var(--space-2)"><div style="{{ f.chipSt }}"></div></div>
+<div style="font-size:13px;font-weight:600;letter-spacing:-.01em">{{ f.label }}</div>
+<div style="font-family:var(--font-mono);font-size:10px;color:var(--text-tertiary);margin-top:2px">{{ f.sub }}</div>
+</button>
+</sc-for>
+</div>
+<div style="font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--text-tertiary);margin-bottom:var(--space-2)">Custom</div>
+<div style="display:flex;gap:var(--space-2);align-items:center;margin-bottom:var(--space-5)">
+<input value="{{ customW }}" onChange="{{ onCustomW }}" inputMode="numeric" style="flex:1;min-width:0;height:44px;background:var(--surface-raised);border:1px solid var(--border-hairline);border-radius:var(--radius-md);padding:0 var(--space-3);font-family:var(--font-mono);font-size:14px" />
+<span style="color:var(--text-tertiary)">×</span>
+<input value="{{ customH }}" onChange="{{ onCustomH }}" inputMode="numeric" style="flex:1;min-width:0;height:44px;background:var(--surface-raised);border:1px solid var(--border-hairline);border-radius:var(--radius-md);padding:0 var(--space-3);font-family:var(--font-mono);font-size:14px" />
+<button onClick="{{ applyCustom }}" style="height:44px;padding:0 var(--space-4);border-radius:var(--radius-md);border:1px solid var(--border-strong);font-size:13px;color:var(--text-secondary)">Use</button>
+</div>
+<div style="font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--text-tertiary);margin-bottom:var(--space-2)">Frame rate · part of the project</div>
+<div style="display:flex;flex-wrap:wrap;gap:var(--space-2)">
+<sc-for list="{{ fpsOpts }}" as="f" hint-placeholder-count="7"><button onClick="{{ f.pick }}" style="{{ f.st }}">{{ f.label }}</button></sc-for>
+</div>
+</div>
+<div style="position:absolute;left:0;right:0;bottom:0;height:92px;padding:var(--space-3) var(--space-4);background:linear-gradient(to top,var(--surface-canvas) 62%,rgba(11,13,16,0))">
+<button onClick="{{ goEditor }}" style="width:100%;height:52px;border-radius:var(--radius-md);background:var(--accent-primary);color:var(--accent-ink);font-size:15px;font-weight:600;text-align:center">Open editor</button>
+</div>
+</sc-if>
+
+<sc-if value="{{ isEditor }}" hint-placeholder-val="{{ false }}">
+<div style="position:absolute;left:0;top:{{ statusH }}px;right:0;height:42px;display:flex;align-items:center;justify-content:space-between;padding:0 var(--space-3);z-index:30">
+<button onClick="{{ backToFormat }}" style="width:36px;height:36px;border-radius:var(--radius-full);display:flex;align-items:center;justify-content:center;font-size:16px;color:var(--text-secondary)">‹</button>
+<div style="font-size:13px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ projectName }}</div>
+<div style="display:flex;gap:2px">
+<button onClick="{{ undo }}" style="width:36px;height:36px;border-radius:var(--radius-full);display:flex;align-items:center;justify-content:center;font-size:15px;color:{{ undoFg }}">↺</button>
+<button onClick="{{ redo }}" style="width:36px;height:36px;border-radius:var(--radius-full);display:flex;align-items:center;justify-content:center;font-size:15px;color:{{ redoFg }}">↻</button>
+</div>
+</div>
+
+<div style="position:absolute;left:0;right:0;top:{{ statusLineTop }}px;height:18px;display:flex;align-items:center;justify-content:center;gap:var(--space-2);padding:0 var(--space-4);z-index:30">
+<span style="width:5px;height:5px;border-radius:var(--radius-full);background:{{ judderDot }};flex:none"></span>
+<span style="font-family:var(--font-mono);font-size:9.5px;letter-spacing:.02em;color:var(--text-tertiary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0">{{ statusLine }}</span>
+</div>
+
+<div style="position:absolute;left:0;right:0;top:{{ scrubTop }}px;z-index:30;padding:0 var(--space-4)">
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1px">
+<div ref="{{ setTc }}" style="font-family:var(--font-mono);font-size:12px;color:var(--text-primary)">00:00:00:00</div>
+<div style="font-family:var(--font-mono);font-size:11px;color:var(--text-tertiary)">{{ totalTcLabel }}</div>
+</div>
+<div onPointerDown="{{ scrubDown }}" style="position:relative;height:24px;display:flex;align-items:center;touch-action:none">
+<div style="position:absolute;left:0;right:0;height:3px;background:var(--surface-hi);border-radius:var(--radius-full)"></div>
+<sc-for list="{{ markers }}" as="k" hint-placeholder-count="0">
+<div style="position:absolute;left:{{ k.pct }}%;top:5px;width:1px;height:10px;background:{{ k.color }}"></div>
+</sc-for>
+<div ref="{{ setPh }}" style="position:absolute;left:0;top:2px;width:2px;height:16px;background:var(--accent-primary);box-shadow:0 0 8px var(--accent-primary)"></div>
+</div>
+<div style="display:flex;align-items:center;justify-content:space-between;gap:var(--space-2);margin-top:1px">
+<div style="display:flex;align-items:center;gap:2px">
+<button onClick="{{ toHead }}" style="width:36px;height:40px;display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--text-secondary)">⏮</button>
+<button onClick="{{ stepBack }}" style="width:38px;height:40px;display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--text-secondary);font-family:var(--font-mono)">−1f</button>
+<button onClick="{{ togglePlay }}" style="width:46px;height:46px;border-radius:var(--radius-full);background:var(--accent-primary);color:var(--accent-ink);display:flex;align-items:center;justify-content:center;font-size:13px">{{ playGlyph }}</button>
+<button onClick="{{ stepFwd }}" style="width:38px;height:40px;display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--text-secondary);font-family:var(--font-mono)">+1f</button>
+<button onClick="{{ toTail }}" style="width:36px;height:40px;display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--text-secondary)">⏭</button>
+</div>
+<div style="display:flex;align-items:center;gap:var(--space-1)">
+<button onClick="{{ openLook }}" style="height:32px;padding:0 10px;border-radius:var(--radius-full);border:1px solid var(--border-hairline);font-size:11px;color:var(--text-secondary)">{{ lookLabel }}</button>
+<button onClick="{{ openBg }}" style="height:32px;padding:0 10px;border-radius:var(--radius-full);border:1px solid var(--border-hairline);font-size:11px;color:var(--text-secondary)">{{ bgLabel }}</button>
+</div>
+</div>
+</div>
+
+<sc-if value="{{ showWarn }}" hint-placeholder-val="{{ false }}">
+<div style="position:absolute;left:var(--space-4);right:var(--space-4);top:{{ warnTop }}px;z-index:31;background:var(--warn-wash);border:1px solid rgba(226,112,92,.4);border-radius:var(--radius-md);padding:10px var(--space-3)">
+<div style="font-size:12px;line-height:1.35;text-wrap:pretty">{{ warnText }}</div>
+<div style="display:flex;gap:var(--space-2);margin-top:var(--space-2);flex-wrap:wrap">
+<sc-for list="{{ warnFixes }}" as="w" hint-placeholder-count="2">
+<button onClick="{{ w.apply }}" style="height:32px;padding:0 var(--space-3);border-radius:var(--radius-full);background:var(--surface-hi);font-family:var(--font-mono);font-size:11px">{{ w.label }}</button>
+</sc-for>
+<button onClick="{{ dismissWarn }}" style="height:32px;padding:0 var(--space-2);font-size:11px;color:var(--text-tertiary)">Ignore</button>
+</div>
+</div>
+</sc-if>
+
+<div ref="{{ setList }}" data-nosb style="position:absolute;left:0;right:0;top:{{ listTop }}px;bottom:84px;overflow-y:auto;padding:0 var(--space-4) var(--space-6)">
+<div style="display:flex;align-items:center;justify-content:space-between;height:30px;position:sticky;top:0;background:var(--surface-canvas);z-index:2">
+<div style="font-size:10.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--text-tertiary)">{{ listHeading }}</div>
+<button onClick="{{ toggleSelectMode }}" style="font-size:11.5px;color:{{ selectFg }}">{{ selectLabel }}</button>
+</div>
+<sc-if value="{{ isEmptyDoc }}" hint-placeholder-val="{{ false }}">
+<div style="border:1px dashed var(--border-strong);border-radius:var(--radius-lg);padding:var(--space-6) var(--space-4);text-align:center;margin-top:var(--space-3)">
+<div style="font-size:14px;font-weight:500;margin-bottom:6px">No blocks yet</div>
+<div style="font-size:12px;color:var(--text-secondary);line-height:1.4;margin-bottom:var(--space-4);text-wrap:pretty">Add a title card, or paste a cast list and split it into two columns.</div>
+<button onClick="{{ openAdd }}" style="height:44px;padding:0 var(--space-5);border-radius:var(--radius-md);background:var(--accent-primary);color:var(--accent-ink);font-size:14px;font-weight:600;display:inline-flex;align-items:center">Add first block</button>
+</div>
+</sc-if>
+<div style="display:flex;flex-direction:column;gap:var(--space-2);padding-top:var(--space-2)">
+<sc-for list="{{ cards }}" as="c" hint-placeholder-count="6">
+<div style="position:relative;transform:translateY({{ c.shiftY }}px);transition:{{ c.shiftTrans }};z-index:{{ c.z }}">
+<div style="position:absolute;right:0;top:0;bottom:0;display:flex;align-items:stretch;gap:4px">
+<button onClick="{{ c.dup }}" style="width:52px;border-radius:var(--radius-md);background:var(--surface-hi);font-size:10px;color:var(--text-secondary);display:flex;align-items:center;justify-content:center">Duplicate</button>
+<button onClick="{{ c.mute }}" style="width:52px;border-radius:var(--radius-md);background:var(--surface-hi);font-size:10px;color:var(--text-secondary);display:flex;align-items:center;justify-content:center">{{ c.muteLabel }}</button>
+<button onClick="{{ c.del }}" style="width:52px;border-radius:var(--radius-md);background:rgba(226,112,92,.18);font-size:10px;color:var(--warn);display:flex;align-items:center;justify-content:center">Delete</button>
+</div>
+<div data-card="{{ c.id }}" onPointerDown="{{ c.down }}" style="position:relative;display:flex;align-items:center;gap:var(--space-3);background:var(--surface-raised);border:1px solid {{ c.border }};border-radius:var(--radius-lg);padding:var(--space-3);min-height:62px;transform:translateX({{ c.sx }}px) translateY({{ c.dy }}px) scale({{ c.scale }});box-shadow:{{ c.shadow }};opacity:{{ c.opacity }};transition:{{ c.cardTrans }};touch-action:pan-y">
+<sc-if value="{{ selectMode }}" hint-placeholder-val="{{ false }}">
+<div style="width:22px;height:22px;border-radius:var(--radius-full);border:1.5px solid {{ c.checkBorder }};background:{{ c.checkBg }};display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--accent-ink);flex:none">{{ c.checkGlyph }}</div>
+</sc-if>
+<div style="width:34px;height:34px;border-radius:var(--radius-md);background:{{ c.glyphBg }};color:{{ c.glyphFg }};display:flex;align-items:center;justify-content:center;font-family:var(--font-mono);font-size:10px;font-weight:500;flex:none">{{ c.glyph }}</div>
+<div style="flex:1;min-width:0">
+<div style="display:flex;align-items:center;gap:6px">
+<div style="font-size:13.5px;font-weight:500;color:{{ c.titleFg }};overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ c.title }}</div>
+<sc-if value="{{ c.hasError }}" hint-placeholder-val="{{ false }}">
+<span style="font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--warn);border:1px solid rgba(226,112,92,.5);border-radius:var(--radius-sm);padding:1px 4px;flex:none">{{ c.errorLabel }}</span>
+</sc-if>
+<sc-if value="{{ c.muted }}" hint-placeholder-val="{{ false }}">
+<span style="font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--text-tertiary);border:1px solid var(--border-strong);border-radius:var(--radius-sm);padding:1px 4px;flex:none">Muted</span>
+</sc-if>
+</div>
+<div style="font-size:11.5px;color:var(--text-tertiary);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ c.meta }}</div>
+</div>
+<div style="font-family:var(--font-mono);font-size:10.5px;color:var(--text-tertiary);flex:none">{{ c.dur }}</div>
+<div style="width:16px;display:flex;flex-direction:column;gap:3px;align-items:center;flex:none;opacity:.5">
+<div style="width:12px;height:1px;background:var(--text-tertiary)"></div>
+<div style="width:12px;height:1px;background:var(--text-tertiary)"></div>
+<div style="width:12px;height:1px;background:var(--text-tertiary)"></div>
+</div>
+</div>
+</div>
+</sc-for>
+</div>
+<sc-if value="{{ notEmptyDoc }}" hint-placeholder-val="{{ true }}">
+<button onClick="{{ openAdd }}" style="width:100%;height:48px;margin-top:var(--space-3);border-radius:var(--radius-lg);border:1px dashed var(--border-strong);color:var(--text-secondary);font-size:13px;text-align:center;display:flex;align-items:center;justify-content:center">+ Add block</button>
+</sc-if>
+</div>
+
+<sc-if value="{{ selectMode }}" hint-placeholder-val="{{ false }}">
+<div style="position:absolute;left:var(--space-3);right:var(--space-3);bottom:var(--space-4);height:58px;border-radius:var(--radius-xl);background:var(--surface-overlay);border:1px solid var(--border-strong);display:flex;align-items:center;justify-content:space-between;padding:0 var(--space-3);z-index:35;box-shadow:0 18px 40px -18px #000">
+<div style="font-size:12px;color:var(--text-secondary)">{{ selCount }}</div>
+<div style="display:flex;gap:var(--space-1)">
+<button onClick="{{ bulkRestyle }}" style="height:44px;padding:0 12px;font-size:12px">Restyle</button>
+<button onClick="{{ bulkMute }}" style="height:44px;padding:0 12px;font-size:12px">Mute</button>
+<button onClick="{{ bulkDelete }}" style="height:44px;padding:0 12px;font-size:12px;color:var(--warn)">Delete</button>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ showBottomBar }}" hint-placeholder-val="{{ true }}">
+<div style="position:absolute;left:0;right:0;bottom:0;height:84px;padding:var(--space-2) var(--space-3) var(--space-4);background:linear-gradient(to top,var(--surface-canvas) 58%,rgba(11,13,16,0));display:flex;align-items:flex-start;gap:var(--space-2);z-index:32">
+<button onClick="{{ openAdd }}" style="flex:1;height:52px;border-radius:var(--radius-md);background:var(--surface-raised);border:1px solid var(--border-hairline);font-size:12px;font-weight:500;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px"><span style="font-size:14px">+</span><span>Block</span></button>
+<button onClick="{{ openPaste }}" style="flex:1;height:52px;border-radius:var(--radius-md);background:var(--surface-raised);border:1px solid var(--border-hairline);font-size:12px;font-weight:500;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px"><span style="font-size:14px">⇥</span><span>Paste</span></button>
+<button onClick="{{ openDuration }}" style="flex:1;height:52px;border-radius:var(--radius-md);background:var(--surface-raised);border:1px solid var(--border-hairline);font-size:12px;font-weight:500;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px"><span style="font-family:var(--font-mono);font-size:10.5px">{{ shortDur }}</span><span>Timing</span></button>
+<button onClick="{{ openExport }}" style="flex:1.25;height:52px;border-radius:var(--radius-md);background:var(--accent-primary);color:var(--accent-ink);font-size:14px;font-weight:600;display:flex;align-items:center;justify-content:center">Export</button>
+</div>
+</sc-if>
+</sc-if>
+
+<sc-if value="{{ sheetOpen }}" hint-placeholder-val="{{ false }}">
+<div onClick="{{ closeSheet }}" style="position:absolute;inset:0;background:rgba(4,5,7,.66);z-index:60"></div>
+<div style="position:absolute;left:0;right:0;bottom:0;height:{{ sheetH }}px;background:var(--surface-overlay);border-top-left-radius:var(--radius-xl);border-top-right-radius:var(--radius-xl);border-top:1px solid var(--border-strong);z-index:61;display:flex;flex-direction:column;animation:ec-rise var(--dur-slow) var(--ease-spring) both">
+<div style="display:flex;align-items:center;justify-content:space-between;padding:var(--space-4) var(--space-4) var(--space-2);flex:none">
+<div style="position:absolute;left:50%;top:8px;width:36px;height:4px;margin-left:-18px;border-radius:var(--radius-full);background:var(--border-strong)"></div>
+<div style="font-size:15px;font-weight:600;letter-spacing:-.01em">{{ sheetTitle }}</div>
+<button onClick="{{ closeSheet }}" style="width:30px;height:30px;border-radius:var(--radius-full);background:var(--surface-hi);color:var(--text-secondary);font-size:13px;display:flex;align-items:center;justify-content:center">✕</button>
+</div>
+<div data-nosb style="flex:1;overflow-y:auto;padding:0 var(--space-4) var(--space-4)">
+
+<sc-if value="{{ sheetIsAdd }}" hint-placeholder-val="{{ false }}">
+<div style="display:flex;flex-direction:column;gap:var(--space-2)">
+<sc-for list="{{ addTypes }}" as="a" hint-placeholder-count="8">
+<button onClick="{{ a.add }}" style="display:flex;align-items:center;gap:var(--space-3);background:var(--surface-raised);border:1px solid var(--border-hairline);border-radius:var(--radius-md);padding:var(--space-3);min-height:58px">
+<div style="width:32px;height:32px;border-radius:var(--radius-sm);background:var(--surface-hi);display:flex;align-items:center;justify-content:center;font-family:var(--font-mono);font-size:9.5px;color:var(--text-secondary);flex:none">{{ a.glyph }}</div>
+<div style="flex:1;min-width:0">
+<div style="font-size:13.5px;font-weight:500">{{ a.name }}</div>
+<div style="font-size:11.5px;color:var(--text-tertiary);line-height:1.3;text-wrap:pretty">{{ a.desc }}</div>
+</div>
+</button>
+</sc-for>
+<button onClick="{{ addDeptSet }}" style="margin-top:var(--space-1);min-height:58px;border-radius:var(--radius-md);border:1px solid var(--accent-dim);background:var(--accent-wash);padding:var(--space-3)">
+<div style="font-size:13.5px;font-weight:600;color:var(--accent-primary)">Standard department order</div>
+<div style="font-size:11.5px;color:var(--text-secondary);line-height:1.3;margin-top:2px;text-wrap:pretty">Inserts the conventional sequence, in order, ready to fill.</div>
+</button>
+</div>
+</sc-if>
+
+<sc-if value="{{ sheetIsLook }}" hint-placeholder-val="{{ false }}">
+<div style="display:flex;gap:var(--space-3);margin-bottom:var(--space-4)">
+<button onClick="{{ set2d }}" style="{{ look2dSt }}">
+<div style="height:54px;border-radius:var(--radius-sm);background:#000;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;margin-bottom:var(--space-2)">
+<div style="width:54%;height:3px;background:rgba(255,255,255,.8)"></div>
+<div style="width:38%;height:3px;background:rgba(255,255,255,.5)"></div>
+<div style="width:46%;height:3px;background:rgba(255,255,255,.5)"></div>
+</div>
+<div style="font-size:13px;font-weight:600">2D flat roll</div>
+<div style="font-size:11px;color:var(--text-secondary);line-height:1.3;margin-top:2px">Professional default. What a conform expects.</div>
+</button>
+<button onClick="{{ set3d }}" style="{{ look3dSt }}">
+<div style="height:54px;border-radius:var(--radius-sm);background:#000;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:5px;margin-bottom:var(--space-2);padding-bottom:6px">
+<div style="width:22%;height:2px;background:rgba(255,255,255,.3)"></div>
+<div style="width:40%;height:3px;background:rgba(255,255,255,.55)"></div>
+<div style="width:62%;height:4px;background:rgba(255,255,255,.85)"></div>
+</div>
+<div style="font-size:13px;font-weight:600">3D perspective crawl</div>
+<div style="font-size:11px;color:var(--text-secondary);line-height:1.3;margin-top:2px">A stylistic choice, not the standard.</div>
+</button>
+</div>
+<sc-if value="{{ is3d }}" hint-placeholder-val="{{ false }}">
+<div style="display:flex;flex-direction:column;gap:var(--space-4)">
+<div>
+<div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:6px"><span style="color:var(--text-secondary)">Tilt angle</span><span style="font-family:var(--font-mono);color:var(--accent-primary)">{{ tiltLabel }}</span></div>
+<input type="range" min="8" max="55" step="1" value="{{ tilt }}" onChange="{{ onTilt }}" style="width:100%;accent-color:var(--accent-primary)" />
+</div>
+<div>
+<div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:6px"><span style="color:var(--text-secondary)">Vanishing distance</span><span style="font-family:var(--font-mono);color:var(--accent-primary)">{{ vdistLabel }}</span></div>
+<input type="range" min="20" max="140" step="2" value="{{ vdist }}" onChange="{{ onVdist }}" style="width:100%;accent-color:var(--accent-primary)" />
+</div>
+</div>
+</sc-if>
+</sc-if>
+
+<sc-if value="{{ sheetIsBg }}" hint-placeholder-val="{{ false }}">
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-2);margin-bottom:var(--space-4)">
+<sc-for list="{{ bgOpts }}" as="o" hint-placeholder-count="5">
+<button onClick="{{ o.pick }}" style="{{ o.st }}">
+<div style="{{ o.swatch }}"></div>
+<div style="font-size:12.5px;font-weight:500">{{ o.label }}</div>
+<div style="font-size:10.5px;color:var(--text-tertiary);line-height:1.25">{{ o.note }}</div>
+</button>
+</sc-for>
+</div>
+<div style="display:flex;align-items:center;justify-content:space-between;background:var(--surface-raised);border:1px solid var(--border-hairline);border-radius:var(--radius-md);padding:var(--space-3);min-height:52px">
+<div>
+<div style="font-size:13px;font-weight:500">Safe-area guides</div>
+<div style="font-size:11px;color:var(--text-tertiary)">Title 80% · action 90%</div>
+</div>
+<button onClick="{{ toggleSafe }}" style="width:50px;height:30px;border-radius:var(--radius-full);background:{{ safeTrack }};position:relative">
+<span style="position:absolute;top:3px;left:{{ safeKnob }}px;width:24px;height:24px;border-radius:var(--radius-full);background:#fff;transition:left var(--dur-base) var(--ease-spring)"></span>
+</button>
+</div>
+</sc-if>
+
+<sc-if value="{{ sheetIsDuration }}" hint-placeholder-val="{{ false }}">
+<div style="display:flex;background:var(--surface-raised);border:1px solid var(--border-hairline);border-radius:var(--radius-full);padding:3px;margin-bottom:var(--space-4)">
+<button onClick="{{ modeDuration }}" style="flex:1;height:38px;border-radius:var(--radius-full);font-size:12.5px;text-align:center;background:{{ mDurBg }};color:{{ mDurFg }}">Lock runtime</button>
+<button onClick="{{ modeSpeed }}" style="flex:1;height:38px;border-radius:var(--radius-full);font-size:12.5px;text-align:center;background:{{ mSpdBg }};color:{{ mSpdFg }}">Lock speed</button>
+</div>
+<div style="background:var(--surface-raised);border:1px solid var(--border-hairline);border-radius:var(--radius-lg);padding:var(--space-4);margin-bottom:var(--space-3)">
+<div style="font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--text-tertiary);margin-bottom:var(--space-2)">{{ lockLabel }}</div>
+<sc-if value="{{ isDurMode }}" hint-placeholder-val="{{ true }}">
+<div style="display:flex;align-items:center;gap:var(--space-2)">
+<input value="{{ durText }}" onChange="{{ onDurText }}" style="flex:1;min-width:0;height:54px;background:var(--surface-sunken);border:1px solid var(--border-strong);border-radius:var(--radius-md);padding:0 var(--space-3);font-family:var(--font-mono);font-size:21px;letter-spacing:.03em" />
+<div style="display:flex;flex-direction:column;gap:4px">
+<button onClick="{{ durUp }}" style="width:46px;height:25px;border-radius:var(--radius-sm);background:var(--surface-hi);text-align:center">+</button>
+<button onClick="{{ durDown }}" style="width:46px;height:25px;border-radius:var(--radius-sm);background:var(--surface-hi);text-align:center">−</button>
+</div>
+</div>
+<div style="font-size:11px;color:var(--text-tertiary);margin-top:var(--space-2)">Engine derives the scroll rate: <span style="font-family:var(--font-mono);color:var(--text-secondary)">{{ ppfLabel }}</span></div>
+</sc-if>
+<sc-if value="{{ isSpeedMode }}" hint-placeholder-val="{{ false }}">
+<div style="display:flex;align-items:baseline;gap:var(--space-2)">
+<div style="font-family:var(--font-mono);font-size:30px;color:var(--accent-primary)">{{ ppfValue }}</div>
+<div style="font-size:12px;color:var(--text-secondary)">px / frame at {{ renderWLabel }}</div>
+</div>
+<input type="range" min="1" max="14" step="1" value="{{ ppfValue }}" onChange="{{ onPpf }}" style="width:100%;margin-top:var(--space-3);accent-color:var(--accent-primary)" />
+<div style="font-size:11px;color:var(--text-tertiary);margin-top:var(--space-2)">Engine derives the runtime: <span style="font-family:var(--font-mono);color:var(--text-secondary)">{{ totalTcLabel }}</span></div>
+</sc-if>
+</div>
+<div style="display:flex;gap:var(--space-2);margin-bottom:var(--space-4)">
+<div style="flex:1;background:{{ judderCardBg }};border:1px solid {{ judderCardBorder }};border-radius:var(--radius-md);padding:var(--space-3)">
+<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
+<span style="width:6px;height:6px;border-radius:var(--radius-full);background:{{ judderDot }}"></span>
+<span style="font-size:12px;font-weight:600;color:{{ judderFg }}">{{ judderTitle }}</span>
+</div>
+<div style="font-family:var(--font-mono);font-size:10.5px;color:var(--text-tertiary);line-height:1.35">{{ judderDetail }}</div>
+</div>
+<div style="flex:1;background:{{ readCardBg }};border:1px solid {{ readCardBorder }};border-radius:var(--radius-md);padding:var(--space-3)">
+<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
+<span style="width:6px;height:6px;border-radius:var(--radius-full);background:{{ readDot }}"></span>
+<span style="font-size:12px;font-weight:600;color:{{ readFg }}">{{ readTitle }}</span>
+</div>
+<div style="font-family:var(--font-mono);font-size:10.5px;color:var(--text-tertiary);line-height:1.35">{{ readDetail }}</div>
+</div>
+</div>
+<sc-if value="{{ hasSnaps }}" hint-placeholder-val="{{ false }}">
+<div style="font-size:11px;color:var(--text-secondary);margin-bottom:var(--space-2);text-wrap:pretty">Nearest whole-pixel rates — one tap, no judder:</div>
+<div style="display:flex;gap:var(--space-2);margin-bottom:var(--space-4)">
+<sc-for list="{{ snapOpts }}" as="s" hint-placeholder-count="2">
+<button onClick="{{ s.apply }}" style="flex:1;min-height:56px;border-radius:var(--radius-md);border:1px solid var(--accent-dim);background:var(--accent-wash);padding:var(--space-2);text-align:center">
+<div style="font-family:var(--font-mono);font-size:14px;color:var(--accent-primary)">{{ s.tc }}</div>
+<div style="font-size:10.5px;color:var(--text-tertiary);margin-top:2px">{{ s.note }}</div>
+</button>
+</sc-for>
+</div>
+</sc-if>
+<div style="display:flex;gap:var(--space-2)">
+<div style="flex:1;background:var(--surface-raised);border:1px solid var(--border-hairline);border-radius:var(--radius-md);padding:var(--space-3)">
+<div style="font-size:11px;color:var(--text-secondary);margin-bottom:6px">Head black</div>
+<div style="display:flex;align-items:center;gap:var(--space-2)">
+<button onClick="{{ headDown }}" style="width:34px;height:34px;border-radius:var(--radius-sm);background:var(--surface-hi);text-align:center">−</button>
+<div style="flex:1;text-align:center;font-family:var(--font-mono);font-size:13px">{{ headLabel }}</div>
+<button onClick="{{ headUp }}" style="width:34px;height:34px;border-radius:var(--radius-sm);background:var(--surface-hi);text-align:center">+</button>
+</div>
+</div>
+<div style="flex:1;background:var(--surface-raised);border:1px solid var(--border-hairline);border-radius:var(--radius-md);padding:var(--space-3)">
+<div style="font-size:11px;color:var(--text-secondary);margin-bottom:6px">Tail black</div>
+<div style="display:flex;align-items:center;gap:var(--space-2)">
+<button onClick="{{ tailDown }}" style="width:34px;height:34px;border-radius:var(--radius-sm);background:var(--surface-hi);text-align:center">−</button>
+<div style="flex:1;text-align:center;font-family:var(--font-mono);font-size:13px">{{ tailLabel }}</div>
+<button onClick="{{ tailUp }}" style="width:34px;height:34px;border-radius:var(--radius-sm);background:var(--surface-hi);text-align:center">+</button>
+</div>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ sheetIsPaste }}" hint-placeholder-val="{{ false }}">
+<div style="display:flex;background:var(--surface-raised);border:1px solid var(--border-hairline);border-radius:var(--radius-full);padding:3px;margin-bottom:var(--space-3)">
+<button onClick="{{ pasteTabRaw }}" style="flex:1;height:34px;border-radius:var(--radius-full);font-size:12px;text-align:center;background:{{ ptRawBg }};color:{{ ptRawFg }}">Paste &amp; split</button>
+<button onClick="{{ pasteTabFile }}" style="flex:1;height:34px;border-radius:var(--radius-full);font-size:12px;text-align:center;background:{{ ptFileBg }};color:{{ ptFileFg }}">Import file</button>
+</div>
+<sc-if value="{{ pasteModeRaw }}" hint-placeholder-val="{{ true }}">
+<div style="display:flex;gap:var(--space-2);height:168px;margin-bottom:var(--space-3)">
+<div style="flex:1;display:flex;flex-direction:column;min-width:0">
+<div style="font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--text-tertiary);margin-bottom:4px">Raw</div>
+<textarea value="{{ raw }}" onChange="{{ onRaw }}" placeholder="Paste your cast list…" data-nosb style="flex:1;resize:none;background:var(--surface-sunken);border:1px solid var(--border-hairline);border-radius:var(--radius-md);padding:var(--space-2);font-family:var(--font-mono);font-size:10px;line-height:1.55;color:var(--text-secondary)"></textarea>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;min-width:0">
+<div style="font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--text-tertiary);margin-bottom:4px">Structured · {{ parsedCount }}</div>
+<div data-nosb style="flex:1;overflow-y:auto;background:var(--surface-sunken);border:1px solid var(--border-hairline);border-radius:var(--radius-md);padding:var(--space-2)">
+<sc-for list="{{ parsedRows }}" as="p" hint-placeholder-count="6">
+<div style="display:flex;gap:4px;font-family:var(--font-mono);font-size:9.5px;line-height:1.5;padding:1px 0">
+<div style="flex:1;text-align:right;color:{{ p.lFg }};overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ p.l }}</div>
+<div style="color:var(--text-disabled)">·</div>
+<div style="flex:1;color:{{ p.rFg }};overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ p.r }}</div>
+</div>
+</sc-for>
+</div>
+</div>
+</div>
+<div style="font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--text-tertiary);margin-bottom:var(--space-2)">Delimiter · detected candidates</div>
+<div style="display:flex;flex-wrap:wrap;gap:var(--space-2);margin-bottom:var(--space-3)">
+<sc-for list="{{ delims }}" as="d" hint-placeholder-count="5">
+<button onClick="{{ d.pick }}" style="{{ d.st }}">{{ d.label }} <span style="opacity:.6">{{ d.count }}</span></button>
+</sc-for>
+</div>
+<div style="display:flex;gap:var(--space-2);margin-bottom:var(--space-3)">
+<button onClick="{{ swapCols }}" style="flex:1;height:40px;border-radius:var(--radius-md);border:1px solid var(--border-hairline);font-size:12px;color:var(--text-secondary);text-align:center">⇄ Swap columns</button>
+<button onClick="{{ applyParse }}" style="flex:1;height:40px;border-radius:var(--radius-md);background:var(--accent-primary);color:var(--accent-ink);font-size:13px;font-weight:600;text-align:center">Add {{ parsedOkCount }} rows</button>
+</div>
+<sc-if value="{{ hasUnparsed }}" hint-placeholder-val="{{ false }}">
+<div style="border:1px solid rgba(226,112,92,.4);background:var(--warn-wash);border-radius:var(--radius-md);padding:var(--space-3)">
+<div style="font-size:11.5px;color:var(--text-primary);margin-bottom:var(--space-2)">{{ unparsedLabel }} — nothing was guessed. Fix them here:</div>
+<sc-for list="{{ unparsed }}" as="u" hint-placeholder-count="1">
+<div style="display:flex;gap:var(--space-2);margin-bottom:var(--space-2)">
+<input value="{{ u.l }}" onChange="{{ u.onL }}" placeholder="Role" style="flex:1;min-width:0;height:38px;background:var(--surface-sunken);border:1px solid var(--border-hairline);border-radius:var(--radius-sm);padding:0 var(--space-2);font-size:12px" />
+<input value="{{ u.r }}" onChange="{{ u.onR }}" placeholder="Name" style="flex:1;min-width:0;height:38px;background:var(--surface-sunken);border:1px solid var(--border-hairline);border-radius:var(--radius-sm);padding:0 var(--space-2);font-size:12px" />
+</div>
+</sc-for>
+</div>
+</sc-if>
+</sc-if>
+<sc-if value="{{ pasteModeFile }}" hint-placeholder-val="{{ false }}">
+<div style="display:flex;flex-direction:column;gap:var(--space-2);margin-bottom:var(--space-4)">
+<sc-for list="{{ files }}" as="f" hint-placeholder-count="2">
+<button onClick="{{ f.pick }}" style="{{ f.st }}">
+<div style="font-family:var(--font-mono);font-size:12.5px">{{ f.name }}</div>
+<div style="font-size:11px;color:var(--text-tertiary);margin-top:2px">{{ f.meta }}</div>
+</button>
+</sc-for>
+</div>
+<div style="font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--text-tertiary);margin-bottom:var(--space-2)">Column mapping</div>
+<div style="display:flex;flex-direction:column;gap:var(--space-2)">
+<sc-for list="{{ colMap }}" as="m" hint-placeholder-count="3">
+<div style="display:flex;align-items:center;justify-content:space-between;background:var(--surface-raised);border:1px solid var(--border-hairline);border-radius:var(--radius-md);padding:var(--space-2) var(--space-3);min-height:46px">
+<div style="font-family:var(--font-mono);font-size:11.5px;color:var(--text-secondary)">{{ m.col }}</div>
+<button onClick="{{ m.cycle }}" style="height:32px;padding:0 12px;border-radius:var(--radius-full);background:var(--surface-hi);font-size:11.5px">{{ m.role }}</button>
+</div>
+</sc-for>
+</div>
+</sc-if>
+</sc-if>
+
+<sc-if value="{{ sheetIsBlock }}" hint-placeholder-val="{{ false }}">
+<sc-if value="{{ blockIsCast }}" hint-placeholder-val="{{ false }}">
+<div style="display:flex;gap:var(--space-2);margin-bottom:var(--space-3)">
+<sc-for list="{{ leaderOpts }}" as="l" hint-placeholder-count="3">
+<button onClick="{{ l.pick }}" style="{{ l.st }}">{{ l.label }}</button>
+</sc-for>
+</div>
+<div style="margin-bottom:var(--space-3)">
+<div style="display:flex;justify-content:space-between;font-size:11.5px;margin-bottom:6px"><span style="color:var(--text-secondary)">Centre gutter</span><span style="font-family:var(--font-mono);color:var(--accent-primary)">{{ gutterLabel }}</span></div>
+<input type="range" min="2" max="16" step="1" value="{{ gutterVal }}" onChange="{{ onGutter }}" style="width:100%;accent-color:var(--accent-primary)" />
+<div style="font-size:10.5px;color:{{ collapseFg }};margin-top:4px;text-wrap:pretty">{{ collapseNote }}</div>
+</div>
+<div style="display:flex;background:var(--surface-raised);border:1px solid var(--border-hairline);border-radius:var(--radius-full);padding:3px;margin-bottom:var(--space-3)">
+<sc-for list="{{ collapseOpts }}" as="c" hint-placeholder-count="3">
+<button onClick="{{ c.pick }}" style="{{ c.st }}">{{ c.label }}</button>
+</sc-for>
+</div>
+<div style="display:flex;gap:var(--space-2)">
+<div data-castrows="1" style="flex:1;min-width:0">
+<sc-for list="{{ castRows }}" as="r" hint-placeholder-count="6">
+<div style="display:flex;gap:var(--space-2);margin-bottom:6px;align-items:center">
+<div style="font-family:var(--font-mono);font-size:9.5px;color:var(--text-disabled);width:16px;flex:none">{{ r.n }}</div>
+<input value="{{ r.l }}" onChange="{{ r.onL }}" placeholder="Role" style="flex:1;min-width:0;height:40px;background:var(--surface-raised);border:1px solid {{ r.lBorder }};border-radius:var(--radius-sm);padding:0 var(--space-2);font-size:12px;text-align:right" />
+<input value="{{ r.r }}" onChange="{{ r.onR }}" placeholder="Name" style="flex:1;min-width:0;height:40px;background:var(--surface-raised);border:1px solid var(--border-hairline);border-radius:var(--radius-sm);padding:0 var(--space-2);font-size:12px" />
+<button onClick="{{ r.del }}" style="width:28px;height:40px;color:var(--text-disabled);font-size:13px;flex:none;text-align:center">✕</button>
+</div>
+</sc-for>
+</div>
+<div style="width:18px;flex:none;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:1px;padding-top:2px">
+<sc-for list="{{ azRail }}" as="a" hint-placeholder-count="26">
+<button onClick="{{ a.jump }}" style="font-family:var(--font-mono);font-size:8px;line-height:1;color:{{ a.fg }};padding:1px 2px">{{ a.ch }}</button>
+</sc-for>
+</div>
+</div>
+<div style="display:flex;gap:var(--space-2);margin-top:var(--space-2)">
+<button onClick="{{ addRow }}" style="flex:1;height:42px;border-radius:var(--radius-md);border:1px dashed var(--border-strong);font-size:12px;color:var(--text-secondary);text-align:center">+ Row</button>
+<button onClick="{{ addBilling }}" style="flex:1;height:42px;border-radius:var(--radius-md);border:1px dashed var(--border-strong);font-size:12px;color:var(--text-secondary);text-align:center">+ “and” row</button>
+<button onClick="{{ addGap }}" style="flex:1;height:42px;border-radius:var(--radius-md);border:1px dashed var(--border-strong);font-size:12px;color:var(--text-secondary);text-align:center">+ Spacer</button>
+</div>
+<div style="margin-top:var(--space-4);border-top:1px solid var(--border-hairline);padding-top:var(--space-3)">
+<div style="font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--text-tertiary);margin-bottom:var(--space-2)">Fast entry — Next hops role → name → new row</div>
+<div style="display:flex;gap:var(--space-2)">
+<input value="{{ entryL }}" onChange="{{ onEntryL }}" onKeyDown="{{ onEntryKey }}" placeholder="Role" style="flex:1;min-width:0;height:44px;background:var(--surface-sunken);border:1px solid var(--border-strong);border-radius:var(--radius-sm);padding:0 var(--space-3);font-size:13px;text-align:right" />
+<input value="{{ entryR }}" onChange="{{ onEntryR }}" onKeyDown="{{ onEntryKey }}" placeholder="Name" style="flex:1;min-width:0;height:44px;background:var(--surface-sunken);border:1px solid var(--border-strong);border-radius:var(--radius-sm);padding:0 var(--space-3);font-size:13px" />
+<button onClick="{{ commitEntry }}" style="width:64px;height:44px;border-radius:var(--radius-sm);background:var(--accent-primary);color:var(--accent-ink);font-size:12.5px;font-weight:600;text-align:center">Next</button>
+</div>
+</div>
+</sc-if>
+<sc-if value="{{ blockIsGeneric }}" hint-placeholder-val="{{ false }}">
+<div style="display:flex;flex-direction:column;gap:var(--space-3)">
+<sc-for list="{{ fields }}" as="f" hint-placeholder-count="3">
+<div>
+<div style="font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--text-tertiary);margin-bottom:6px">{{ f.label }}</div>
+<sc-if value="{{ f.isText }}" hint-placeholder-val="{{ true }}">
+<input value="{{ f.value }}" onChange="{{ f.onChange }}" style="width:100%;height:46px;background:var(--surface-raised);border:1px solid var(--border-hairline);border-radius:var(--radius-md);padding:0 var(--space-3);font-size:14px" />
+</sc-if>
+<sc-if value="{{ f.isLines }}" hint-placeholder-val="{{ false }}">
+<textarea value="{{ f.value }}" onChange="{{ f.onChange }}" data-nosb style="width:100%;height:110px;resize:none;background:var(--surface-raised);border:1px solid var(--border-hairline);border-radius:var(--radius-md);padding:var(--space-2) var(--space-3);font-size:13px;line-height:1.5"></textarea>
+</sc-if>
+<sc-if value="{{ f.isNum }}" hint-placeholder-val="{{ false }}">
+<div style="display:flex;align-items:center;gap:var(--space-3);background:var(--surface-raised);border:1px solid var(--border-hairline);border-radius:var(--radius-md);padding:var(--space-2)">
+<button onClick="{{ f.dec }}" style="width:44px;height:40px;border-radius:var(--radius-sm);background:var(--surface-hi);text-align:center">−</button>
+<div style="flex:1;text-align:center;font-family:var(--font-mono);font-size:15px">{{ f.display }}</div>
+<button onClick="{{ f.inc }}" style="width:44px;height:40px;border-radius:var(--radius-sm);background:var(--surface-hi);text-align:center">+</button>
+</div>
+</sc-if>
+</div>
+</sc-for>
+</div>
+</sc-if>
+</sc-if>
+
+<sc-if value="{{ sheetIsExport }}" hint-placeholder-val="{{ false }}">
+<sc-if value="{{ exportIdle }}" hint-placeholder-val="{{ true }}">
+<div style="background:var(--surface-raised);border:1px solid var(--border-hairline);border-radius:var(--radius-lg);padding:var(--space-3);margin-bottom:var(--space-4)">
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--space-2)">
+<div style="font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--text-tertiary)">Locked for this render</div>
+<button onClick="{{ editSettings }}" style="font-size:11.5px;color:var(--accent-primary)">Edit</button>
+</div>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-2)">
+<sc-for list="{{ exportFacts }}" as="x" hint-placeholder-count="4">
+<div>
+<div style="font-size:10px;color:var(--text-tertiary)">{{ x.k }}</div>
+<div style="font-family:var(--font-mono);font-size:12.5px;color:var(--text-primary)">{{ x.v }}</div>
+</div>
+</sc-for>
+</div>
+</div>
+<div style="font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--text-tertiary);margin-bottom:var(--space-2)">Codec</div>
+<div style="display:flex;flex-direction:column;gap:var(--space-2);margin-bottom:var(--space-4)">
+<sc-for list="{{ codecs }}" as="c" hint-placeholder-count="4">
+<button onClick="{{ c.pick }}" style="{{ c.st }}">
+<div style="flex:1;min-width:0">
+<div style="display:flex;align-items:center;gap:6px">
+<div style="font-size:13.5px;font-weight:500">{{ c.name }}</div>
+<sc-if value="{{ c.alpha }}" hint-placeholder-val="{{ false }}">
+<span style="font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--accent-primary);border:1px solid var(--accent-dim);border-radius:var(--radius-sm);padding:1px 4px">Alpha</span>
+</sc-if>
+</div>
+<div style="font-size:11px;color:var(--text-tertiary);margin-top:2px;text-wrap:pretty">{{ c.desc }}</div>
+</div>
+<div style="font-family:var(--font-mono);font-size:11px;color:var(--text-secondary);flex:none">{{ c.size }}</div>
+</button>
+</sc-for>
+</div>
+<div style="font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--text-tertiary);margin-bottom:var(--space-2)">Resolution</div>
+<div style="display:flex;gap:var(--space-2);margin-bottom:var(--space-4)">
+<sc-for list="{{ resLadder }}" as="r" hint-placeholder-count="3">
+<button onClick="{{ r.pick }}" style="{{ r.st }}">{{ r.label }}</button>
+</sc-for>
+</div>
+<div style="display:flex;justify-content:space-between;font-size:11.5px;color:var(--text-secondary);margin-bottom:var(--space-3)">
+<span>Estimated render</span><span style="font-family:var(--font-mono);color:var(--text-primary)">{{ renderEst }}</span>
+</div>
+<button onClick="{{ startExport }}" style="width:100%;height:54px;border-radius:var(--radius-md);background:var(--accent-primary);color:var(--accent-ink);font-size:15px;font-weight:600;text-align:center">Render {{ exportLabel }}</button>
+</sc-if>
+<sc-if value="{{ exportRunning }}" hint-placeholder-val="{{ false }}">
+<div style="display:flex;gap:var(--space-3);align-items:center;margin-bottom:var(--space-4)">
+<div style="width:88px;height:50px;border-radius:var(--radius-sm);background:#000;border:1px solid var(--border-hairline);display:flex;align-items:center;justify-content:center;flex:none;overflow:hidden">
+<div style="font-family:'Archivo Narrow',sans-serif;font-size:7px;letter-spacing:.2em;color:rgba(255,255,255,.85);text-align:center">{{ exportThumb }}</div>
+</div>
+<div style="flex:1;min-width:0">
+<div style="font-size:13px;font-weight:500;margin-bottom:4px">{{ exportStatus }}</div>
+<div style="height:4px;border-radius:var(--radius-full);background:var(--surface-hi);overflow:hidden">
+<div style="height:100%;width:{{ exportPct }}%;background:var(--accent-primary);transition:width var(--dur-base) linear"></div>
+</div>
+<div style="font-family:var(--font-mono);font-size:10.5px;color:var(--text-tertiary);margin-top:4px">{{ exportDetail }}</div>
+</div>
+</div>
+<button onClick="{{ closeSheet }}" style="width:100%;height:46px;border-radius:var(--radius-md);border:1px solid var(--border-strong);font-size:13px;color:var(--text-secondary);text-align:center">Keep working — render continues in the background</button>
+</sc-if>
+<sc-if value="{{ exportFailed }}" hint-placeholder-val="{{ false }}">
+<div style="border:1px solid rgba(226,112,92,.45);background:var(--warn-wash);border-radius:var(--radius-lg);padding:var(--space-4);margin-bottom:var(--space-3)">
+<div style="font-size:13.5px;font-weight:600;color:var(--warn);margin-bottom:4px">Render stopped at 62%</div>
+<div style="font-size:12px;color:var(--text-secondary);line-height:1.4;text-wrap:pretty">Not enough free space for a 1.4 GB file. Free up space, or drop to 1080p and try again — the first 62% is cached, so the retry resumes.</div>
+</div>
+<div style="display:flex;gap:var(--space-2)">
+<button onClick="{{ startExport }}" style="flex:1;height:48px;border-radius:var(--radius-md);background:var(--accent-primary);color:var(--accent-ink);font-size:14px;font-weight:600;text-align:center">Resume</button>
+<button onClick="{{ editSettings }}" style="flex:1;height:48px;border-radius:var(--radius-md);border:1px solid var(--border-strong);font-size:14px;color:var(--text-secondary);text-align:center">Lower resolution</button>
+</div>
+</sc-if>
+<sc-if value="{{ exportDone }}" hint-placeholder-val="{{ false }}">
+<div style="text-align:center;padding:var(--space-4) 0">
+<div style="font-size:15px;font-weight:600;margin-bottom:4px">{{ exportLabel }} ready</div>
+<div style="font-size:12px;color:var(--text-secondary);margin-bottom:var(--space-4)">{{ exportDetail }}</div>
+<div style="display:flex;flex-direction:column;gap:var(--space-2)">
+<sc-for list="{{ destinations }}" as="d" hint-placeholder-count="4">
+<button onClick="{{ closeSheet }}" style="height:48px;border-radius:var(--radius-md);background:var(--surface-raised);border:1px solid var(--border-hairline);font-size:13.5px;text-align:center;display:flex;align-items:center;justify-content:center">{{ d }}</button>
+</sc-for>
+</div>
+</div>
+</sc-if>
+</sc-if>
+
+</div>
+</div>
+</sc-if>
+
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ isAppendix }}" hint-placeholder-val="{{ false }}">
+<div style="width:100%;max-width:1180px;display:flex;flex-direction:column;gap:var(--space-7)">
+
+<div>
+<div style="font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--text-tertiary);margin-bottom:var(--space-3)">Colour ramp</div>
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:var(--space-2)">
+<sc-for list="{{ tokColors }}" as="t" hint-placeholder-count="12">
+<div style="background:var(--surface-raised);border:1px solid var(--border-hairline);border-radius:var(--radius-md);padding:var(--space-2);display:flex;align-items:center;gap:var(--space-3)">
+<div style="{{ t.sw }}"></div>
+<div style="min-width:0">
+<div style="font-family:var(--font-mono);font-size:10.5px;color:var(--text-primary);overflow:hidden;text-overflow:ellipsis">{{ t.name }}</div>
+<div style="font-family:var(--font-mono);font-size:9.5px;color:var(--text-tertiary)">{{ t.val }}</div>
+</div>
+</div>
+</sc-for>
+</div>
+</div>
+
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:var(--space-6)">
+<div>
+<div style="font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--text-tertiary);margin-bottom:var(--space-3)">Interface type scale</div>
+<div style="display:flex;flex-direction:column;gap:var(--space-3)">
+<sc-for list="{{ tokType }}" as="t" hint-placeholder-count="6">
+<div style="display:flex;align-items:baseline;gap:var(--space-4);border-bottom:1px solid var(--border-hairline);padding-bottom:var(--space-2)">
+<div style="font-family:var(--font-mono);font-size:9.5px;color:var(--text-tertiary);width:96px;flex:none">{{ t.meta }}</div>
+<div style="{{ t.st }}">{{ t.sample }}</div>
+</div>
+</sc-for>
+</div>
+</div>
+<div>
+<div style="font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--text-tertiary);margin-bottom:var(--space-3)">Credit faces — shipped list</div>
+<div style="display:flex;flex-direction:column;gap:var(--space-2)">
+<sc-for list="{{ tokFaces }}" as="t" hint-placeholder-count="3">
+<div style="background:#000;border:1px solid var(--border-hairline);border-radius:var(--radius-md);padding:var(--space-3) var(--space-4)">
+<div style="font-family:var(--font-mono);font-size:9.5px;color:var(--text-tertiary);margin-bottom:var(--space-2)">{{ t.meta }}</div>
+<div style="{{ t.st }}">{{ t.sample }}</div>
+</div>
+</sc-for>
+<div style="font-size:11.5px;color:var(--text-tertiary);line-height:1.4;text-wrap:pretty">Bring your own file: a dropped .otf/.ttf is embedded in the project and travels with the export.</div>
+</div>
+</div>
+</div>
+
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:var(--space-6)">
+<div>
+<div style="font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--text-tertiary);margin-bottom:var(--space-3)">Spacing scale</div>
+<div style="display:flex;flex-direction:column;gap:var(--space-2)">
+<sc-for list="{{ tokSpace }}" as="t" hint-placeholder-count="8">
+<div style="display:flex;align-items:center;gap:var(--space-3)">
+<div style="font-family:var(--font-mono);font-size:9.5px;color:var(--text-tertiary);width:110px;flex:none">{{ t.name }}</div>
+<div style="{{ t.bar }}"></div>
+<div style="font-family:var(--font-mono);font-size:9.5px;color:var(--text-secondary)">{{ t.val }}</div>
+</div>
+</sc-for>
+</div>
+</div>
+<div>
+<div style="font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--text-tertiary);margin-bottom:var(--space-3)">Radius</div>
+<div style="display:flex;gap:var(--space-3);flex-wrap:wrap">
+<sc-for list="{{ tokRadius }}" as="t" hint-placeholder-count="5">
+<div style="text-align:center">
+<div style="{{ t.box }}"></div>
+<div style="font-family:var(--font-mono);font-size:9.5px;color:var(--text-tertiary);margin-top:6px">{{ t.name }}</div>
+</div>
+</sc-for>
+</div>
+<div style="font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--text-tertiary);margin:var(--space-5) 0 var(--space-3)">Motion &amp; haptics</div>
+<div style="display:flex;flex-direction:column;gap:6px">
+<sc-for list="{{ tokMotion }}" as="t" hint-placeholder-count="6">
+<div style="display:flex;gap:var(--space-3);font-size:11.5px">
+<div style="font-family:var(--font-mono);font-size:10px;color:var(--accent-primary);width:118px;flex:none">{{ t.k }}</div>
+<div style="color:var(--text-secondary);line-height:1.35;text-wrap:pretty">{{ t.v }}</div>
+</div>
+</sc-for>
+</div>
+</div>
+</div>
+
+<div>
+<div style="font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--text-tertiary);margin-bottom:var(--space-3)">Block card — every state</div>
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:var(--space-3)">
+<sc-for list="{{ stateCards }}" as="c" hint-placeholder-count="5">
+<div>
+<div style="font-family:var(--font-mono);font-size:9.5px;color:var(--text-tertiary);margin-bottom:6px">{{ c.state }}</div>
+<div style="{{ c.wrap }}">
+<div style="width:34px;height:34px;border-radius:var(--radius-md);background:{{ c.glyphBg }};color:{{ c.glyphFg }};display:flex;align-items:center;justify-content:center;font-family:var(--font-mono);font-size:10px;flex:none">{{ c.glyph }}</div>
+<div style="flex:1;min-width:0">
+<div style="display:flex;align-items:center;gap:6px">
+<div style="font-size:13.5px;font-weight:500;color:{{ c.titleFg }}">{{ c.title }}</div>
+<sc-if value="{{ c.badge }}" hint-placeholder-val="{{ false }}">
+<span style="{{ c.badgeSt }}">{{ c.badgeText }}</span>
+</sc-if>
+</div>
+<div style="font-size:11.5px;color:var(--text-tertiary);margin-top:2px">{{ c.meta }}</div>
+</div>
+<div style="font-family:var(--font-mono);font-size:10.5px;color:var(--text-tertiary)">{{ c.dur }}</div>
+</div>
+</div>
+</sc-for>
+</div>
+</div>
+
+<div>
+<div style="font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--text-tertiary);margin-bottom:var(--space-3)">Gutter system — same block, two formats</div>
+<div style="display:flex;gap:var(--space-4);flex-wrap:wrap">
+<sc-for list="{{ gutterDemos }}" as="d" hint-placeholder-count="2">
+<div>
+<div style="font-family:var(--font-mono);font-size:9.5px;color:var(--text-tertiary);margin-bottom:6px">{{ d.label }}</div>
+<div style="{{ d.frameSt }}">
+<sc-for list="{{ d.rows }}" as="r" hint-placeholder-count="4">
+<div style="{{ r.wrap }}">
+<sc-if value="{{ r.isPair }}" hint-placeholder-val="{{ true }}">
+<div style="{{ r.lSt }}">{{ r.l }}</div>
+<div style="{{ r.gutSt }}"><div style="{{ r.leadSt }}"></div></div>
+<div style="{{ r.rSt }}">{{ r.r }}</div>
+</sc-if>
+<sc-if value="{{ r.isStack }}" hint-placeholder-val="{{ false }}">
+<div style="{{ r.sLSt }}">{{ r.l }}</div>
+<div style="{{ r.sRSt }}">{{ r.r }}</div>
+</sc-if>
+</div>
+</sc-for>
+</div>
+<div style="font-size:11px;color:var(--text-tertiary);max-width:240px;line-height:1.4;margin-top:6px;text-wrap:pretty">{{ d.note }}</div>
+</div>
+</sc-for>
+</div>
+</div>
+
+<div>
+<div style="font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--text-tertiary);margin-bottom:var(--space-3)">Edge cases — the rules, stated</div>
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:var(--space-3)">
+<sc-for list="{{ edgeCases }}" as="x" hint-placeholder-count="8">
+<div style="background:var(--surface-raised);border:1px solid var(--border-hairline);border-radius:var(--radius-md);padding:var(--space-3)">
+<div style="font-size:12.5px;font-weight:600;margin-bottom:4px">{{ x.k }}</div>
+<div style="font-size:11.5px;color:var(--text-secondary);line-height:1.4;text-wrap:pretty">{{ x.v }}</div>
+</div>
+</sc-for>
+</div>
+</div>
+
+</div>
+</sc-if>
+
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;accent&quot;:{&quot;editor&quot;:&quot;color&quot;,&quot;default&quot;:&quot;#d6a44f&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;options&quot;:[&quot;#d6a44f&quot;,&quot;#c8b89a&quot;,&quot;#9fb2c9&quot;,&quot;#d2725e&quot;],&quot;section&quot;:&quot;Design&quot;},&quot;creditFace&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;default&quot;:&quot;g&quot;,&quot;options&quot;:[&quot;g&quot;,&quot;s&quot;,&quot;c&quot;],&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Design&quot;},&quot;showSafe&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Monitor&quot;}}">
+class Component extends DCLogic {
+  FPS=[23.976,24,25,29.97,30,50,60];
+  FMT=[
+    {id:'9x16',label:'9:16 Vertical',sub:'1080×1920',w:1080,h:1920},
+    {id:'4x5',label:'4:5',sub:'1080×1350',w:1080,h:1350},
+    {id:'1x1',label:'1:1 Square',sub:'1080×1080',w:1080,h:1080},
+    {id:'16x9',label:'16:9 HD',sub:'1920×1080',w:1920,h:1080},
+    {id:'uhd',label:'16:9 UHD',sub:'3840×2160',w:3840,h:2160},
+    {id:'185',label:'1.85:1 Flat',sub:'1998×1080',w:1998,h:1080},
+    {id:'239',label:'2.39:1 Scope',sub:'2048×858',w:2048,h:858},
+    {id:'dcif',label:'DCI 4K Flat',sub:'3996×2160',w:3996,h:2160},
+    {id:'dcis',label:'DCI 4K Scope',sub:'4096×1716',w:4096,h:1716}
+  ];
+  FACES={g:"'Archivo',sans-serif",s:"'EB Garamond',serif",c:"'Archivo Narrow',sans-serif"};
+  TYPES={title:['TTL','Title card'],cast:['CAST','Two-column cast'],dept:['DEPT','Department'],hold:['HOLD','Hold card'],logos:['LOGO','Logo row'],song:['SONG','Soundtrack'],thanks:['THX','Special thanks'],spacer:['SPC','Spacer']};
+
+  state={
+    tab:'proto', device:'portrait', screen:'templates', sheet:null,
+    project:{name:'THE LONG WAY DOWN',fmt:'239',cw:1080,ch:1920,fps:24,mode:'duration',durF:24*104,ppf:3,head:2,tail:3,look:'2d',tilt:22,vdist:60,bg:'black',face:null,safe:true},
+    blocks:[], travel:1, blockY:{}, sel:[], selectMode:false,
+    playing:false, dragId:null, dragFrom:-1, dragOver:-1, dragDy:0,
+    swipeId:null, swipeX:0, hist:[], future:[], warnOff:false,
+    recovery:true, offline:false, customW:'1080', customH:'1350'
+  };
+
+  uid(){ return 'b'+Math.random().toString(36).slice(2,8); }
+  frame=0;
+
+  syncProps(){
+    const a=this.props.accent;
+    if(a&&a!==this._accent){ this._accent=a;
+      const r=document.documentElement.style;
+      r.setProperty('--accent-primary',a);
+      r.setProperty('--accent-wash',a+'1f');
+      r.setProperty('--safe-title',a+'80');
+    }
+  }
+  componentDidMount(){
+    window.__ec=this;
+    this.syncProps();
+    this.measure();
+    if(document.fonts&&document.fonts.ready) document.fonts.ready.then(()=>this.measure());
+    this._t=setInterval(()=>this.forceUpdate(),30000);
+  }
+  componentWillUnmount(){ clearInterval(this._t); this.stop(); }
+  componentDidUpdate(){ this.syncProps(); this.measure(); if(!this.state.playing) this.paint(); }
+
+  setRoll=el=>{ this.rollEl=el; if(el) requestAnimationFrame(()=>{this.measure();this.paint();}); };
+  setHolds=el=>{ this.holdsEl=el; };
+  setTc=el=>{ this.tcEl=el; };
+  setTc2=el=>{ this.tcEl2=el; };
+  setPh=el=>{ this.phEl=el; };
+  setPh2=el=>{ this.phEl2=el; };
+  setList=el=>{ this.listEl=el; };
+
+  /* ---------- content ---------- */
+  mkTitle(){return{id:this.uid(),type:'title',banner:'OYELARAN PICTURES',title:'THE LONG WAY DOWN',byline:'A FILM BY MARA OYELARAN',titleScale:3.1};}
+  mkDept(h,n){return{id:this.uid(),type:'dept',header:h,names:n};}
+  mkCast(){return{id:this.uid(),type:'cast',header:'CAST',leader:'dots',gutter:.06,collapse:'auto',rows:[
+    {l:'ELENA MARSH',r:'Priya Raghunathan'},{l:'DET. AUGUST COLE',r:'Kwame Boateng'},
+    {l:'MARGO',r:'Hattie Lindqvist'},{l:'YOUNG ELENA',r:'Sofia Navarro-Reyes'},
+    {l:'THE FERRYMAN',r:'Ibrahim Sesay'},{l:'DR. HALVORSEN',r:'Greta Lindemann'},
+    {l:'BARTENDER',r:'Yusuf Demir'},{l:'NIGHT NURSE',r:'Aoife Callaghan'},
+    {l:'TRANSIT COP',r:'Devon Marchetti'},{l:'WOMAN ON PLATFORM',r:'Xiulan Ma'},
+    {k:'gap'},{k:'span',text:'and'},{l:'JUNE MARSH',r:'Ruth Negeri'}
+  ]};}
+  mkSong(){return{id:this.uid(),type:'song',songTitle:'“HOLLOW GROUND”',artist:'Written and performed by THE PALE RIVER',courtesy:'Courtesy of Norlight Records'};}
+  mkThanks(){return{id:this.uid(),type:'thanks',header:'SPECIAL THANKS',names:['Annika Sørensen','Bartholomew Ng','Cassia Duarte','Devlin O’Rourke','Emeka Nwachukwu','Farida Haddad','Gunnar Eklund','Hyun-woo Park','Isabel Cardoso','Jonas Vikström','Keziah Mbeki','Lucia Ferrante','Mikhail Petrov','Nadia Bouchard','Oskar Lindgren','Perrine Vasseur']};}
+  mkLogos(){return{id:this.uid(),type:'logos',logos:['SCREEN AUSTRALIA','NORLIGHT','HARBOUR POST','THE FILM FUND']};}
+  mkHold(t,l){return{id:this.uid(),type:'hold',lines:l,hold:t||3,fadeIn:1,fadeOut:1};}
+  mkSpacer(){return{id:this.uid(),type:'spacer',seconds:1.5};}
+
+  seed(kind){
+    const t=this.mkTitle();
+    if(kind==='youtube') return [t,this.mkDept('WRITTEN &amp; DIRECTED BY',['Mara Oyelaran']),this.mkDept('EDITED BY',['Sam Oduya']),this.mkSong(),this.mkThanks(),this.mkHold(3,['THANKS FOR WATCHING','SUBSCRIBE FOR MORE'])];
+    if(kind==='music') return [t,this.mkDept('DIRECTED BY',['Mara Oyelaran']),this.mkSong(),this.mkDept('PRODUCTION COMPANY',['Harbour Post']),this.mkLogos()];
+    const base=[t,
+      this.mkDept('DIRECTED BY',['Mara Oyelaran']),
+      this.mkDept('WRITTEN BY',['Mara Oyelaran','Tobias Renn']),
+      this.mkDept('PRODUCED BY',['Ines Kovač','Daniel Whitfield']),
+      this.mkCast(),
+      this.mkDept('DIRECTOR OF PHOTOGRAPHY',['Aurélie Banks']),
+      this.mkDept('EDITED BY',['Sam Oduya']),
+      this.mkDept('PRODUCTION DESIGNER',['Noor Haddad']),
+      this.mkDept('MUSIC BY',['Felix Arinze']),
+      this.mkSong(),
+      this.mkThanks(),
+      this.mkLogos(),
+      this.mkHold(4,['IN LOVING MEMORY','JUNE WHITFIELD','1948 — 2024']),
+      this.mkHold(5,['© MMXXVI OYELARAN PICTURES LLC','ALL RIGHTS RESERVED'])
+    ];
+    return base;
+  }
+
+  /* ---------- geometry ---------- */
+  fmt(){ const p=this.state.project; if(p.fmt==='custom') return {w:+p.cw||1080,h:+p.ch||1920};
+    const f=this.FMT.find(x=>x.id===p.fmt)||this.FMT[6]; return {w:f.w,h:f.h}; }
+  geom(){
+    const p=this.state.project,f=this.fmt(),W=f.w,H=f.h,tall=H>=W;
+    const u=(W/1920)*(tall?1.75:1);
+    const base=44*u, safeW=W*.8;
+    return {W,H,tall,u,base,safeW,face:this.FACES[p.face]||this.FACES[this.props.creditFace]||this.FACES.g};
+  }
+  castGeom(b){
+    const g=this.geom(), gut=g.W*(b.gutter||.06), colW=(g.safeW-gut)/2;
+    let maxc=0; (b.rows||[]).forEach(r=>{ if(!r.k||r.k==='pair'){ maxc=Math.max(maxc,(r.l||'').length,(r.r||'').length); } });
+    const need=maxc*g.base*.5;
+    const collapse = b.collapse==='always' || (b.collapse!=='never' && colW<need);
+    return {gut,colW,collapse,need,maxc};
+  }
+
+  activeBlocks(){ return this.state.blocks.filter(b=>!b.muted); }
+
+  /* ---------- roll model ---------- */
+  rollModel(){
+    const g=this.geom(), base=g.base, W=g.W, out=[];
+    const ctr={textAlign:'center',fontFamily:g.face,color:'#fff'};
+    this.activeBlocks().forEach(b=>{
+      const o={id:b.id,isTitle:false,isDept:false,isCast:false,isSong:false,isLogos:false,isThanks:false,
+        wrap:{position:'relative',width:W+'px',padding:'0 '+(W*.1)+'px',marginBottom:(base*2.4)+'px',boxSizing:'border-box'}};
+      if(b.type==='spacer'){ o.wrap.marginBottom='0px'; o.wrap.height=(base*2.2*(b.seconds/1.5))+'px'; out.push(o); return; }
+      if(b.type==='hold'){ o.wrap.marginBottom='0px'; o.wrap.height='0px'; out.push(o); return; }
+      if(b.type==='title'){
+        o.isTitle=true; o.banner=b.banner; o.title=b.title; o.byline=b.byline;
+        o.bannerSt=Object.assign({},ctr,{fontSize:(base*.78)+'px',letterSpacing:'.34em',opacity:.72,marginBottom:(base*1.6)+'px',display:b.banner?'block':'none'});
+        o.titleSt=Object.assign({},ctr,{fontSize:(base*(b.titleScale||3.1))+'px',lineHeight:1.06,fontWeight:600,letterSpacing:'.02em'});
+        o.bySt=Object.assign({},ctr,{fontSize:(base*.8)+'px',letterSpacing:'.28em',opacity:.78,marginTop:(base*1.4)+'px',display:b.byline?'block':'none'});
+        out.push(o); return;
+      }
+      if(b.type==='dept'){
+        o.isDept=true; o.header=b.header;
+        o.headSt=Object.assign({},ctr,{fontSize:(base*.78)+'px',letterSpacing:'.26em',opacity:.62,marginBottom:(base*.55)+'px'});
+        o.names=(b.names||[]).map(v=>({v,st:Object.assign({},ctr,{fontSize:base+'px',lineHeight:1.42,fontWeight:500})}));
+        out.push(o); return;
+      }
+      if(b.type==='cast'){
+        const cg=this.castGeom(b); o.isCast=true; o.header=b.header;
+        o.headSt=Object.assign({},ctr,{fontSize:(base*.78)+'px',letterSpacing:'.26em',opacity:.62,marginBottom:(base*.9)+'px'});
+        o.rows=(b.rows||[]).map(r=>{
+          const R={isPair:false,isStack:false,isSpan:false,wrap:{}};
+          if(r.k==='gap'){ R.wrap={height:(base*.9)+'px'}; return R; }
+          if(r.k==='span'){ R.isSpan=true; R.text=r.text; R.spanSt=Object.assign({},ctr,{fontSize:(base*.82)+'px',letterSpacing:'.22em',opacity:.66,margin:(base*.35)+'px 0'}); return R; }
+          if(cg.collapse){
+            R.isStack=true; R.l=r.l; R.r=r.r;
+            R.wrap={textAlign:'center',marginBottom:(base*.78)+'px'};
+            R.sLSt=Object.assign({},ctr,{fontSize:(base*.74)+'px',letterSpacing:'.14em',opacity:.6,lineHeight:1.3});
+            R.sRSt=Object.assign({},ctr,{fontSize:base+'px',fontWeight:500,lineHeight:1.3});
+            return R;
+          }
+          R.isPair=true; R.l=r.l; R.r=r.r;
+          R.wrap={display:'flex',alignItems:'baseline',justifyContent:'center',marginBottom:(base*.5)+'px'};
+          const common={fontFamily:g.face,color:'#fff',fontSize:base+'px',lineHeight:1.32,width:cg.colW+'px',overflowWrap:'break-word'};
+          R.lSt=Object.assign({},common,{textAlign:'right',opacity:.82,paddingLeft:(base*.9)+'px',textIndent:'-'+(base*.9)+'px'});
+          R.rSt=Object.assign({},common,{textAlign:'left',fontWeight:500,paddingLeft:(base*.9)+'px',textIndent:'-'+(base*.9)+'px'});
+          R.gutSt={width:cg.gut+'px',flex:'none',alignSelf:'flex-end',paddingBottom:(base*.3)+'px',display:'flex',alignItems:'center',padding:'0 '+(base*.3)+'px'};
+          if(b.leader==='dots') R.leadSt={flex:1,height:(base*.9)+'px',backgroundImage:'radial-gradient(circle, rgba(255,255,255,.55) '+Math.max(1,base*.045)+'px, transparent '+Math.max(1.2,base*.05)+'px)',backgroundSize:(base*.36)+'px 100%',backgroundRepeat:'repeat-x',backgroundPosition:'0 '+(base*.62)+'px'};
+          else if(b.leader==='rule') R.leadSt={flex:1,height:'1px',background:'rgba(255,255,255,.28)',marginBottom:(base*.28)+'px'};
+          else R.leadSt={flex:1};
+          return R;
+        });
+        out.push(o); return;
+      }
+      if(b.type==='song'){
+        o.isSong=true; o.songTitle=b.songTitle; o.artist=b.artist; o.courtesy=b.courtesy;
+        o.songSt=Object.assign({},ctr,{fontSize:base+'px',fontWeight:500,lineHeight:1.4});
+        o.artistSt=Object.assign({},ctr,{fontSize:(base*.86)+'px',opacity:.8,lineHeight:1.4});
+        o.courtesySt=Object.assign({},ctr,{fontSize:(base*.76)+'px',opacity:.6,lineHeight:1.4,fontStyle:'italic'});
+        out.push(o); return;
+      }
+      if(b.type==='logos'){
+        o.isLogos=true;
+        o.logoRowSt={display:'flex',alignItems:'center',justifyContent:'center',gap:(base*1.6)+'px',flexWrap:'wrap'};
+        o.logos=(b.logos||[]).map(v=>({v,st:{fontFamily:g.face,color:'#fff',opacity:.82,fontSize:(base*.62)+'px',letterSpacing:'.2em',border:'1px solid rgba(255,255,255,.3)',padding:(base*.4)+'px '+(base*.6)+'px',borderRadius:(base*.12)+'px'}}));
+        out.push(o); return;
+      }
+      if(b.type==='thanks'){
+        o.isThanks=true; o.header=b.header;
+        o.headSt=Object.assign({},ctr,{fontSize:(base*.78)+'px',letterSpacing:'.26em',opacity:.62,marginBottom:(base*.8)+'px'});
+        o.colsSt={columnCount:g.tall?2:3,columnGap:(base*1.4)+'px'};
+        o.names=(b.names||[]).map(v=>({v,st:Object.assign({},ctr,{fontSize:(base*.84)+'px',lineHeight:1.5,opacity:.88,breakInside:'avoid'})}));
+        out.push(o); return;
+      }
+      out.push(o);
+    });
+    return out;
+  }
+
+  holdModel(){
+    const g=this.geom(),base=g.base;
+    return this.activeBlocks().filter(b=>b.type==='hold').map(b=>({
+      id:b.id,
+      wrap:{position:'absolute',inset:0,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:(base*.5)+'px',opacity:0,pointerEvents:'none'},
+      lines:(b.lines||[]).map((v,i)=>({v,st:{fontFamily:g.face,color:'#fff',fontSize:(i===0?base*1.05:base*.9)+'px',letterSpacing:'.2em',textAlign:'center',opacity:i===0?1:.8}}))
+    }));
+  }
+
+  /* ---------- engine ---------- */
+  eng(){
+    const p=this.state.project,fps=p.fps,g=this.geom();
+    const travel=Math.max(1,this.state.travel);
+    const headF=Math.round(p.head*fps),tailF=Math.round(p.tail*fps);
+    const holds=this.activeBlocks().filter(b=>b.type==='hold');
+    const holdF=holds.reduce((a,b)=>a+Math.round((b.fadeIn+b.hold+b.fadeOut)*fps),0);
+    const fixed=headF+tailF+holdF;
+    let ppf,scrollF;
+    if(p.mode==='duration'){ const tot=Math.max(fixed+fps*2,p.durF); scrollF=tot-fixed; ppf=travel/scrollF; }
+    else { ppf=Math.max(1,p.ppf); scrollF=Math.ceil(travel/ppf); }
+    const travelUsed=p.mode==='speed'?ppf*scrollF:travel;
+    const clean=Math.abs(ppf-Math.round(ppf))<.0008;
+    const pps=ppf*fps, dwell=g.H/pps, readable=dwell>=3;
+    const segs=[]; let y=0,f=0;
+    segs.push({k:'freeze',y0:0,f0:0,f1:headF}); f=headF;
+    holds.map(b=>({b,y:(this.state.blockY[b.id]||0)})).sort((a,b)=>a.y-b.y).forEach(s=>{
+      const ty=Math.max(y,Math.min(travelUsed,s.y)),dy=ty-y,df=dy/ppf;
+      segs.push({k:'scroll',y0:y,f0:f,f1:f+df}); f+=df; y=ty;
+      const len=Math.round((s.b.fadeIn+s.b.hold+s.b.fadeOut)*fps);
+      segs.push({k:'hold',y0:y,f0:f,f1:f+len,id:s.b.id,fi:Math.max(1,Math.round(s.b.fadeIn*fps)),fo:Math.max(1,Math.round(s.b.fadeOut*fps)),len});
+      f+=len;
+    });
+    segs.push({k:'scroll',y0:y,f0:f,f1:f+(travelUsed-y)/ppf}); f+=(travelUsed-y)/ppf;
+    segs.push({k:'freeze',y0:travelUsed,f0:f,f1:f+tailF}); f+=tailF;
+    return {fps,ppf,pps,scrollF,fixed,clean,dwell,readable,segs,travel,travelUsed,headF,tailF,holdF,totalF:Math.max(1,f),H:g.H,W:g.W};
+  }
+  snaps(){
+    const e=this.eng(),out=[];
+    [Math.floor(e.ppf),Math.ceil(e.ppf)].forEach(k=>{
+      if(k<1) return; const sf=Math.ceil(e.travel/k), tf=sf+e.fixed;
+      if(!out.some(o=>o.k===k)) out.push({k,tf});
+    });
+    return out;
+  }
+  tc(f,fps){ const b=Math.round(fps||this.state.project.fps); f=Math.max(0,Math.round(f));
+    const ff=f%b,s=Math.floor(f/b)%60,m=Math.floor(f/(b*60))%60,h=Math.floor(f/(b*3600));
+    return [h,m,s,ff].map(n=>String(n).padStart(2,'0')).join(':'); }
+
+  measure(){
+    if(!this.rollEl) return;
+    const f=this.fmt(), h=this.rollEl.scrollHeight, travel=h+f.h, by={};
+    this.rollEl.querySelectorAll('[data-blk]').forEach(el=>{ by[el.getAttribute('data-blk')]=el.offsetTop; });
+    const prev=this.state.blockY; let same=Math.abs(this.state.travel-travel)<.5;
+    if(same){ for(const k in by){ if(Math.abs((prev[k]||0)-by[k])>.5){ same=false; break; } } }
+    if(!same) this.setState({travel,blockY:by});
+  }
+
+  paint(){
+    if(!this.rollEl) return;
+    const e=this.eng(), fi=Math.floor(Math.max(0,Math.min(e.totalF-1,this.frame)));
+    let seg=e.segs[e.segs.length-1];
+    for(let i=0;i<e.segs.length;i++){ if(fi>=e.segs[i].f0&&fi<e.segs[i].f1){ seg=e.segs[i]; break; } }
+    let off=seg.y0||0, holdOp=0, holdId=null;
+    if(seg.k==='scroll') off=seg.y0+(fi-seg.f0)*e.ppf;
+    if(seg.k==='hold'){ holdId=seg.id; const t=fi-seg.f0;
+      holdOp = t<seg.fi ? t/seg.fi : (t>seg.len-seg.fo ? Math.max(0,(seg.len-t)/seg.fo) : 1); }
+    off=Math.round(off);
+    this.rollEl.style.transform='translate3d(0,'+(e.H-off)+'px,0)';
+    this.rollEl.style.opacity=String(1-holdOp*.9);
+    if(this.holdsEl) this.holdsEl.querySelectorAll('[data-holdcard]').forEach(el=>{
+      el.style.opacity = el.getAttribute('data-holdcard')===holdId ? String(holdOp) : '0';
+    });
+    const t=this.tc(fi,e.fps), pct=(fi/e.totalF*100)+'%';
+    if(this.tcEl) this.tcEl.textContent=t;
+    if(this.tcEl2) this.tcEl2.textContent=t;
+    if(this.phEl) this.phEl.style.left=pct;
+    if(this.phEl2) this.phEl2.style.left=pct;
+  }
+
+  step=ts=>{
+    if(!this.raf) return;
+    const e=this.eng(), dt=Math.min(.25,(ts-this.last)/1000); this.last=ts;
+    this.frame+=dt*e.fps;
+    if(this.frame>=e.totalF) this.frame=0;
+    this.paint();
+    this.raf=requestAnimationFrame(this.step);
+  };
+  play(){ if(this.raf) return; this.last=performance.now(); this.raf=requestAnimationFrame(this.step); this.setState({playing:true}); }
+  stop(){ if(this.raf) cancelAnimationFrame(this.raf); this.raf=null; if(this.state.playing) this.setState({playing:false}); }
+
+  /* ---------- history ---------- */
+  push(next){ this.setState(s=>({blocks:next,hist:[...s.hist.slice(-24),s.blocks],future:[]})); }
+  patch(id,fn){ this.push(this.state.blocks.map(b=>b.id===id?Object.assign({},b,fn(b)):b)); }
+
+  renderVals(){
+    const S=this.state,p=S.project,e=this.eng(),g=this.geom(),f=this.fmt();
+    const dev=S.device==='portrait';
+    const frameW=dev?390:844, frameH=dev?844:390, statusH=dev?38:26;
+    const editor=S.screen==='editor';
+    // monitor box
+    const screenW=frameW-22, screenH=frameH-22;
+    let mX=0,mY=statusH+42,mW=screenW,mH=214,mZ=10;
+    if(!dev){ mX=0;mY=0;mW=screenW;mH=screenH;mZ=10; }
+    const pad=dev?10:0, availW=mW-pad*2, availH=mH-pad*2;
+    const scale=Math.min(availW/f.w,availH/f.h);
+    const dW=Math.round(f.w*scale), dH=Math.round(f.h*scale);
+    const bgMap={black:'#000',alpha:'repeating-conic-gradient(#2a2d31 0% 25%, #16181b 0% 50%) 50% / 14px 14px',green:'#12b34a',custom:'#101820',underlay:'#000'};
+    const templates=[
+      ['short','Short Film','Title card, department stack, two-column cast, copyright hold.','2.39:1 · 24 fps · 01:44'],
+      ['feature','Feature','Full contractual order with billing block and studio logos.','2.39:1 · 24 fps · 06:00'],
+      ['youtube','YouTube','Vertical, fast, soundtrack credit and an end card.','9:16 · 30 fps · 00:22'],
+      ['music','Music Video','Compact crew roll under the last chorus.','16:9 · 25 fps · 00:40'],
+      ['student','Student Film','Teaches the standard card order as you fill it in.','16:9 · 24 fps · 01:20']
+    ].map(t=>({
+      id:t[0],name:t[1],desc:t[2],meta:t[3],
+      thumbSt:{width:'44px',height:'44px',borderRadius:'var(--radius-md)',background:'#000',border:'1px solid var(--border-hairline)',display:'flex',alignItems:'center',justifyContent:'center',flex:'none'},
+      thumbInner:{width:t[0]==='youtube'?'14px':'28px',height:t[0]==='youtube'?'26px':'16px',border:'1px solid var(--accent-dim)',borderRadius:'2px'},
+      pick:()=>{ const fm=t[0]==='youtube'?'9x16':(t[0]==='music'||t[0]==='student')?'16x9':'239';
+        const fps=t[0]==='youtube'?30:t[0]==='music'?25:24;
+        const dur=t[0]==='youtube'?22:t[0]==='music'?40:t[0]==='feature'?360:t[0]==='student'?80:104;
+        this.frame=0;
+        this.setState({blocks:this.seed(t[0]),screen:'format',hist:[],future:[],
+          project:Object.assign({},p,{fmt:fm,fps,durF:Math.round(dur*fps),mode:'duration',name:t[0]==='youtube'?'CHANNEL OUTRO':p.name})});
+      }
+    }));
+    const cards=S.blocks.map((b,i)=>{
+      const T=this.TYPES[b.type]||['?','Block'];
+      const h=(this.state.blockY[b.id]!=null&&S.blocks[i+1]?0:0);
+      let title=b.title||b.header||'',meta='';
+      if(b.type==='title'){ title=b.title; meta=(b.banner?b.banner+' · ':'')+'title at '+Math.round((b.titleScale||3.1)*100)+'% scale'; }
+      if(b.type==='dept'){ title=b.header; meta=(b.names||[]).join(' · '); }
+      if(b.type==='cast'){ const cg=this.castGeom(b); title='Cast'; meta=(b.rows||[]).filter(r=>!r.k).length+' rows · '+(b.leader==='dots'?'dotted leaders':b.leader==='rule'?'hairline rule':'clean gutter')+(cg.collapse?' · stacked':' · two-column'); }
+      if(b.type==='song'){ title=b.songTitle; meta=b.artist; }
+      if(b.type==='thanks'){ title=b.header; meta=(b.names||[]).length+' names'; }
+      if(b.type==='logos'){ title='Logo row'; meta=(b.logos||[]).join(' · '); }
+      if(b.type==='hold'){ title=(b.lines||[])[0]||'Hold card'; meta='hold '+b.hold+'s · fade '+b.fadeIn+'/'+b.fadeOut+'s'; }
+      if(b.type==='spacer'){ title='Spacer'; meta=b.seconds+' s'; }
+      const dragging=S.dragId===b.id;
+      let shiftY=0;
+      if(S.dragId&&!dragging&&S.dragFrom>=0&&S.dragOver>=0){
+        const ch=this.cardH||70;
+        if(S.dragFrom<S.dragOver&&i>S.dragFrom&&i<=S.dragOver) shiftY=-ch;
+        if(S.dragFrom>S.dragOver&&i>=S.dragOver&&i<S.dragFrom) shiftY=ch;
+      }
+      const durS=b.type==='hold'?(b.fadeIn+b.hold+b.fadeOut):b.type==='spacer'?b.seconds:null;
+      const est=durS!=null?durS.toFixed(1)+'s':this.blockSecs(b,e);
+      const selected=S.sel.indexOf(b.id)>=0;
+      return {
+        id:b.id,glyph:T[0],title,meta,muted:!!b.muted,dur:est,
+        hasError:!!b.fontMissing,errorLabel:'Font',
+        glyphBg:b.type==='cast'?'var(--accent-wash)':'var(--surface-hi)',
+        glyphFg:b.type==='cast'?'var(--accent-primary)':'var(--text-secondary)',
+        titleFg:b.muted?'var(--text-disabled)':'var(--text-primary)',
+        border:dragging?'var(--accent-primary)':selected?'var(--accent-dim)':'var(--border-hairline)',
+        sx:S.swipeId===b.id?S.swipeX:0, dy:dragging?S.dragDy:0,
+        scale:dragging?1.03:1, opacity:b.muted?.45:1,
+        shadow:dragging?'0 22px 40px -14px rgba(0,0,0,.9)':'none',
+        z:dragging?5:1, shiftY,
+        shiftTrans:S.dragId?'transform var(--dur-base) var(--ease-out)':'none',
+        cardTrans:dragging?'none':'transform var(--dur-base) var(--ease-out),border-color var(--dur-fast) var(--ease-out),opacity var(--dur-fast) var(--ease-out)',
+        checkGlyph:selected?'✓':'', checkBg:selected?'var(--accent-primary)':'transparent',
+        checkBorder:selected?'var(--accent-primary)':'var(--border-strong)',
+        muteLabel:b.muted?'Unmute':'Mute',
+        down:ev=>this.cardDown(ev,b.id,i),
+        dup:()=>{ const n=[...S.blocks]; n.splice(i+1,0,Object.assign({},b,{id:this.uid()})); this.push(n); this.setState({swipeId:null,swipeX:0}); },
+        mute:()=>{ this.patch(b.id,x=>({muted:!x.muted})); this.setState({swipeId:null,swipeX:0}); },
+        del:()=>{ this.push(S.blocks.filter(x=>x.id!==b.id)); this.setState({swipeId:null,swipeX:0}); }
+      };
+    });
+    const markers=this.activeBlocks().filter(b=>b.type!=='spacer').map(b=>{
+      const y=S.blockY[b.id]||0, fr=e.headF+y/e.ppf;
+      return {pct:Math.max(0,Math.min(100,fr/e.totalF*100)),color:b.type==='cast'?'var(--accent-primary)':'var(--border-strong)'};
+    });
+    const warnFixes=this.snaps().map(s=>({label:this.tc(s.tf+0,e.fps),apply:()=>{ this.setState({project:Object.assign({},p,{mode:'speed',ppf:s.k}),warnOff:false}); }}));
+    const statusLine=(this.FMT.find(x=>x.id===p.fmt)||{sub:(+p.cw)+'×'+(+p.ch)}).sub+' · '+p.fps+' fps · '+this.tc(e.totalF,e.fps)+' · '+(e.clean?'judder-free':e.ppf.toFixed(2)+' px/f');
+    const now=new Date(), wall=String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0');
+
+    return {
+      isProto:S.tab==='proto', isAppendix:S.tab==='appendix',
+      tabProtoBg:S.tab==='proto'?'var(--surface-hi)':'transparent', tabProtoFg:S.tab==='proto'?'var(--text-primary)':'var(--text-tertiary)',
+      tabAppBg:S.tab==='appendix'?'var(--surface-hi)':'transparent', tabAppFg:S.tab==='appendix'?'var(--text-primary)':'var(--text-tertiary)',
+      goProto:()=>this.setState({tab:'proto'}), goAppendix:()=>this.setState({tab:'appendix'}),
+      devPBg:dev?'var(--surface-hi)':'transparent', devPFg:dev?'var(--text-primary)':'var(--text-tertiary)',
+      devLBg:!dev?'var(--surface-hi)':'transparent', devLFg:!dev?'var(--text-primary)':'var(--text-tertiary)',
+      devPortrait:()=>this.setState({device:'portrait'}), devLandscape:()=>this.setState({device:'landscape',screen:'editor'}),
+      isDevPortrait:dev, isDevLandscape:!dev,
+      frameW,frameH,frameR:52,screenR:42,statusH,
+      wallClock:wall, offline:S.offline,
+      showMonitor:editor||!dev, mX,mY,mW,mH,mZ,dW,dH,
+      renderW:f.w,renderH:f.h,canvasScale:scale,
+      canvasBg:bgMap[p.bg]||'#000', hasUnderlay:p.bg==='underlay',
+      perspective:p.look==='3d'?(g.H*(p.vdist/100)*2)+'px':'none',
+      tiltTransform:p.look==='3d'?'rotateX('+p.tilt+'deg)':'none',
+      safeOn:p.safe&&(this.props.showSafe!==false), guideW:Math.max(1,Math.round(g.W/900)),
+      rollBlocks:this.rollModel(), holdCards:this.holdModel(),
+      setRoll:this.setRoll,setHolds:this.setHolds,setTc:this.setTc,setTc2:this.setTc2,setPh:this.setPh,setPh2:this.setPh2,setList:this.setList,
+      isTemplates:S.screen==='templates', isFormat:S.screen==='format', isEditor:editor,
+      hasRecovery:S.recovery,
+      openRecovery:()=>{ this.frame=0; this.setState({blocks:this.seed('short'),screen:'editor',recovery:false}); },
+      discardRecovery:()=>this.setState({recovery:false}),
+      templates, startEmpty:()=>this.setState({blocks:[],screen:'format'}),
+      backToTemplates:()=>this.setState({screen:'templates'}), backToFormat:()=>this.setState({screen:'format'}),
+      goEditor:()=>{ this.frame=0; this.setState({screen:'editor'}); },
+      formats:this.FMT.map(x=>{
+        const on=p.fmt===x.id, ar=x.w/x.h, W=ar>=1?38:38*ar, H=ar>=1?38/ar:38;
+        return {label:x.label,sub:x.sub,
+          cardSt:{background:on?'var(--accent-wash)':'var(--surface-raised)',border:'1px solid '+(on?'var(--accent-primary)':'var(--border-hairline)'),borderRadius:'var(--radius-lg)',padding:'var(--space-3)',minHeight:'104px'},
+          chipSt:{width:W+'px',height:H+'px',border:'1.5px solid '+(on?'var(--accent-primary)':'var(--border-strong)'),borderRadius:'2px'},
+          pick:()=>this.setState({project:Object.assign({},p,{fmt:x.id})})};
+      }),
+      customW:S.customW,customH:S.customH,
+      onCustomW:ev=>this.setState({customW:ev.target.value}), onCustomH:ev=>this.setState({customH:ev.target.value}),
+      applyCustom:()=>this.setState({project:Object.assign({},p,{fmt:'custom',cw:+S.customW||1080,ch:+S.customH||1350})}),
+      fpsOpts:this.FPS.map(v=>({label:String(v),st:{height:'40px',padding:'0 14px',borderRadius:'var(--radius-full)',border:'1px solid '+(p.fps===v?'var(--accent-primary)':'var(--border-hairline)'),background:p.fps===v?'var(--accent-wash)':'var(--surface-raised)',color:p.fps===v?'var(--accent-primary)':'var(--text-secondary)',fontFamily:'var(--font-mono)',fontSize:'12.5px'},
+        pick:()=>this.setState({project:Object.assign({},p,{fps:v,durF:Math.round(e.totalF/e.fps*v)})})})),
+      projectName:p.name,
+      undo:()=>{ if(!S.hist.length) return; const h=[...S.hist],prev=h.pop(); this.setState({blocks:prev,hist:h,future:[S.blocks,...S.future]}); },
+      redo:()=>{ if(!S.future.length) return; const fu=[...S.future],nx=fu.shift(); this.setState({blocks:nx,hist:[...S.hist,S.blocks],future:fu}); },
+      undoFg:S.hist.length?'var(--text-secondary)':'var(--text-disabled)',
+      redoFg:S.future.length?'var(--text-secondary)':'var(--text-disabled)',
+      statusLineTop:statusH+42+214, scrubTop:statusH+42+214+18,
+      listTop:statusH+42+214+18+90+(((!e.clean||!e.readable)&&!S.warnOff&&editor)?92:0),
+      warnTop:statusH+42+214+18+90,
+      statusLine, judderDot:e.clean?(e.readable?'var(--accent-primary)':'var(--warn)'):'var(--warn)',
+      totalTcLabel:this.tc(e.totalF,e.fps), shortDur:this.tc(e.totalF,e.fps).slice(3,8),
+      markers,
+      togglePlay:()=>{ if(this.raf) this.stop(); else this.play(); }, playGlyph:S.playing?'❚❚':'▶',
+      toHead:()=>{ this.frame=0; this.paint(); }, toTail:()=>{ this.frame=e.totalF-1; this.paint(); },
+      stepBack:()=>{ this.frame=Math.max(0,this.frame-1); this.paint(); },
+      stepFwd:()=>{ this.frame=Math.min(e.totalF-1,this.frame+1); this.paint(); },
+      scrubDown:ev=>this.scrubDown(ev,e),
+      lookLabel:p.look==='2d'?'2D':'3D', bgLabel:p.bg==='alpha'?'Alpha':p.bg==='green'?'Green':p.bg==='underlay'?'Underlay':p.bg==='custom'?'Color':'Black',
+      openLook:()=>this.setState({sheet:'look'}), openBg:()=>this.setState({sheet:'bg'}),
+      openAdd:()=>this.setState({sheet:'add'}), openPaste:()=>this.setState({sheet:'paste'}),
+      openDuration:()=>this.setState({sheet:'duration'}), openExport:()=>this.setState({sheet:'export'}),
+      showWarn:(!e.clean||!e.readable)&&!S.warnOff&&editor,
+      warnText:!e.readable?'At this runtime a line is on screen for '+e.dwell.toFixed(1)+'s — below the 3.0s readability floor. Lengthen the roll or trim lines.':'This runtime lands on '+e.ppf.toFixed(3)+' px per frame. Fractional rates strobe on playback.',
+      warnFixes, dismissWarn:()=>this.setState({warnOff:true}),
+      listHeading:S.blocks.length+' blocks · drag to reorder',
+      isEmptyDoc:S.blocks.length===0, notEmptyDoc:S.blocks.length>0,
+      cards, selectMode:S.selectMode, selectLabel:S.selectMode?'Done':'Select',
+      selectFg:S.selectMode?'var(--accent-primary)':'var(--text-secondary)',
+      toggleSelectMode:()=>this.setState({selectMode:!S.selectMode,sel:[]}),
+      selCount:S.sel.length+' selected',
+      bulkRestyle:()=>{ this.push(S.blocks.map(b=>S.sel.indexOf(b.id)>=0&&b.type==='cast'?Object.assign({},b,{leader:b.leader==='dots'?'clean':'dots'}):b)); },
+      bulkMute:()=>{ this.push(S.blocks.map(b=>S.sel.indexOf(b.id)>=0?Object.assign({},b,{muted:!b.muted}):b)); },
+      bulkDelete:()=>{ this.push(S.blocks.filter(b=>S.sel.indexOf(b.id)<0)); this.setState({sel:[]}); },
+      showBottomBar:!S.selectMode,
+      sheetOpen:!!S.sheet,
+      sheetTitle:({add:'Add block',look:'Monitor look',bg:'Background',duration:'Timing',paste:'Bulk entry',block:'Edit block',export:'Export'})[S.sheet]||'',
+      sheetH:Math.min(screenH-34,({add:540,look:430,bg:420,duration:640,paste:640,block:660,export:640})[S.sheet]||520),
+      closeSheet:()=>this.setState({sheet:null}),
+      ...this.sheetVals(e,g,f),
+      ...(S.tab==='appendix'?this.appendixVals():{})
+    };
+  }
+
+  appendixVals(){
+    const V={};
+    V.tokColors=[
+      ['--bg-stage','#08090b'],['--surface-canvas','#0b0d10'],['--surface-sunken','#0e1114'],['--surface-raised','#15181d'],
+      ['--surface-overlay','#1b1f25'],['--surface-hi','#232830'],['--border-hairline','#23272e'],['--border-strong','#343a44'],
+      ['--accent-primary','#d6a44f'],['--accent-dim','#5e4a21'],['--accent-ink','#140f04'],['--warn','#e2705c'],
+      ['--text-primary','#f1f2f4'],['--text-secondary','#9aa1ab'],['--text-tertiary','#6a7280'],['--text-disabled','#4a515b']
+    ].map(c=>({name:c[0],val:c[1],sw:{width:'34px',height:'34px',borderRadius:'var(--radius-sm)',background:c[1],border:'1px solid var(--border-strong)',flex:'none'}}));
+    V.tokType=[
+      ['27 / 600 / −.015em','Pick a starting point',{fontFamily:"'Archivo',sans-serif",fontSize:'27px',fontWeight:600,letterSpacing:'-.015em'}],
+      ['16 / 600','Canvas format',{fontSize:'16px',fontWeight:600,letterSpacing:'-.01em'}],
+      ['13.5 / 500','Two-column cast',{fontSize:'13.5px',fontWeight:500}],
+      ['12 / 400','31 rows · dotted leaders',{fontSize:'12px',color:'var(--text-secondary)'}],
+      ['11 / .18em caps','TIMING',{fontSize:'11px',letterSpacing:'.18em',textTransform:'uppercase',color:'var(--text-tertiary)'}],
+      ['mono 12 / .04em','01:42:18:07',{fontFamily:'var(--font-mono)',fontSize:'12px',letterSpacing:'.04em'}]
+    ].map(t=>({meta:t[0],sample:t[1],st:Object.assign({color:'var(--text-primary)'},t[2])}));
+    V.tokFaces=[
+      ['Grotesque · Archivo — the default roll face','DIRECTOR OF PHOTOGRAPHY',{fontFamily:"'Archivo',sans-serif"}],
+      ['Transitional serif · EB Garamond','Aurélie Banks',{fontFamily:"'EB Garamond',serif"}],
+      ['Condensed · Archivo Narrow','SECOND ASSISTANT CAMERA',{fontFamily:"'Archivo Narrow',sans-serif",letterSpacing:'.06em'}]
+    ].map(t=>({meta:t[0],sample:t[1],st:Object.assign({color:'#fff',fontSize:'22px'},t[2])}));
+    V.tokSpace=[['--space-1',4],['--space-2',8],['--space-3',12],['--space-4',16],['--space-5',20],['--space-6',24],['--space-7',32],['--space-8',40]]
+      .map(s=>({name:s[0],val:s[1]+'px',bar:{height:'8px',width:s[1]+'px',background:'var(--accent-primary)',borderRadius:'2px',flex:'none'}}));
+    V.tokRadius=[['sm',6],['md',10],['lg',14],['xl',22],['full',999]].map(r=>({name:'--radius-'+r[0],
+      box:{width:'52px',height:'52px',background:'var(--surface-raised)',border:'1px solid var(--border-strong)',borderRadius:Math.min(26,r[1])+'px'}}));
+    V.tokMotion=[
+      ['--dur-fast 150ms','State flips: selection, mute, leader style.'],
+      ['--dur-base 200ms','Card reorder parting, toggle knobs.'],
+      ['--dur-slow 250ms','Sheet rise, format reflow.'],
+      ['haptic 8ms','Block lifts under a long-press.'],
+      ['haptic 12ms','Block drops into its new slot.'],
+      ['haptic 6ms','Fast-entry row committed; scrub crosses a card boundary.']
+    ].map(m=>({k:m[0],v:m[1]}));
+    const cardWrap=extra=>Object.assign({display:'flex',alignItems:'center',gap:'var(--space-3)',background:'var(--surface-raised)',
+      border:'1px solid var(--border-hairline)',borderRadius:'var(--radius-lg)',padding:'var(--space-3)',minHeight:'62px'},extra||{});
+    V.stateCards=[
+      {state:'default',title:'Cast',meta:'13 rows · dotted leaders',dur:'22.4s',wrap:cardWrap()},
+      {state:'selected',title:'Cast',meta:'13 rows · dotted leaders',dur:'22.4s',wrap:cardWrap({borderColor:'var(--accent-dim)',background:'var(--accent-wash)'})},
+      {state:'dragging',title:'Cast',meta:'13 rows · dotted leaders',dur:'22.4s',wrap:cardWrap({borderColor:'var(--accent-primary)',transform:'scale(1.03)',boxShadow:'0 22px 40px -14px rgba(0,0,0,.9)'})},
+      {state:'muted — in the doc, out of the render',title:'Logo row',meta:'4 logos',dur:'6.1s',badge:true,badgeText:'Muted',
+        badgeSt:{fontSize:'9px',letterSpacing:'.1em',textTransform:'uppercase',color:'var(--text-tertiary)',border:'1px solid var(--border-strong)',borderRadius:'var(--radius-sm)',padding:'1px 4px'},
+        wrap:cardWrap({opacity:.45}),titleFg:'var(--text-disabled)'},
+      {state:'error — font file missing',title:'Title card',meta:'Rework-Bold.otf not found',dur:'8.0s',badge:true,badgeText:'Font',
+        badgeSt:{fontSize:'9px',letterSpacing:'.1em',textTransform:'uppercase',color:'var(--warn)',border:'1px solid rgba(226,112,92,.5)',borderRadius:'var(--radius-sm)',padding:'1px 4px'},
+        wrap:cardWrap({borderColor:'rgba(226,112,92,.45)',background:'var(--warn-wash)'})}
+    ].map(c=>Object.assign({glyph:'CAST',glyphBg:'var(--accent-wash)',glyphFg:'var(--accent-primary)',titleFg:'var(--text-primary)',badge:false,badgeText:'',badgeSt:{}},c));
+
+    const demoRows=[['ELENA MARSH','Priya Raghunathan'],['DET. AUGUST COLE','Kwame Boateng'],['YOUNG ELENA','Sofia Navarro-Reyes'],['THE FERRYMAN','Ibrahim Sesay']];
+    const mk=(w,h,gutPct,collapse,fs)=>{
+      const safeW=w*.8, gut=w*gutPct, colW=(safeW-gut)/2;
+      return demoRows.map(r=>{
+        if(collapse) return {isPair:false,isStack:true,l:r[0],r:r[1],wrap:{textAlign:'center',marginBottom:'7px'},
+          sLSt:{fontFamily:"'Archivo',sans-serif",color:'#fff',opacity:.6,fontSize:(fs*.76)+'px',letterSpacing:'.12em'},
+          sRSt:{fontFamily:"'Archivo',sans-serif",color:'#fff',fontSize:fs+'px',fontWeight:500}};
+        const common={fontFamily:"'Archivo',sans-serif",color:'#fff',fontSize:fs+'px',lineHeight:1.3,width:colW+'px'};
+        return {isPair:true,isStack:false,l:r[0],r:r[1],
+          wrap:{display:'flex',alignItems:'baseline',justifyContent:'center',marginBottom:'5px'},
+          lSt:Object.assign({},common,{textAlign:'right',opacity:.82}),
+          rSt:Object.assign({},common,{textAlign:'left',fontWeight:500}),
+          gutSt:{width:gut+'px',flex:'none',display:'flex',alignItems:'center',padding:'0 3px'},
+          leadSt:{flex:1,height:(fs*.9)+'px',backgroundImage:'radial-gradient(circle, rgba(255,255,255,.55) .6px, transparent .8px)',backgroundSize:'4px 100%',backgroundRepeat:'repeat-x',backgroundPosition:'0 '+(fs*.62)+'px'}};
+      });
+    };
+    V.gutterDemos=[
+      {label:'2.39:1 scope · 320 × 134',frameSt:{width:'320px',height:'134px',background:'#000',border:'1px solid var(--border-hairline)',borderRadius:'var(--radius-sm)',display:'flex',flexDirection:'column',justifyContent:'center',overflow:'hidden'},
+        rows:mk(320,134,.05,false,9),note:'Wide columns, 5% gutter, dotted leaders. True right-/left-aligned gutter alignment.'},
+      {label:'9:16 vertical · 134 × 238',frameSt:{width:'134px',height:'238px',background:'#000',border:'1px solid var(--border-hairline)',borderRadius:'var(--radius-sm)',display:'flex',flexDirection:'column',justifyContent:'center',overflow:'hidden',padding:'0 4px'},
+        rows:mk(134,238,.05,true,10),note:'Columns fall below the legibility floor for a 17-character name, so rows auto-collapse to stacked pairs with larger relative type.'}
+    ];
+    V.edgeCases=[
+      {k:'Empty project',v:'Template chooser, not a blank canvas — five real starting points, each with the card order already right.'},
+      {k:'One block only',v:'Roll still renders; head and tail black keep it legal. Status line shows the true 00:00:07:00 runtime.'},
+      {k:'400-name cast',v:'Row list virtualises, and an A–Z rail on the right jumps by first character of the left column.'},
+      {k:'Name too long for its column',v:'Rule: wrap with a hanging indent inside the column — never shrink (breaks contractual sizing), never overflow the gutter. If even wrapped it passes the floor, the block auto-collapses to stacked pairs.'},
+      {k:'Unreadable duration',v:'Blocked from silently rendering: the warning names the dwell time, the 3.0s floor, and offers the two nearest clean runtimes.'},
+      {k:'Missing font file',v:'Card shows a FONT badge and the missing filename. The roll falls back to the project face and marks the export as substituted.'},
+      {k:'Export failure',v:'Stated cause and the resolution fix; the cached portion resumes rather than restarting.'},
+      {k:'Offline · crash recovery',v:'Everything renders on-device, so offline is a status glyph, not a blocker. Autosave every edit; relaunch offers the recovered project before the chooser.'}
+    ];
+    return V;
+  }
+
+  DELIMS=[{id:'dash',label:'Dash',re:/\s+[-–—]\s+/},{id:'comma',label:'Comma',re:/\s*,\s*/},{id:'tab',label:'Tab',re:/\t+/},{id:'colon',label:'Colon',re:/\s*:\s*/},{id:'as',label:'" as "',re:/\s+as\s+/i},{id:'dd',label:'2 spaces',re:/ {2,}/}];
+  RAWSEED="Elena Marsh - Priya Raghunathan\nDET. AUGUST COLE - Kwame Boateng\nMargo - Hattie Lindqvist\nYoung Elena - Sofia Navarro-Reyes\nThe Ferryman - Ibrahim Sesay\nDr. Halvorsen - Greta Lindemann\nBartender - Yusuf Demir\nNight Nurse - Aoife Callaghan\nTransit Cop (uncredited)\nWoman on Platform - Xiulan Ma";
+
+  parseRaw(){
+    const S=this.state, raw=S.raw==null?this.RAWSEED:S.raw;
+    const d=this.DELIMS.find(x=>x.id===(S.delim||'dash'))||this.DELIMS[0];
+    return raw.split('\n').map(t=>t.trim()).filter(Boolean).map((t,i)=>{
+      const p=t.split(d.re);
+      if(p.length<2) return {ok:false,l:t,r:'',i};
+      const l=p[0].trim(), r=p.slice(1).join(' ').trim();
+      return S.swap?{ok:true,l:r,r:l,i}:{ok:true,l,r,i};
+    });
+  }
+
+  sheetVals(e,g,f){
+    const S=this.state,p=S.project,sh=S.sheet;
+    const set=o=>this.setState({project:Object.assign({},p,o)});
+    const blk=S.blocks.find(b=>b.id===S.sheetId);
+    const seg=(on)=>({flex:1,height:'32px',borderRadius:'var(--radius-full)',fontSize:'11.5px',textAlign:'center',background:on?'var(--surface-hi)':'transparent',color:on?'var(--text-primary)':'var(--text-tertiary)'});
+    const chip=(on)=>({height:'34px',padding:'0 12px',borderRadius:'var(--radius-full)',fontSize:'11.5px',border:'1px solid '+(on?'var(--accent-primary)':'var(--border-hairline)'),background:on?'var(--accent-wash)':'var(--surface-raised)',color:on?'var(--accent-primary)':'var(--text-secondary)'});
+    const V={
+      sheetIsAdd:sh==='add', sheetIsLook:sh==='look', sheetIsBg:sh==='bg',
+      sheetIsDuration:sh==='duration', sheetIsPaste:sh==='paste', sheetIsBlock:sh==='block', sheetIsExport:sh==='export'
+    };
+    // add
+    V.addTypes=[['title','Title card','Studio banner, film title, “a film by”.'],['cast','Two-column cast','Role and actor across a fixed centre gutter.'],['dept','Department','DIRECTED BY, EDITED BY, and the rest.'],['song','Soundtrack','Song, artist, courtesy-of — three conventional lines.'],['thanks','Special thanks','Flowing multi-column name list that balances itself.'],['logos','Logo row','Financiers and post houses, optically spaced.'],['hold','Hold card','Stops the roll. Fade in, hold, fade out.'],['spacer','Spacer','Explicit gap, in seconds.']]
+      .map(t=>({glyph:(this.TYPES[t[0]]||['?'])[0],name:t[1],desc:t[2],add:()=>{
+        const mk={title:()=>this.mkTitle(),cast:()=>this.mkCast(),dept:()=>this.mkDept('DEPARTMENT',['Name']),song:()=>this.mkSong(),thanks:()=>this.mkThanks(),logos:()=>this.mkLogos(),hold:()=>this.mkHold(3,['HOLD CARD']),spacer:()=>this.mkSpacer()}[t[0]]();
+        this.push([...S.blocks,mk]); this.setState({sheet:null});
+      }}));
+    V.addDeptSet=()=>{ const order=['DIRECTED BY','WRITTEN BY','PRODUCED BY','EXECUTIVE PRODUCER','DIRECTOR OF PHOTOGRAPHY','EDITED BY','PRODUCTION DESIGNER','COSTUME DESIGNER','MUSIC BY','CASTING BY'];
+      this.push([...S.blocks,...order.map(h=>this.mkDept(h,['Name']))]); this.setState({sheet:null}); };
+    // look
+    const lookCard=on=>({flex:1,borderRadius:'var(--radius-lg)',border:'1px solid '+(on?'var(--accent-primary)':'var(--border-hairline)'),background:on?'var(--accent-wash)':'var(--surface-raised)',padding:'var(--space-3)'});
+    V.look2dSt=lookCard(p.look==='2d'); V.look3dSt=lookCard(p.look==='3d');
+    V.set2d=()=>set({look:'2d'}); V.set3d=()=>set({look:'3d'}); V.is3d=p.look==='3d';
+    V.tilt=p.tilt; V.vdist=p.vdist; V.tiltLabel=p.tilt+'°'; V.vdistLabel=p.vdist+'%';
+    V.onTilt=ev=>set({tilt:+ev.target.value}); V.onVdist=ev=>set({vdist:+ev.target.value});
+    // bg
+    V.bgOpts=[['black','Pure black','Broadcast default'],['alpha','Alpha','Drops onto a timeline'],['green','Green','Key it yourself'],['custom','Colour','Brand ground'],['underlay','Footage','Check contrast']]
+      .map(o=>({label:o[1],note:o[2],
+        pick:()=>set({bg:o[0]}),
+        st:{borderRadius:'var(--radius-md)',border:'1px solid '+(p.bg===o[0]?'var(--accent-primary)':'var(--border-hairline)'),background:p.bg===o[0]?'var(--accent-wash)':'var(--surface-raised)',padding:'var(--space-3)',minHeight:'92px'},
+        swatch:{height:'26px',borderRadius:'var(--radius-sm)',marginBottom:'var(--space-2)',border:'1px solid var(--border-hairline)',
+          background:o[0]==='alpha'?'repeating-conic-gradient(#2a2d31 0% 25%, #16181b 0% 50%) 50% / 10px 10px':o[0]==='green'?'#12b34a':o[0]==='custom'?'#101820':o[0]==='underlay'?'linear-gradient(200deg,#30241a,#0d0f14 50%,#16202b)':'#000'}}));
+    V.toggleSafe=()=>set({safe:!p.safe}); V.safeTrack=p.safe?'var(--accent-primary)':'var(--surface-hi)'; V.safeKnob=p.safe?23:3;
+    // duration
+    V.isDurMode=p.mode==='duration'; V.isSpeedMode=p.mode==='speed';
+    V.modeDuration=()=>set({mode:'duration',durF:Math.round(e.totalF)}); V.modeSpeed=()=>set({mode:'speed',ppf:Math.max(1,Math.round(e.ppf))});
+    V.mDurBg=p.mode==='duration'?'var(--surface-hi)':'transparent'; V.mDurFg=p.mode==='duration'?'var(--text-primary)':'var(--text-tertiary)';
+    V.mSpdBg=p.mode==='speed'?'var(--surface-hi)':'transparent'; V.mSpdFg=p.mode==='speed'?'var(--text-primary)':'var(--text-tertiary)';
+    V.lockLabel=p.mode==='duration'?'Target runtime':'Scroll speed';
+    V.durText=S.durText!=null?S.durText:this.tc(e.totalF,e.fps);
+    V.onDurText=ev=>{ const v=ev.target.value; this.setState({durText:v});
+      const m=v.split(':').map(n=>parseInt(n,10));
+      if(m.length===4&&m.every(n=>!isNaN(n))){ const b=Math.round(p.fps); set({durF:((m[0]*3600+m[1]*60+m[2])*b)+m[3],mode:'duration'}); } };
+    V.durUp=()=>{ this.setState({durText:null}); set({durF:Math.round(e.totalF+p.fps),mode:'duration'}); };
+    V.durDown=()=>{ this.setState({durText:null}); set({durF:Math.max(Math.round(p.fps*5),Math.round(e.totalF-p.fps)),mode:'duration'}); };
+    V.ppfLabel=e.ppf.toFixed(3)+' px/frame · '+Math.round(e.pps)+' px/s';
+    V.ppfValue=Math.max(1,Math.round(p.mode==='speed'?p.ppf:e.ppf));
+    V.onPpf=ev=>set({mode:'speed',ppf:+ev.target.value});
+    V.renderWLabel=f.w+'×'+f.h;
+    V.judderTitle=e.clean?'Judder-free':'Fractional rate';
+    V.judderDetail=e.ppf.toFixed(3)+' px per frame at '+p.fps+' fps';
+    V.judderFg=e.clean?'var(--accent-primary)':'var(--warn)';
+    V.judderCardBg=e.clean?'var(--accent-wash)':'var(--warn-wash)';
+    V.judderCardBorder=e.clean?'var(--accent-dim)':'rgba(226,112,92,.4)';
+    V.readTitle=e.readable?'Readable':'Too fast';
+    V.readDot=e.readable?'var(--accent-primary)':'var(--warn)'; V.readFg=V.readDot;
+    V.readDetail='a line stays on screen '+e.dwell.toFixed(1)+'s · floor 3.0s';
+    V.readCardBg=e.readable?'var(--accent-wash)':'var(--warn-wash)';
+    V.readCardBorder=e.readable?'var(--accent-dim)':'rgba(226,112,92,.4)';
+    const sn=this.snaps(); V.hasSnaps=!e.clean&&sn.length>0;
+    V.snapOpts=sn.map(s=>({tc:this.tc(s.tf,e.fps),note:s.k+' px/frame',apply:()=>{ this.setState({durText:null,warnOff:false}); set({mode:'speed',ppf:s.k}); }}));
+    V.headLabel=p.head.toFixed(1)+'s'; V.tailLabel=p.tail.toFixed(1)+'s';
+    V.headUp=()=>set({head:+(p.head+.5).toFixed(1)}); V.headDown=()=>set({head:Math.max(0,+(p.head-.5).toFixed(1))});
+    V.tailUp=()=>set({tail:+(p.tail+.5).toFixed(1)}); V.tailDown=()=>set({tail:Math.max(0,+(p.tail-.5).toFixed(1))});
+    // paste
+    const rows=this.parseRaw(), ok=rows.filter(r=>r.ok), bad=rows.filter(r=>!r.ok);
+    V.pasteModeRaw=(S.pasteMode||'raw')==='raw'; V.pasteModeFile=(S.pasteMode||'raw')==='file';
+    V.pasteTabRaw=()=>this.setState({pasteMode:'raw'}); V.pasteTabFile=()=>this.setState({pasteMode:'file'});
+    V.ptRawBg=V.pasteModeRaw?'var(--surface-hi)':'transparent'; V.ptRawFg=V.pasteModeRaw?'var(--text-primary)':'var(--text-tertiary)';
+    V.ptFileBg=V.pasteModeFile?'var(--surface-hi)':'transparent'; V.ptFileFg=V.pasteModeFile?'var(--text-primary)':'var(--text-tertiary)';
+    V.raw=S.raw==null?this.RAWSEED:S.raw;
+    V.onRaw=ev=>this.setState({raw:ev.target.value});
+    V.parsedCount=ok.length+' of '+rows.length;
+    V.parsedOkCount=ok.length;
+    V.parsedRows=rows.map(r=>({l:r.ok?r.l:r.l,r:r.ok?r.r:'needs a look',lFg:r.ok?'var(--text-secondary)':'var(--warn)',rFg:r.ok?'var(--text-primary)':'var(--warn)'}));
+    V.delims=this.DELIMS.map(d=>{
+      const c=(S.raw==null?this.RAWSEED:S.raw).split('\n').map(t=>t.trim()).filter(Boolean).filter(t=>t.split(d.re).length>1).length;
+      return {label:d.label,count:c,st:chip((S.delim||'dash')===d.id),pick:()=>this.setState({delim:d.id})};
+    });
+    V.swapCols=()=>this.setState({swap:!S.swap});
+    V.hasUnparsed=bad.length>0; V.unparsedLabel=bad.length+(bad.length===1?' row needs a look':' rows need a look');
+    V.unparsed=bad.map(r=>({l:(S.fix&&S.fix[r.i]&&S.fix[r.i].l)||r.l,r:(S.fix&&S.fix[r.i]&&S.fix[r.i].r)||'',
+      onL:ev=>this.setState(st=>({fix:Object.assign({},st.fix,{[r.i]:Object.assign({l:r.l,r:''},(st.fix||{})[r.i],{l:ev.target.value})})})),
+      onR:ev=>this.setState(st=>({fix:Object.assign({},st.fix,{[r.i]:Object.assign({l:r.l,r:''},(st.fix||{})[r.i],{r:ev.target.value})})}))}));
+    V.applyParse=()=>{
+      const fixed=bad.map(r=>(S.fix||{})[r.i]).filter(x=>x&&x.l&&x.r);
+      const newRows=[...ok.map(r=>({l:r.l,r:r.r})),...fixed.map(x=>({l:x.l,r:x.r}))];
+      const target=S.blocks.find(b=>b.type==='cast');
+      if(target) this.push(S.blocks.map(b=>b===target?Object.assign({},b,{rows:newRows}):b));
+      else this.push([...S.blocks,Object.assign(this.mkCast(),{rows:newRows})]);
+      this.setState({sheet:null});
+    };
+    V.files=[['Cast_final_v4.csv','2.1 KB · 31 rows · comma'],['crew_list.tsv','4.8 KB · 62 rows · tab']].map(x=>({name:x[0],meta:x[1],
+      st:{background:'var(--surface-raised)',border:'1px solid var(--border-hairline)',borderRadius:'var(--radius-md)',padding:'var(--space-3)',minHeight:'56px'},
+      pick:()=>this.setState({pasteMode:'raw',raw:this.RAWSEED,delim:'dash'})}));
+    V.colMap=[['Column A','Role'],['Column B','Name'],['Column C','Ignore']].map(m=>({col:m[0],role:m[1],cycle:()=>{}}));
+    // block editor
+    V.blockIsCast=!!blk&&blk.type==='cast';
+    V.blockIsGeneric=!!blk&&blk.type!=='cast';
+    if(blk&&blk.type==='cast'){
+      const cg=this.castGeom(blk);
+      V.leaderOpts=[['dots','Dotted leaders'],['clean','Clean gutter'],['rule','Hairline rule']].map(l=>({label:l[1],
+        st:Object.assign(chip(blk.leader===l[0]),{flex:1,height:'40px',textAlign:'center'}),
+        pick:()=>this.patch(blk.id,()=>({leader:l[0]}))}));
+      V.gutterVal=Math.round((blk.gutter||.06)*100);
+      V.gutterLabel=Math.round(cg.gut)+' px · '+Math.round((blk.gutter||.06)*100)+'%';
+      V.onGutter=ev=>this.patch(blk.id,()=>({gutter:+ev.target.value/100}));
+      V.collapseNote=cg.collapse?'Columns are '+Math.round(cg.colW)+'px — below the '+Math.round(cg.need)+'px legibility floor for a '+cg.maxc+'-character name, so rows stack as pairs.':'Columns are '+Math.round(cg.colW)+'px, clear of the '+Math.round(cg.need)+'px floor. True two-column alignment.';
+      V.collapseFg=cg.collapse?'var(--warn)':'var(--text-tertiary)';
+      V.collapseOpts=[['auto','Auto'],['never','Always 2-col'],['always','Always stacked']].map(c=>({label:c[1],
+        st:seg((blk.collapse||'auto')===c[0]),pick:()=>this.patch(blk.id,()=>({collapse:c[0]}))}));
+      V.castRows=(blk.rows||[]).map((r,i)=>({
+        n:r.k?'·':String(i+1).padStart(2,'0'),
+        l:r.k==='span'?r.text:(r.l||''), r:r.k?'':(r.r||''),
+        lBorder:((r.l||'').length>cg.maxc-1&&cg.collapse)?'rgba(226,112,92,.5)':'var(--border-hairline)',
+        onL:ev=>{const v=ev.target.value;this.patch(blk.id,b=>({rows:b.rows.map((x,j)=>j===i?Object.assign({},x,x.k==='span'?{text:v}:{l:v}):x)}))},
+        onR:ev=>{const v=ev.target.value;this.patch(blk.id,b=>({rows:b.rows.map((x,j)=>j===i?Object.assign({},x,{r:v}):x)}))},
+        del:()=>this.patch(blk.id,b=>({rows:b.rows.filter((x,j)=>j!==i)}))
+      }));
+      V.azRail='ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').map(ch=>{
+        const has=(blk.rows||[]).some(r=>!r.k&&(r.l||'').toUpperCase().startsWith(ch));
+        return {ch,fg:has?'var(--accent-primary)':'var(--text-disabled)',jump:()=>{
+          const root=document.querySelector('[data-castrows]'); if(!root) return;
+          const kids=[...root.children], i=kids.findIndex(k=>{const inp=k.querySelector('input');return inp&&inp.value.toUpperCase().startsWith(ch);});
+          if(i<0) return; const sc=root.closest('[data-nosb]'); if(sc) sc.scrollTop=kids[i].offsetTop-60;
+        }};
+      });
+      V.addRow=()=>this.patch(blk.id,b=>({rows:[...b.rows,{l:'',r:''}]}));
+      V.addBilling=()=>this.patch(blk.id,b=>({rows:[...b.rows,{k:'span',text:'and'}]}));
+      V.addGap=()=>this.patch(blk.id,b=>({rows:[...b.rows,{k:'gap'}]}));
+      V.entryL=S.entryL||''; V.entryR=S.entryR||'';
+      V.onEntryL=ev=>this.setState({entryL:ev.target.value});
+      V.onEntryR=ev=>this.setState({entryR:ev.target.value});
+      V.commitEntry=()=>{ if(!S.entryL&&!S.entryR) return;
+        this.patch(blk.id,b=>({rows:[...b.rows,{l:S.entryL||'',r:S.entryR||''}]}));
+        this.setState({entryL:'',entryR:''}); if(navigator.vibrate) navigator.vibrate(6); };
+      V.onEntryKey=ev=>{ if(ev.key==='Enter') V.commitEntry(); };
+    }
+    if(blk&&blk.type!=='cast'){
+      const T=(k,label,val,fn)=>({label,isText:true,isLines:false,isNum:false,value:val||'',onChange:ev=>{const v=ev.target.value;this.patch(blk.id,fn(v))}});
+      const N=(label,val,step,fn,unit)=>({label,isText:false,isLines:false,isNum:true,display:val+(unit||'s'),
+        inc:()=>this.patch(blk.id,fn(+(val+step).toFixed(1))),dec:()=>this.patch(blk.id,fn(Math.max(0,+(val-step).toFixed(1))))});
+      const L=(label,val,fn)=>({label,isText:false,isLines:true,isNum:false,value:val,onChange:ev=>{const v=ev.target.value;this.patch(blk.id,fn(v))}});
+      let fl=[];
+      if(blk.type==='title') fl=[T(0,'Studio banner',blk.banner,v=>()=>({banner:v})),T(0,'Film title',blk.title,v=>()=>({title:v})),T(0,'Byline',blk.byline,v=>()=>({byline:v})),
+        N('Title size (× credit size)',+(blk.titleScale||3.1).toFixed(1),.1,v=>()=>({titleScale:v}),'×')];
+      if(blk.type==='dept') fl=[T(0,'Header',blk.header,v=>()=>({header:v})),L('Names — one per line',(blk.names||[]).join('\n'),v=>()=>({names:v.split('\n')}))];
+      if(blk.type==='song') fl=[T(0,'Song',blk.songTitle,v=>()=>({songTitle:v})),T(0,'Artist',blk.artist,v=>()=>({artist:v})),T(0,'Courtesy of',blk.courtesy,v=>()=>({courtesy:v}))];
+      if(blk.type==='thanks') fl=[T(0,'Header',blk.header,v=>()=>({header:v})),L('Names — one per line',(blk.names||[]).join('\n'),v=>()=>({names:v.split('\n')}))];
+      if(blk.type==='logos') fl=[L('Logos — one per line',(blk.logos||[]).join('\n'),v=>()=>({logos:v.split('\n')}))];
+      if(blk.type==='hold') fl=[L('Card lines',(blk.lines||[]).join('\n'),v=>()=>({lines:v.split('\n')})),
+        N('Hold',blk.hold,.5,v=>()=>({hold:v})),N('Fade in',blk.fadeIn,.25,v=>()=>({fadeIn:v})),N('Fade out',blk.fadeOut,.25,v=>()=>({fadeOut:v}))];
+      if(blk.type==='spacer') fl=[N('Gap',blk.seconds,.25,v=>()=>({seconds:v}))];
+      V.fields=fl;
+    }
+    // export
+    const exp=S.exp, res=S.res||'source', codec=S.codec||'prores';
+    const secs=e.totalF/e.fps;
+    const mbps={h264:12,hevc:9,prores:220,png:340}[codec];
+    const scaleF={source:1,hd:Math.min(1,1920/f.w),sd:Math.min(1,1280/f.w)}[res];
+    const sizeMB=Math.round(secs*mbps*scaleF*scaleF/8*10)/10;
+    V.exportIdle=!exp; V.exportRunning=!!exp&&exp.phase==='running'; V.exportFailed=!!exp&&exp.phase==='failed'; V.exportDone=!!exp&&exp.phase==='done';
+    V.exportFacts=[{k:'Format',v:(this.FMT.find(x=>x.id===p.fmt)||{label:'Custom'}).label},{k:'Frame rate',v:p.fps+' fps'},{k:'Runtime',v:this.tc(e.totalF,e.fps)},{k:'Scroll',v:e.ppf.toFixed(2)+' px/f'}];
+    V.editSettings=()=>this.setState({sheet:'duration',exp:null});
+    V.codecs=[['h264','H.264','Universal. No alpha.',false],['hevc','HEVC','Smaller, newer devices.',false],['prores','ProRes 4444','Drops straight onto a timeline with transparency.',true],['png','PNG sequence','Frame-accurate stills with alpha.',true]]
+      .map(c=>({name:c[1],desc:c[2],alpha:c[3],size:Math.round(secs*{h264:12,hevc:9,prores:220,png:340}[c[0]]*scaleF*scaleF/8)+' MB',
+        st:{display:'flex',alignItems:'center',gap:'var(--space-3)',borderRadius:'var(--radius-md)',padding:'var(--space-3)',minHeight:'60px',
+          border:'1px solid '+(codec===c[0]?'var(--accent-primary)':'var(--border-hairline)'),background:codec===c[0]?'var(--accent-wash)':'var(--surface-raised)'},
+        pick:()=>this.setState({codec:c[0]})}));
+    V.resLadder=[['source','Source '+f.w+'p'],['hd','1920 HD'],['sd','1280']].map(r=>({label:r[1],st:Object.assign(chip(res===r[0]),{flex:1,height:'40px',textAlign:'center'}),pick:()=>this.setState({res:r[0]})}));
+    V.renderEst=Math.max(1,Math.round(secs*(codec==='prores'?.9:.35)))+' s · '+sizeMB+' MB';
+    V.exportLabel=({h264:'H.264',hevc:'HEVC',prores:'ProRes 4444',png:'PNG sequence'})[codec];
+    V.exportPct=exp?exp.pct:0;
+    V.exportThumb=p.name;
+    V.exportStatus=exp&&exp.phase==='running'?'Rendering '+V.exportLabel:'';
+    V.exportDetail=exp?(exp.phase==='done'?sizeMB+' MB · '+this.tc(e.totalF,e.fps):Math.round(exp.pct)+'% · frame '+Math.round(e.totalF*exp.pct/100)+' of '+Math.round(e.totalF)):'';
+    V.destinations=['Save to Files','Save to Photos','AirDrop','Share sheet…'];
+    V.startExport=()=>{
+      if(this._ex) clearInterval(this._ex);
+      this.setState({exp:{pct:0,phase:'running'}});
+      this._ex=setInterval(()=>{
+        this.setState(st=>{
+          if(!st.exp||st.exp.phase!=='running'){ clearInterval(this._ex); return {}; }
+          const pct=st.exp.pct+3.5;
+          if((st.res||'source')==='source'&&pct>=62&&f.w>2000){ clearInterval(this._ex); return {exp:{pct:62,phase:'failed'}}; }
+          if(pct>=100){ clearInterval(this._ex); return {exp:{pct:100,phase:'done'}}; }
+          return {exp:{pct,phase:'running'}};
+        });
+      },110);
+    };
+    return V;
+  }
+
+  blockSecs(b,e){
+    const y=this.state.blockY[b.id];
+    if(y==null) return '—';
+    const ids=this.activeBlocks().map(x=>x.id), i=ids.indexOf(b.id);
+    const next=i>=0&&i<ids.length-1?this.state.blockY[ids[i+1]]:e.travel-e.H;
+    const h=Math.max(0,(next==null?0:next)-y);
+    return (h/e.pps).toFixed(1)+'s';
+  }
+
+  scrubDown(ev,e){
+    const el=ev.currentTarget, r=el.getBoundingClientRect();
+    const set=cx=>{ const t=Math.max(0,Math.min(1,(cx-r.left)/r.width)); this.frame=t*e.totalF; this.paint(); };
+    this.stop(); set(ev.clientX);
+    const mv=x=>set(x.clientX), up=()=>{ window.removeEventListener('pointermove',mv); window.removeEventListener('pointerup',up); };
+    window.addEventListener('pointermove',mv); window.addEventListener('pointerup',up);
+  }
+
+  cardDown(ev,id,idx){
+    const startY=ev.clientY,startX=ev.clientX,t0=Date.now();
+    const el=ev.currentTarget; this.cardH=(el.getBoundingClientRect().height||62)+8;
+    let mode=null;
+    const timer=setTimeout(()=>{ if(mode) return; mode='drag';
+      if(navigator.vibrate) navigator.vibrate(8);
+      this.setState({dragId:id,dragFrom:idx,dragOver:idx,dragDy:0,swipeId:null,swipeX:0});
+    },300);
+    const mv=x=>{
+      const dx=x.clientX-startX, dy=x.clientY-startY;
+      if(!mode&&Math.abs(dx)>14&&Math.abs(dx)>Math.abs(dy)){ mode='swipe'; clearTimeout(timer); }
+      if(!mode&&Math.abs(dy)>10){ mode='scroll'; clearTimeout(timer); }
+      if(mode==='swipe') this.setState({swipeId:id,swipeX:Math.max(-172,Math.min(0,dx))});
+      if(mode==='drag'){
+        const ch=this.cardH||70, over=Math.max(0,Math.min(this.state.blocks.length-1,idx+Math.round(dy/ch)));
+        this.setState({dragDy:dy,dragOver:over});
+      }
+    };
+    const up=()=>{
+      clearTimeout(timer);
+      window.removeEventListener('pointermove',mv); window.removeEventListener('pointerup',up);
+      if(mode==='drag'){
+        const s=this.state, from=s.dragFrom, to=s.dragOver;
+        if(from!==to&&from>=0&&to>=0){ const n=[...s.blocks], [m]=n.splice(from,1); n.splice(to,0,m);
+          this.setState({dragId:null,dragFrom:-1,dragOver:-1,dragDy:0}); this.push(n); if(navigator.vibrate) navigator.vibrate(12); }
+        else this.setState({dragId:null,dragFrom:-1,dragOver:-1,dragDy:0});
+      } else if(mode==='swipe'){
+        this.setState(s=>({swipeX:s.swipeX<-84?-172:0}));
+      } else if(!mode&&Date.now()-t0<400){
+        if(this.state.selectMode){ this.setState(s=>({sel:s.sel.indexOf(id)>=0?s.sel.filter(x=>x!==id):[...s.sel,id]})); }
+        else { const y=this.state.blockY[id]; if(y!=null){ const e=this.eng(); this.stop(); this.frame=e.headF+y/e.ppf; this.paint(); }
+          this.setState({sheet:'block',sheetId:id}); }
+      } else this.setState({swipeId:null,swipeX:0});
+    };
+    window.addEventListener('pointermove',mv); window.addEventListener('pointerup',up);
+  }
+}
+
+</script>
+</body>
+</html>
