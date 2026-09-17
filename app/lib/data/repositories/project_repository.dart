@@ -19,10 +19,4 @@ abstract interface class ProjectRepository {
   Future<Result<Project>> save(Project project);
 
   Future<Result<void>> delete(String id);
-
-  /// Which project the editor had open last, used to offer a resume (or a
-  /// crash recovery, when that project is still flagged as left open).
-  Future<Result<String?>> readLastOpenedId();
-
-  Future<Result<void>> writeLastOpenedId(String? id);
 }

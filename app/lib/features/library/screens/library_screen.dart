@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../bootstrap.dart';
 import '../../../core/result.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../domain/models/project.dart';
 import '../../appendix/screens/appendix_screen.dart';
+import '../widgets/account_menu.dart';
 import '../../editor/screens/editor_screen.dart';
 import '../../monitor/controllers/playback_controller.dart';
 import '../../project/controllers/project_controller.dart';
@@ -112,6 +114,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
   Widget build(BuildContext context) {
     final summaries = ref.watch(projectSummariesProvider);
     final resume = ref.watch(resumeCandidateProvider).value;
+    final user = ref.watch(authStateProvider).value;
 
     return Scaffold(
       backgroundColor: EcColors.surfaceCanvas,
@@ -142,6 +145,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
                       MaterialPageRoute(builder: (_) => const AppendixScreen()),
                     ),
                   ),
+                  if (user != null) AccountMenu(user: user),
                 ],
               ),
             ),
@@ -183,7 +187,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
 
 class _List extends StatelessWidget {
   final List<ProjectSummary> summaries;
-  final ProjectSummary? resume;
+  final ResumeCandidate? resume;
   final ValueChanged<String> onOpen;
   final void Function(ProjectSummary, ProjectCardAction) onAction;
   final VoidCallback onDismissResume;
@@ -205,8 +209,9 @@ class _List extends StatelessWidget {
       children: [
         if (resume != null)
           ResumeCard(
-            summary: resume!,
-            onOpen: () => onOpen(resume!.id),
+            summary: resume!.summary,
+            recovered: resume!.recovered,
+            onOpen: () => onOpen(resume!.summary.id),
             onDismiss: onDismissResume,
           ),
         const Padding(
@@ -218,6 +223,7 @@ class _List extends StatelessWidget {
             padding: const EdgeInsets.only(bottom: EcSpace.s3),
             child: ProjectCard(
               summary: summary,
+              recovered: resume?.recovered == true && resume?.summary.id == summary.id,
               onOpen: () => onOpen(summary.id),
               onAction: (action) => onAction(summary, action),
             ),

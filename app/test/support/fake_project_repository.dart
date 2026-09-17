@@ -8,7 +8,6 @@ import 'package:endcrawl/domain/models/project.dart';
 /// the same seam a Firestore implementation will occupy.
 class FakeProjectRepository implements ProjectRepository {
   final Map<String, Project> projects = {};
-  String? lastOpenedId;
 
   /// Set to make the next call fail, for exercising error states.
   AppFailure? failWith;
@@ -52,12 +51,4 @@ class FakeProjectRepository implements ProjectRepository {
     return const Ok(null);
   }
 
-  @override
-  Future<Result<String?>> readLastOpenedId() async => Ok(lastOpenedId);
-
-  @override
-  Future<Result<void>> writeLastOpenedId(String? id) async {
-    lastOpenedId = id;
-    return const Ok(null);
-  }
 }

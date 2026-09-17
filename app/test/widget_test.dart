@@ -1,5 +1,7 @@
 import 'package:endcrawl/bootstrap.dart';
 import 'package:endcrawl/core/result.dart';
+import 'package:endcrawl/data/repositories/auth_repository.dart';
+import 'package:endcrawl/data/sources/session_store.dart';
 import 'package:endcrawl/domain/models/credit_block.dart';
 import 'package:endcrawl/domain/models/project.dart';
 import 'package:endcrawl/domain/models/project_settings.dart';
@@ -8,12 +10,21 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'support/fake_auth_repository.dart';
 import 'support/fake_project_repository.dart';
 
 void main() {
   late FakeProjectRepository repository;
+  late FakeAuthRepository auth;
+  late InMemorySessionStore session;
 
-  setUp(() => repository = FakeProjectRepository());
+  setUp(() {
+    repository = FakeProjectRepository();
+    auth = FakeAuthRepository(initialUser: testUser);
+    session = InMemorySessionStore();
+  });
+
+  tearDown(() => auth.dispose());
 
   // A portrait phone-sized surface — the default test surface (800x600) is
   // landscape, which would exercise the rotate-to-preview full-bleed
@@ -29,7 +40,11 @@ void main() {
     setPortraitSurface(tester);
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [projectRepositoryProvider.overrideWithValue(repository)],
+        overrides: [
+          authRepositoryProvider.overrideWithValue(auth),
+          projectRepositoryProvider.overrideWithValue(repository),
+          sessionStoreProvider.overrideWithValue(session),
+        ],
         child: const EndcrawlApp(),
       ),
     );
@@ -46,6 +61,100 @@ void main() {
     await tester.tap(find.text('Open editor'));
     await tester.pumpAndSettle();
   }
+
+  group('Auth gate', () {
+    testWidgets('shows the sign-in screen when signed out', (tester) async {
+      auth = FakeAuthRepository();
+      await pumpApp(tester);
+
+      expect(find.text('Sign in to reach your projects.'), findsOneWidget);
+      expect(find.text('Continue with Google'), findsOneWidget);
+      expect(find.text('No projects yet'), findsNothing);
+    });
+
+    testWidgets('signing in swaps the tree to the library without navigating', (tester) async {
+      auth = FakeAuthRepository();
+      await pumpApp(tester);
+
+      await tester.enterText(find.byType(TextField).first, 'mara@example.com');
+      await tester.enterText(find.byType(TextField).last, 'correct-horse');
+      await tester.tap(find.widgetWithText(FilledButton, 'Sign in'));
+      await tester.pumpAndSettle();
+
+      expect(auth.signInWithEmailCalls, 1);
+      expect(find.text('No projects yet'), findsOneWidget);
+    });
+
+    testWidgets('signing out returns to the sign-in screen', (tester) async {
+      await pumpApp(tester);
+      expect(find.text('No projects yet'), findsOneWidget);
+
+      await auth.signOut();
+      await tester.pumpAndSettle();
+
+      expect(find.text('Sign in to reach your projects.'), findsOneWidget);
+    });
+
+    testWidgets('shows the provider failure message', (tester) async {
+      auth = FakeAuthRepository()
+        ..failWith = const AppFailure(FailureKind.permission, 'That email or password is not right.');
+      await pumpApp(tester);
+
+      await tester.enterText(find.byType(TextField).first, 'mara@example.com');
+      await tester.enterText(find.byType(TextField).last, 'wrong');
+      await tester.tap(find.widgetWithText(FilledButton, 'Sign in'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('That email or password is not right.'), findsOneWidget);
+    });
+
+    testWidgets('validates locally before hitting the provider', (tester) async {
+      auth = FakeAuthRepository();
+      await pumpApp(tester);
+
+      await tester.enterText(find.byType(TextField).first, 'not-an-email');
+      await tester.enterText(find.byType(TextField).last, 'whatever');
+      await tester.tap(find.widgetWithText(FilledButton, 'Sign in'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Enter a valid email address.'), findsOneWidget);
+      expect(auth.signInWithEmailCalls, 0);
+    });
+
+    testWidgets('a cancelled Google sign-in is not shown as an error', (tester) async {
+      auth = FakeAuthRepository()..failWith = cancelledByUser;
+      await pumpApp(tester);
+
+      await tester.tap(find.text('Continue with Google'));
+      await tester.pumpAndSettle();
+
+      expect(auth.signInWithGoogleCalls, 1);
+      expect(find.text('Sign-in cancelled.'), findsNothing);
+      expect(find.text('Sign in to reach your projects.'), findsOneWidget);
+    });
+
+    testWidgets('switches to the register mode', (tester) async {
+      auth = FakeAuthRepository();
+      await pumpApp(tester);
+
+      await tester.tap(find.text('Create one'));
+      await tester.pumpAndSettle();
+
+      expect(find.widgetWithText(FilledButton, 'Create account'), findsOneWidget);
+    });
+
+    testWidgets('sends a password reset', (tester) async {
+      auth = FakeAuthRepository();
+      await pumpApp(tester);
+
+      await tester.enterText(find.byType(TextField).first, 'mara@example.com');
+      await tester.tap(find.text('Forgot password?'));
+      await tester.pumpAndSettle();
+
+      expect(auth.passwordResetSentTo, 'mara@example.com');
+      expect(find.textContaining('Password reset sent'), findsOneWidget);
+    });
+  });
 
   group('Library', () {
     testWidgets('shows an empty state when nothing is stored', (tester) async {
@@ -67,11 +176,10 @@ void main() {
       expect(titles.indexOf('NEWER') < titles.indexOf('OLDER'), isTrue);
     });
 
-    testWidgets('offers a crash recovery for a project left open', (tester) async {
-      final project = Project.create(title: 'THE LONG WAY DOWN').copyWith(
-        openedAt: DateTime.utc(2026, 5, 1),
-      );
-      repository = FakeProjectRepository(seed: [project])..lastOpenedId = project.id;
+    testWidgets('offers a crash recovery for a project this device left open', (tester) async {
+      final project = Project.create(title: 'THE LONG WAY DOWN');
+      repository = FakeProjectRepository(seed: [project]);
+      session = InMemorySessionStore(SessionState(lastOpenedProjectId: project.id, leftOpenProjectId: project.id));
       await pumpApp(tester);
 
       expect(find.text('RECOVERED AFTER CRASH'), findsOneWidget);
@@ -80,7 +188,8 @@ void main() {
 
     testWidgets('offers a plain resume for a project that was closed cleanly', (tester) async {
       final project = Project.create(title: 'THE LONG WAY DOWN');
-      repository = FakeProjectRepository(seed: [project])..lastOpenedId = project.id;
+      repository = FakeProjectRepository(seed: [project]);
+      session = InMemorySessionStore(SessionState(lastOpenedProjectId: project.id));
       await pumpApp(tester);
 
       expect(find.text('CONTINUE WHERE YOU LEFT OFF'), findsOneWidget);
@@ -137,20 +246,24 @@ void main() {
       expect(find.textContaining('blocks · drag to reorder'), findsOneWidget);
       expect(find.text('Export'), findsOneWidget);
 
-      // Entering the editor marks the document open, which writes it —
-      // that is what makes it appear in the library and recoverable.
+      // Entering the editor writes the document — that is what makes it
+      // appear in the library — and marks it open on this device, which is
+      // what makes it recoverable.
       expect(repository.projects, hasLength(1));
-      expect(repository.projects.values.single.wasLeftOpen, isTrue);
-      expect(repository.lastOpenedId, repository.projects.keys.single);
+      final stored = await session.read();
+      expect(stored.leftOpenProjectId, repository.projects.keys.single);
+      expect(stored.lastOpenedProjectId, repository.projects.keys.single);
     });
 
-    testWidgets('leaving the editor clears the left-open flag', (tester) async {
+    testWidgets('leaving the editor clears the left-open mark', (tester) async {
       await openShortFilmEditor(tester);
 
       await tester.tap(find.byIcon(Icons.chevron_left));
       await tester.pumpAndSettle();
 
-      expect(repository.projects.values.single.wasLeftOpen, isFalse);
+      final stored = await session.read();
+      expect(stored.leftOpenProjectId, isNull);
+      expect(stored.lastOpenedProjectId, isNotNull);
     });
 
     testWidgets('an edit is autosaved without any explicit save action', (tester) async {

@@ -11,19 +11,24 @@ import '../../../domain/models/project.dart';
 /// driven by what is actually on disk, not a hardcoded flag.
 class ResumeCard extends StatelessWidget {
   final ProjectSummary summary;
+
+  /// True when this device still had the project marked open at launch —
+  /// i.e. the app was killed mid-edit.
+  final bool recovered;
+
   final VoidCallback onOpen;
   final VoidCallback onDismiss;
 
   const ResumeCard({
     super.key,
     required this.summary,
+    required this.recovered,
     required this.onOpen,
     required this.onDismiss,
   });
 
   @override
   Widget build(BuildContext context) {
-    final recovered = summary.wasLeftOpen;
 
     return Container(
       margin: const EdgeInsets.only(bottom: EcSpace.s4),

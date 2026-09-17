@@ -11,6 +11,7 @@ enum ProjectCardAction { rename, duplicate, delete }
 
 class ProjectCard extends StatelessWidget {
   final ProjectSummary summary;
+  final bool recovered;
   final VoidCallback onOpen;
   final ValueChanged<ProjectCardAction> onAction;
 
@@ -19,6 +20,7 @@ class ProjectCard extends StatelessWidget {
     required this.summary,
     required this.onOpen,
     required this.onAction,
+    this.recovered = false,
   });
 
   @override
@@ -63,7 +65,7 @@ class ProjectCard extends StatelessWidget {
                             style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: EcColors.textPrimary),
                           ),
                         ),
-                        if (summary.wasLeftOpen)
+                        if (recovered)
                           Container(
                             margin: const EdgeInsets.only(left: 6),
                             padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),

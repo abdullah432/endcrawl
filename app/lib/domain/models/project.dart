@@ -13,6 +13,26 @@ final _idRandom = Random();
 String newProjectId() =>
     List.generate(20, (_) => _autoIdAlphabet[_idRandom.nextInt(_autoIdAlphabet.length)]).join();
 
+/// Trims a user-entered title and clamps it to [Project.maxTitleLength].
+/// Returns null when nothing usable is left, so callers can no-op.
+String? sanitizeProjectTitle(String raw) {
+  final trimmed = raw.trim();
+  if (trimmed.isEmpty) return null;
+  return trimmed.length <= Project.maxTitleLength
+      ? trimmed
+      : trimmed.substring(0, Project.maxTitleLength).trimRight();
+}
+
+/// Drops sub-millisecond precision, in UTC.
+///
+/// `DateTime.now()` is microsecond-precise, but every store this schema
+/// targets is not: epoch-millisecond JSON and Firestore's `Timestamp` both
+/// truncate. Normalising on the way in means an in-memory project and the
+/// same project read back always compare equal, instead of drifting by a few
+/// hundred microseconds the first time it round-trips.
+DateTime atStorablePrecision(DateTime value) =>
+    DateTime.fromMillisecondsSinceEpoch(value.toUtc().millisecondsSinceEpoch, isUtc: true);
+
 /// One credit-roll project: the whole editable document.
 ///
 /// This is the persistence aggregate — it maps 1:1 onto a stored document.
@@ -28,11 +48,18 @@ class Project {
   /// without transformation, and add the migration in `migrateProjectJson`.
   static const int currentSchemaVersion = 1;
 
+  /// Mirrors the cap in `firestore.rules`. Enforced here too so an over-long
+  /// title is trimmed at the point of entry rather than coming back as an
+  /// opaque permission-denied from the server.
+  static const int maxTitleLength = 200;
+
   final String id;
   final String title;
 
-  /// Owner uid. Null while the app is local-only; populated once Firebase
-  /// Authentication is wired up, and used as the parent path segment.
+  /// The owning account's uid. Also the parent path segment the document
+  /// lives under (`users/{ownerId}/projects/{id}`), and what the security
+  /// rules check a request against. Nullable only so a document can be
+  /// constructed before it is attributed to a signed-in user.
   final String? ownerId;
 
   final ProjectSettings settings;
@@ -40,12 +67,6 @@ class Project {
 
   final DateTime createdAt;
   final DateTime updatedAt;
-
-  /// Set when the project is opened in the editor and cleared on a clean
-  /// close. A project that still has this set at launch was open when the
-  /// app was killed — that is what makes crash recovery real rather than a
-  /// hardcoded banner.
-  final DateTime? openedAt;
 
   final int schemaVersion;
 
@@ -57,7 +78,6 @@ class Project {
     required this.createdAt,
     required this.updatedAt,
     this.ownerId,
-    this.openedAt,
     this.schemaVersion = currentSchemaVersion,
   });
 
@@ -69,7 +89,7 @@ class Project {
     String? ownerId,
     DateTime? now,
   }) {
-    final timestamp = (now ?? DateTime.now()).toUtc();
+    final timestamp = atStorablePrecision(now ?? DateTime.now());
     return Project(
       id: id ?? newProjectId(),
       title: title,
@@ -81,8 +101,6 @@ class Project {
     );
   }
 
-  bool get wasLeftOpen => openedAt != null;
-
   int get blockCount => blocks.length;
 
   ProjectSummary get summary => ProjectSummary(
@@ -91,7 +109,6 @@ class Project {
         blockCount: blocks.length,
         settings: settings,
         updatedAt: updatedAt,
-        wasLeftOpen: wasLeftOpen,
       );
 
   Project copyWith({
@@ -100,8 +117,6 @@ class Project {
     ProjectSettings? settings,
     List<CreditBlock>? blocks,
     DateTime? updatedAt,
-    DateTime? openedAt,
-    bool clearOpenedAt = false,
   }) {
     return Project(
       id: id,
@@ -111,14 +126,13 @@ class Project {
       blocks: blocks ?? this.blocks,
       createdAt: createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
-      openedAt: clearOpenedAt ? null : (openedAt ?? this.openedAt),
       schemaVersion: schemaVersion,
     );
   }
 
   /// Marks the document as changed now. Every edit goes through this so
   /// `updatedAt` can never drift from the actual content.
-  Project touch({DateTime? now}) => copyWith(updatedAt: (now ?? DateTime.now()).toUtc());
+  Project touch({DateTime? now}) => copyWith(updatedAt: atStorablePrecision(now ?? DateTime.now()));
 
   Map<String, Object?> toJson() => {
         'schemaVersion': schemaVersion,
@@ -129,7 +143,6 @@ class Project {
         'blocks': [for (final block in blocks) block.toJson()],
         'createdAt': toEpochMillis(createdAt),
         'updatedAt': toEpochMillis(updatedAt),
-        'openedAt': openedAt == null ? null : toEpochMillis(openedAt!),
       };
 
   factory Project.fromJson(Map<String, Object?> raw) {
@@ -143,7 +156,6 @@ class Project {
       blocks: [for (final block in asMapList(json['blocks'])) creditBlockFromJson(block)],
       createdAt: asDateTime(json['createdAt'], now),
       updatedAt: asDateTime(json['updatedAt'], now),
-      openedAt: asDateTimeOrNull(json['openedAt']),
       schemaVersion: asInt(json['schemaVersion'], currentSchemaVersion),
     );
   }
@@ -183,7 +195,6 @@ class ProjectSummary {
   final int blockCount;
   final ProjectSettings settings;
   final DateTime updatedAt;
-  final bool wasLeftOpen;
 
   const ProjectSummary({
     required this.id,
@@ -191,6 +202,5 @@ class ProjectSummary {
     required this.blockCount,
     required this.settings,
     required this.updatedAt,
-    required this.wasLeftOpen,
   });
 }

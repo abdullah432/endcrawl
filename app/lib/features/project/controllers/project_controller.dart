@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../bootstrap.dart';
 import '../../../core/result.dart';
 import '../../../data/repositories/project_repository.dart';
+import '../../../data/sources/session_store.dart';
 import '../../../data/repositories/template_repository.dart';
 import '../../../domain/engine/roll_engine.dart';
 import '../../../domain/models/canvas_format.dart';
@@ -136,29 +137,32 @@ class ProjectController extends Notifier<ProjectState> {
     return result;
   }
 
-  /// Flags the document as open and persists it, so it shows up in the
-  /// library and — if the app is killed before [closeProject] — is offered
-  /// as a recovery on next launch.
+  /// Records that this device has the document open and persists it, so it
+  /// shows up in the library and — if the app is killed before
+  /// [closeProject] — is offered as a recovery on next launch.
+  ///
+  /// The open/left-open marks go to the device session rather than the
+  /// document: with a cloud store the document is shared across devices, and
+  /// "I had this open" is not true of all of them.
   Future<void> markOpened() async {
-    final opened = state.project.copyWith(openedAt: DateTime.now().toUtc());
-    state = state.copyWith(project: opened);
-    await _repository.writeLastOpenedId(opened.id);
-    await _save(opened);
+    final project = state.project;
+    await _session.setLastOpened(project.id);
+    await _session.setLeftOpen(project.id);
+    await _save(project);
   }
 
-  /// Clean close: clears the left-open flag so the next launch offers a
+  /// Clean close: clears the left-open mark so the next launch offers a
   /// plain "continue" rather than a crash recovery.
   Future<void> closeProject() async {
     _debounce?.cancel();
-    final closed = state.project.copyWith(clearOpenedAt: true);
-    state = state.copyWith(project: closed);
-    await _save(closed);
+    await _save(state.project);
+    await _session.setLeftOpen(null);
   }
 
   void renameProject(String title) {
-    final trimmed = title.trim();
-    if (trimmed.isEmpty || trimmed == state.project.title) return;
-    _writeDocument(state.project.copyWith(title: trimmed));
+    final clean = sanitizeProjectTitle(title);
+    if (clean == null || clean == state.project.title) return;
+    _writeDocument(state.project.copyWith(title: clean));
   }
 
   /// Writes any pending change immediately — used when the app is
@@ -172,6 +176,7 @@ class ProjectController extends Notifier<ProjectState> {
   // ---------- persistence ----------
 
   ProjectRepository get _repository => ref.read(projectRepositoryProvider);
+  SessionStore get _session => ref.read(sessionStoreProvider);
 
   /// The single write path for document content.
   void _writeDocument(Project next) {
@@ -188,8 +193,15 @@ class ProjectController extends Notifier<ProjectState> {
     state = state.copyWith(saveState: SaveState.saving, clearSaveFailure: true);
     final result = await _repository.save(project);
     switch (result) {
-      case Ok():
-        state = state.copyWith(saveState: SaveState.saved, clearSaveFailure: true);
+      case Ok(:final value):
+        // The store may enrich what it persisted — Firestore stamps the
+        // owning uid on first write. Adopt only that, and only when no newer
+        // edit has landed, so a slow save can't clobber newer local content.
+        final current = state.project;
+        final adopted = current.id == value.id && current.ownerId == null && value.ownerId != null
+            ? current.copyWith(ownerId: value.ownerId)
+            : current;
+        state = state.copyWith(project: adopted, saveState: SaveState.saved, clearSaveFailure: true);
       case Err(:final failure):
         state = state.copyWith(saveState: SaveState.failed, saveFailure: failure);
     }

@@ -7,6 +7,10 @@ import 'project_repository.dart';
 /// On-device implementation of [ProjectRepository], backed by JSON documents
 /// on disk. Translates every storage or decoding error into an [AppFailure]
 /// so failures never cross this boundary as raw exceptions.
+///
+/// The app wires [FirestoreProjectRepository] instead — this one is retained
+/// as the second implementation that keeps the interface honest, and is what
+/// the data-layer tests run against.
 class LocalProjectRepository implements ProjectRepository {
   final ProjectLocalStore store;
 
@@ -51,12 +55,6 @@ class LocalProjectRepository implements ProjectRepository {
 
   @override
   Future<Result<void>> delete(String id) => _guard(() => store.delete(id));
-
-  @override
-  Future<Result<String?>> readLastOpenedId() => _guard(store.readLastOpenedId);
-
-  @override
-  Future<Result<void>> writeLastOpenedId(String? id) => _guard(() => store.writeLastOpenedId(id));
 
   Future<Result<T>> _guard<T>(Future<T> Function() body) async {
     try {

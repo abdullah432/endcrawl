@@ -54,7 +54,6 @@ Project _fullProject() {
     ],
     createdAt: DateTime.utc(2026, 1, 2, 3, 4, 5),
     updatedAt: DateTime.utc(2026, 2, 3, 4, 5, 6),
-    openedAt: DateTime.utc(2026, 2, 3, 4, 10),
   );
 }
 
@@ -74,7 +73,6 @@ void main() {
       expect(restored.ownerId, original.ownerId);
       expect(restored.createdAt, original.createdAt);
       expect(restored.updatedAt, original.updatedAt);
-      expect(restored.openedAt, original.openedAt);
       expect(restored.schemaVersion, Project.currentSchemaVersion);
 
       final s = restored.settings;
@@ -208,6 +206,33 @@ void main() {
 
       expect(touched.createdAt, project.createdAt);
       expect(touched.updatedAt, DateTime.utc(2026, 6, 1));
+    });
+
+    test('drops sub-millisecond precision, so a round-trip compares equal', () {
+      // Firestore Timestamps and epoch-millis JSON both truncate; without
+      // normalising, an in-memory project and the same project read back
+      // would differ by a few hundred microseconds.
+      final project = Project.create(now: DateTime.utc(2026, 6, 1, 12, 0, 0, 123, 456));
+
+      expect(project.createdAt.microsecond, 0);
+      expect(project.createdAt.millisecond, 123);
+      expect(Project.fromJson(project.toJson()).createdAt, project.createdAt);
+    });
+  });
+
+  group('sanitizeProjectTitle', () {
+    test('trims, and rejects a title with nothing usable left', () {
+      expect(sanitizeProjectTitle('  THE LONG WAY DOWN  '), 'THE LONG WAY DOWN');
+      expect(sanitizeProjectTitle('   '), isNull);
+      expect(sanitizeProjectTitle(''), isNull);
+    });
+
+    test('clamps to the same cap the security rules enforce', () {
+      // A title the rules would reject has to be caught here, or the save
+      // comes back as an opaque permission-denied from the server.
+      final long = 'A' * (Project.maxTitleLength + 50);
+
+      expect(sanitizeProjectTitle(long), hasLength(Project.maxTitleLength));
     });
   });
 }

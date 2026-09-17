@@ -67,33 +67,6 @@ void main() {
       expect((await repository.listSummaries()).valueOrNull, isEmpty);
     });
 
-    test('round-trips the last-opened project id', () async {
-      expect((await repository.readLastOpenedId()).valueOrNull, isNull);
-
-      await repository.writeLastOpenedId('Abc123XyzAbc123XyzQq');
-      expect((await repository.readLastOpenedId()).valueOrNull, 'Abc123XyzAbc123XyzQq');
-
-      await repository.writeLastOpenedId(null);
-      expect((await repository.readLastOpenedId()).valueOrNull, isNull);
-    });
-
-    test('keeps the left-open flag, so a killed session is recoverable', () async {
-      final openedAt = DateTime.utc(2026, 4, 1, 12);
-      await repository.save(sample().copyWith(openedAt: openedAt));
-
-      final summaries = (await repository.listSummaries()).valueOrNull!;
-      expect(summaries.single.wasLeftOpen, isTrue);
-    });
-
-    test('a clean close clears the left-open flag', () async {
-      final project = sample().copyWith(openedAt: DateTime.utc(2026, 4, 1));
-      await repository.save(project);
-      await repository.save(project.copyWith(clearOpenedAt: true));
-
-      final summaries = (await repository.listSummaries()).valueOrNull!;
-      expect(summaries.single.wasLeftOpen, isFalse);
-    });
-
     test('one corrupt document does not take down the whole library', () async {
       await repository.save(sample(title: 'GOOD'));
       await File('${root.path}/CorruptAAAAAAAAAAAAA.json').writeAsString('{not json');

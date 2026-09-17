@@ -4,18 +4,23 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'bootstrap.dart';
 import 'core/theme/app_theme.dart';
-import 'features/library/screens/library_screen.dart';
+import 'features/auth/widgets/auth_gate.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Resolved before the first frame so no screen has to render a loading
+  // Firebase, Firestore's cache settings and platform storage are all
+  // resolved before the first frame, so no screen has to render a loading
   // state just to find out where its data lives.
-  final repository = await createProjectRepository();
+  final services = await bootstrap();
 
   runApp(
     ProviderScope(
-      overrides: [projectRepositoryProvider.overrideWithValue(repository)],
+      overrides: [
+        firebaseAuthProvider.overrideWithValue(services.auth),
+        firestoreProvider.overrideWithValue(services.firestore),
+        sessionStoreProvider.overrideWithValue(services.sessionStore),
+      ],
       child: const EndcrawlApp(),
     ),
   );
@@ -32,7 +37,7 @@ class EndcrawlApp extends StatelessWidget {
         title: 'EndCrawl',
         debugShowCheckedModeBanner: false,
         theme: buildEndcrawlTheme(),
-        home: const LibraryScreen(),
+        home: const AuthGate(),
       ),
     );
   }

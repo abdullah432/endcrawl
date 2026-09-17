@@ -1,0 +1,11 @@
+# Firebase CLI local artifacts
+.firebase/
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+
+# Note: google-services.json, GoogleService-Info.plist and
+# app/lib/firebase_options.dart are NOT ignored. They are client
+# configuration, not secrets — access is controlled by the Security Rules in
+# firestore.rules and by API-key restrictions in the Google Cloud console.
+# Committing them keeps the checkout buildable; see app/README.md.
