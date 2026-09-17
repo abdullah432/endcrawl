@@ -1,25 +1,28 @@
-# CODING AGENTS: READ THIS FIRST
+# EndCrawl
 
-This is a **handoff bundle** from Claude Design (claude.ai/design).
+A dedicated end-credits roll editor for phones — an indie filmmaker, YouTuber,
+or film student produces a broadcast-clean rolling credit sequence on their
+phone in under 60 seconds. No AI, no keyframing: the runtime is the input,
+the motion is derived.
 
-A user mocked up designs in HTML/CSS/JS using an AI design tool, then exported this bundle so a coding agent can implement the designs for real.
+This repo contains the real Flutter implementation, built from the interactive
+prototype exported by Claude Design (see [`design/`](design/)).
 
-## What you should do — IMPORTANT
+## Contents
 
-**Read the chat transcripts first.** There are 1 chat transcript(s) in `chats/`. The transcripts show the full back-and-forth between the user and the design assistant — they tell you **what the user actually wants** and **where they landed** after iterating. Don't skip them. The final HTML files are the output, but the chat is where the intent lives.
+- [`app/`](app/) — the Flutter app (iOS & Android). See [`app/README.md`](app/README.md)
+  for architecture, setup, and how to run it.
+- [`design/`](design/) — the original Claude Design handoff bundle this app was
+  built from: the design prompt, chat transcript, and the interactive HTML/JS
+  prototype (`design/project/EndCrawl.dc.html`). Kept for reference; not part
+  of the shipped app.
 
-**Read `project/EndCrawl.dc.html` in full.** The user had this file open when they triggered the handoff, so it's almost certainly the primary design they want built. Read it top to bottom — don't skim. Then **follow its imports**: open every file it pulls in (shared components, CSS, scripts) so you understand how the pieces fit together before you start implementing.
+## Status
 
-**If anything is ambiguous, ask the user to confirm before you start implementing.** It's much cheaper to clarify scope up front than to build the wrong thing.
-
-## About the design files
-
-The design medium is **HTML/CSS/JS** — these are prototypes, not production code. Your job is to **recreate them pixel-perfectly** in whatever technology makes sense for the target codebase (React, Vue, native, whatever fits). Match the visual output; don't copy the prototype's internal structure unless it happens to fit.
-
-**Don't render these files in a browser or take screenshots unless the user asks you to.** Everything you need — dimensions, colors, layout rules — is spelled out in the source. Read the HTML and CSS directly; a screenshot won't tell you anything they don't.
-
-## Bundle contents
-
-- `README.md` — this file
-- `chats/` — conversation transcripts (read these!)
-- `project/` — the `EndCrawl design system` project files (HTML prototypes, assets, components)
+UI/UX is implemented with full fidelity to the prototype: format & fps setup,
+the block editor (title, two-column cast, department, hold cards, logos,
+soundtrack, special thanks, spacers), the roll engine (frame-locked scroll,
+judder/readability checks, duration & speed lock), the real-time monitor
+(2D/3D look, backgrounds, safe guides, rotate-to-preview), paste-and-split
+bulk entry, and the export flow. Export itself is simulated — there is no
+video encoder behind it in this build.
