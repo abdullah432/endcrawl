@@ -5,7 +5,7 @@ import 'package:flutter_slidable/flutter_slidable.dart';
 import '../../../core/theme/tokens.dart';
 import '../../monitor/controllers/playback_controller.dart';
 import '../../project/controllers/project_controller.dart';
-import '../../project/models/credit_block.dart';
+import '../../../domain/models/credit_block.dart';
 import '../controllers/editor_ui_controller.dart';
 import 'block_summary.dart';
 

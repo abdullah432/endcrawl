@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/widgets/ec_sheet.dart';
 import '../../../project/controllers/project_controller.dart';
-import '../../../project/models/credit_block.dart';
+import '../../../../domain/models/credit_block.dart';
 import 'cast_block_editor.dart';
 import 'generic_block_editor.dart';
 

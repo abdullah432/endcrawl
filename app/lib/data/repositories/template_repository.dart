@@ -1,4 +1,4 @@
-import '../models/credit_block.dart';
+import '../../domain/models/credit_block.dart';
 
 /// Block constructors and starting-template seed data — a straight port of
 /// the prototype's `mk*()` helpers and `seed(kind)`. Kept as a repository

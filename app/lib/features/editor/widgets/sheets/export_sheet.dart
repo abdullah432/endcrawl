@@ -7,8 +7,8 @@ import '../../../../core/widgets/ec_sheet.dart';
 import '../../../export/controllers/export_controller.dart';
 import '../../../export/models/export_models.dart';
 import '../../../project/controllers/project_controller.dart';
-import '../../../project/models/canvas_format.dart';
-import '../../../project/models/roll_engine.dart';
+import '../../../../domain/models/canvas_format.dart';
+import '../../../../domain/engine/roll_engine.dart';
 import '../../controllers/editor_ui_controller.dart';
 
 /// The export sheet, designed as a confidence-building screen (§9 of the

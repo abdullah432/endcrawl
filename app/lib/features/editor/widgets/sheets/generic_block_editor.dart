@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/tokens.dart';
 import '../../../../core/widgets/ec_stepper.dart';
 import '../../../project/controllers/project_controller.dart';
-import '../../../project/models/credit_block.dart';
+import '../../../../domain/models/credit_block.dart';
 
 /// The per-type field editor for every block type except cast (which gets
 /// its own dedicated editor — see `cast_block_editor.dart`).

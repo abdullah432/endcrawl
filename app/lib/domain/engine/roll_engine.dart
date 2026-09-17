@@ -1,8 +1,8 @@
 import 'dart:math';
 
-import '../../../core/theme/app_theme.dart';
-import 'credit_block.dart';
-import 'project_settings.dart';
+import '../models/credit_block.dart';
+import '../models/credit_face.dart';
+import '../models/project_settings.dart';
 
 /// Pure, widget-free port of the prototype's roll math (`geom()`,
 /// `castGeom()`, `eng()`, `snaps()`, `tc()`). None of this depends on

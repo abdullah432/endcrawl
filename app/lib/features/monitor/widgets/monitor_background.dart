@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../project/models/project_settings.dart';
+import '../../../domain/models/project_settings.dart';
 
 class MonitorBackgroundLayer extends StatelessWidget {
   final MonitorBackground background;

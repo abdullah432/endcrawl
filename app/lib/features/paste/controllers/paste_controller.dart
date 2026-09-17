@@ -1,7 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../project/controllers/project_controller.dart';
-import '../../project/models/credit_block.dart';
+import '../../../domain/models/credit_block.dart';
 import '../models/paste_models.dart';
 
 enum PasteMode { raw, file }

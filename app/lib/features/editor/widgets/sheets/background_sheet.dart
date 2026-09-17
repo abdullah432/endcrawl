@@ -5,7 +5,7 @@ import '../../../../core/theme/tokens.dart';
 import '../../../../core/widgets/ec_sheet.dart';
 import '../../../monitor/widgets/monitor_background.dart';
 import '../../../project/controllers/project_controller.dart';
-import '../../../project/models/project_settings.dart';
+import '../../../../domain/models/project_settings.dart';
 
 const _kBgOptions = [
   (MonitorBackground.black, 'Pure black', 'Broadcast default'),

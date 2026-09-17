@@ -3,8 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/theme/tokens.dart';
 import '../../../project/controllers/project_controller.dart';
-import '../../../project/models/credit_block.dart';
-import '../../../project/models/roll_engine.dart';
+import '../../../../domain/models/credit_block.dart';
+import '../../../../domain/engine/roll_engine.dart';
 
 const _kLeaderOptions = [
   (LeaderStyle.dots, 'Dotted leaders'),
