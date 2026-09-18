@@ -29,7 +29,8 @@ for the product summary and the [design handoff](../design/) this was built from
       sources/          ProjectLocalStore  — JSON documents on disk
                         SessionStore       — device-local session state
     features/
-      auth/             sign-in / register, and the auth gate
+      onboarding/       the welcome screen and its live credit roll
+      auth/             sign in, create account, reset password, auth gate
       library/          home: recent projects, resume / crash recovery
       templates/        starting-template chooser
       format/           canvas format & frame rate
@@ -114,14 +115,65 @@ callback, so open/close are driven by the navigation actions themselves
 (`markOpened` at each entry point, `closeProject` from `PopScope`) rather
 than from `initState`/`dispose`.
 
-## Accounts
+## Onboarding and accounts
 
-`AuthRepository` is the seam; `FirebaseAuthRepository` implements it over
-Firebase Authentication with email/password and Google Sign-in. Above it,
-`authStateProvider` is a `StreamProvider<AppUser?>` and `AuthGate` renders a
-splash, the sign-in screen, or the library from its three `AsyncValue` states —
-so there is no manual "am I signed in yet" bookkeeping and no window in which
-a signed-out user can see a signed-in screen.
+Onboarding is one screen. A credit roll scrolls behind the wordmark and the
+two buttons — **Continue with Google** and **Continue with email** — are the
+only decision on offer. There is deliberately no feature carousel: the
+product's promise is a broadcast-clean roll in under a minute, and three
+cards to swipe through before you can start would undercut exactly that. The
+roll is the explanation.
+
+```
+AuthGate
+  └─ signed out → WelcomeScreen
+                    ├─ Continue with Google   (signs in in place)
+                    └─ Continue with email → EmailSignInScreen
+                                               ├─ ForgotPasswordScreen
+                                               └─ CreateAccountScreen
+  └─ signed in  → LibraryScreen
+```
+
+Signing in, creating an account and resetting a password are three screens
+rather than one screen with a mode flag. Each asks one thing, a button label
+can never disagree with the action behind it, and the autofill hint is right
+(`newPassword` vs `password`) without anything having to consult state.
+
+- **The slick "type your email and we'll work out which you need" flow is
+  not possible**, and shouldn't be faked. Firebase's Email Enumeration
+  Protection exists to stop exactly that lookup — it's the same protection
+  the wrong-password/no-such-account messages preserve. Asking is the honest
+  version, and from the welcome screen it's two taps to a keyboard anyway.
+- **Password reset confirms conditionally** — "if an account exists for that
+  address, a reset link is on its way" — for the same reason, and it happens
+  on its own screen with a real after-state rather than firing silently off
+  whatever was in the sign-in field.
+- **The signed-out branch hosts its own `Navigator`.** The auth screens push
+  onto that, not the root one, so signing in removes the whole subtree along
+  with its route stack. On the root navigator the library would appear
+  *underneath* the create-account screen the user just signed in from.
+  `NavigatorPopHandler` forwards Android's back gesture into it.
+- **All four screens share one controller**, so every navigation action
+  clears the previous screen's message first — at the push site, because
+  Riverpod forbids writing to a provider from `initState`.
+- **The credit roll honours reduce-motion.** A large, continuously moving
+  field is precisely what that setting exists to suppress; with it on the
+  roll renders a held frame. (It also means `pumpAndSettle` terminates in
+  tests, which is a happy consequence rather than the reason.)
+- **The Google mark is painted from Google's own SVG path data**, transcribed
+  into a `CustomPainter` rather than approximated with arcs or pulled in via
+  an SVG dependency. `test/features/google_mark_test.dart` rasterises it and
+  samples pixels, because a mistyped coordinate would produce a
+  plausible-looking but off-brand logo that no layout test would catch.
+- **The native launch window matches the app canvas** on both platforms, so
+  launch doesn't flash white before the dark UI arrives.
+
+Underneath, `AuthRepository` is the seam and `FirebaseAuthRepository`
+implements it over Firebase Authentication. `authStateProvider` is a
+`StreamProvider<AppUser?>` and `AuthGate` renders a splash, the welcome flow,
+or the library from its three `AsyncValue` states — so there is no manual
+"am I signed in yet" bookkeeping and no window in which a signed-out user can
+see a signed-in screen.
 
 - **Firebase error codes never reach the UI.** They're mapped to human
   sentences in one place. `invalid-credential`, `wrong-password` and
@@ -187,8 +239,15 @@ success/failure states are simulated (ported from the prototype's own
 simulated `startExport()`), matching how the prototype itself behaves. There
 is no on-device video encoder.
 
-There is no onboarding flow yet — the auth screens are the first-run
-experience for now.
+There is no guest mode. Firebase Anonymous Auth would let someone build a
+roll before signing up and could later be upgraded in place, keeping their
+projects — a good option, deliberately deferred to keep the first release
+simple. Nothing above would need redoing to add it.
+
+One thing to check before an iOS release: App Store Guideline 4.8 requires
+Sign in with Apple from apps that offer *only* third-party login. Shipping
+email/password alongside Google should exempt this app, but confirm it before
+submitting rather than at review time.
 
 ## Firebase setup
 
@@ -282,7 +341,12 @@ The suite needs no Firebase config and no network — it never calls
   authority, one corrupt document not taking down the library), and the local
   repository against a temp directory: ordering, deletion, corrupt-document
   tolerance, atomic writes, path-traversal refusal.
-- `test/widget_test.dart` — library (empty/list/resume/recovery/error),
-  the new-project flow, autosave, every editor sheet, multi-select, and the
-  rotate-to-landscape full-bleed monitor, all against an in-memory
-  repository injected through `projectRepositoryProvider`.
+- `test/features/google_mark_test.dart` — rasterises the Google mark and
+  samples a pixel inside each arc, so a mistyped path coordinate fails the
+  build instead of shipping.
+- `test/widget_test.dart` — the whole onboarding flow (Google, sign-in,
+  create account, password reset, messages not following the user between
+  screens, no auth route left on top after signing in, landscape layout),
+  plus library (empty/list/resume/recovery/error), the new-project flow,
+  autosave, every editor sheet, multi-select, and the rotate-to-landscape
+  full-bleed monitor — all against fakes injected through the same providers.
