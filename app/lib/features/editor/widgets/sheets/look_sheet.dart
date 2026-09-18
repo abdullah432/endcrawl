@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/tokens.dart';
 import '../../../../core/widgets/ec_sheet.dart';
 import '../../../project/controllers/project_controller.dart';
-import '../../../project/models/project_settings.dart';
+import '../../../../domain/models/project_settings.dart';
 
 /// 2D flat roll (the professional default) vs. 3D perspective crawl —
 /// making explicit in the UI that 2D is the standard and 3D is a

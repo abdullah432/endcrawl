@@ -17,9 +17,13 @@ android {
     defaultConfig {
         // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
         applicationId = "com.endcrawl.endcrawl"
-        // You can update the following values to match your application needs.
-        // For more information, see: https://flutter.dev/to/review-gradle-config.
-        minSdk = flutter.minSdkVersion
+        // Pinned rather than inherited from `flutter.minSdkVersion` because
+        // the floor is a hard dependency requirement, not a Flutter default:
+        // firebase_auth / cloud_firestore need 23, and google_sign_in 7.x
+        // needs 24 for Credential Manager. Inheriting would silently break
+        // the build on an older Flutter SDK, with an error that points at the
+        // plugins rather than at this line.
+        minSdk = 24
         targetSdk = flutter.targetSdkVersion
         // Uses the version code from pubspec.yaml. When using split APKs, 1000 * ABI_VERSION
         // is added automatically by Flutter. (https://developer.android.com/studio/build/configure-apk-splits#configure-APK-versions)

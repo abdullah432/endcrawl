@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_theme.dart';
-import '../../project/models/credit_block.dart';
-import '../../project/models/roll_engine.dart';
+import '../../../domain/models/credit_block.dart';
+import '../../../domain/engine/roll_engine.dart';
 import 'dotted_leader.dart';
 
 /// Builds the actual visual content for one block, at full render

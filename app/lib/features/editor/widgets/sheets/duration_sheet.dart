@@ -7,8 +7,8 @@ import '../../../../core/widgets/ec_chip.dart';
 import '../../../../core/widgets/ec_sheet.dart';
 import '../../../../core/widgets/ec_stepper.dart';
 import '../../../project/controllers/project_controller.dart';
-import '../../../project/models/project_settings.dart';
-import '../../../project/models/roll_engine.dart';
+import '../../../../domain/models/project_settings.dart';
+import '../../../../domain/engine/roll_engine.dart';
 import '../../controllers/editor_ui_controller.dart';
 
 /// Timing: the user types a target runtime and the engine derives the

@@ -4,8 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/tokens.dart';
 import '../../../../core/widgets/ec_sheet.dart';
 import '../../../project/controllers/project_controller.dart';
-import '../../../project/models/credit_block.dart';
-import '../../../project/repository/template_repository.dart';
+import '../../../../domain/models/credit_block.dart';
+import '../../../../data/repositories/template_repository.dart';
 
 const _kAddTypes = [
   ('title', 'TTL', 'Title card', 'Studio banner, film title, "a film by".'),

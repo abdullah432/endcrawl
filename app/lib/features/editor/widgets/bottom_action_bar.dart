@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/tokens.dart';
 import '../../project/controllers/project_controller.dart';
-import '../../project/models/roll_engine.dart';
+import '../../../domain/engine/roll_engine.dart';
 import '../controllers/editor_ui_controller.dart';
 
 /// Primary actions live in the bottom third, thumb-first (hard constraint

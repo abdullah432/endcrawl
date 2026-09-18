@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/tokens.dart';
-import '../../project/models/canvas_format.dart';
+import '../../../domain/models/canvas_format.dart';
 
 class FormatCard extends StatelessWidget {
   final CanvasFormat format;

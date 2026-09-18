@@ -4,9 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../project/controllers/project_controller.dart';
-import '../../project/models/credit_block.dart';
-import '../../project/models/project_settings.dart';
-import '../../project/models/roll_engine.dart';
+import '../../../domain/models/credit_block.dart';
+import '../../../domain/models/project_settings.dart';
+import '../../../domain/engine/roll_engine.dart';
 import '../controllers/playback_controller.dart';
 import 'hold_overlay.dart';
 import 'monitor_background.dart';

@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../../../core/theme/tokens.dart';
 import '../../project/controllers/project_controller.dart';
-import '../../project/models/canvas_format.dart';
-import '../../project/models/roll_engine.dart';
+import '../../../domain/models/canvas_format.dart';
+import '../../../domain/engine/roll_engine.dart';
 
 /// The persistent, quiet status readout: format · fps · duration · judder
 /// state (§8 of the brief).

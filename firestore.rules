@@ -1,0 +1,108 @@
+rules_version = '2';
+
+// ===============================================================
+// Assumed Data Model
+// ===============================================================
+//
+// Collection: users/{uid}/projects/{projectId}
+// Document ID: 20-character Firestore-style auto-id, minted client-side
+// Fields:
+//   - schemaVersion: int       (required, must equal the deployed version)
+//   - id: string               (required, must equal {projectId}, immutable)
+//   - ownerId: string          (required, must equal {uid}, immutable)
+//   - title: string            (required, 1..200 chars)
+//   - settings: map            (required — format, fps, timing, look)
+//   - blocks: list             (required, <= 500 entries — the credit roll)
+//   - createdAt: timestamp     (required, immutable after create)
+//   - updatedAt: timestamp     (required)
+//
+// Every project is private to one account. There is no sharing, no
+// collaboration and no public read in this version; when sharing arrives it
+// gets its own explicitly-reviewed rules rather than a loosened rule here.
+//
+// ===============================================================
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Ownership is the path, not a field the client supplies.
+    function isOwner(uid) {
+      return isAuthenticated() && request.auth.uid == uid;
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    // The exact field set. Anything else is rejected, so a client cannot
+    // stash arbitrary data in a project document.
+    function hasOnlyKnownFields() {
+      return incoming().keys().hasOnly([
+        'schemaVersion', 'id', 'ownerId', 'title', 'settings', 'blocks', 'createdAt', 'updatedAt'
+      ]) && incoming().keys().hasAll([
+        'schemaVersion', 'id', 'ownerId', 'title', 'settings', 'blocks', 'createdAt', 'updatedAt'
+      ]);
+    }
+
+    // Types and limits. The size caps are what keeps a single account from
+    // turning a document into a storage-exhaustion vector; they sit well
+    // above anything the editor can produce (a 400-name cast is one block).
+    function isValidProject(uid, projectId) {
+      return hasOnlyKnownFields()
+        && incoming().schemaVersion is int
+        && incoming().schemaVersion == 1
+        && incoming().id is string
+        && incoming().id == projectId
+        && incoming().ownerId is string
+        && incoming().ownerId == uid
+        && incoming().title is string
+        && incoming().title.size() > 0
+        && incoming().title.size() <= 200
+        && incoming().settings is map
+        && incoming().blocks is list
+        && incoming().blocks.size() <= 500
+        && incoming().createdAt is timestamp
+        && incoming().updatedAt is timestamp;
+    }
+
+    // Fields a client must never be able to rewrite after creation.
+    function immutableFieldsUnchanged() {
+      return incoming().id == resource.data.id
+        && incoming().ownerId == resource.data.ownerId
+        && incoming().createdAt == resource.data.createdAt;
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /users/{uid}/projects/{projectId} {
+      allow read: if isOwner(uid);
+
+      allow create: if isOwner(uid)
+        && isValidProject(uid, projectId);
+
+      // Validated identically to create, so a document cannot be created
+      // valid and then updated into an invalid or mis-owned state.
+      allow update: if isOwner(uid)
+        && isValidProject(uid, projectId)
+        && immutableFieldsUnchanged();
+
+      allow delete: if isOwner(uid);
+    }
+
+    // Default deny: anything not matched above, including the parent
+    // users/{uid} document, is unreachable.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

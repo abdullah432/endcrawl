@@ -5,7 +5,7 @@ import '../../../core/theme/tokens.dart';
 import '../../monitor/controllers/playback_controller.dart';
 import '../../monitor/widgets/monitor_view.dart';
 import '../../project/controllers/project_controller.dart';
-import '../../project/models/roll_engine.dart';
+import '../../../domain/engine/roll_engine.dart';
 import 'status_line.dart';
 
 /// Turning the phone to landscape expands the monitor to full-bleed with

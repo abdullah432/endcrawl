@@ -7,7 +7,7 @@ import '../../../core/widgets/ec_chip.dart';
 import '../../editor/screens/editor_screen.dart';
 import '../../monitor/controllers/playback_controller.dart';
 import '../../project/controllers/project_controller.dart';
-import '../../project/models/canvas_format.dart';
+import '../../../domain/models/canvas_format.dart';
 import '../widgets/format_card.dart';
 
 /// Screen 2: a dedicated format step, not buried in settings (§4 of the
@@ -155,13 +155,17 @@ class _FormatScreenState extends ConsumerState<FormatScreen> {
       bottomNavigationBar: SafeArea(
         minimum: const EdgeInsets.fromLTRB(EcSpace.s4, EcSpace.s3, EcSpace.s4, EcSpace.s3),
         child: FilledButton(
-          onPressed: () {
+          onPressed: () async {
             SystemChrome.setPreferredOrientations([
               DeviceOrientation.portraitUp,
               DeviceOrientation.landscapeLeft,
               DeviceOrientation.landscapeRight,
             ]);
             ref.read(playbackControllerProvider.notifier).resetToHead();
+            // First write of a brand-new project: this is the point the
+            // document becomes real and enters the library.
+            await ref.read(projectControllerProvider.notifier).markOpened();
+            if (!context.mounted) return;
             Navigator.of(context).push(MaterialPageRoute(builder: (_) => const EditorScreen()));
           },
           style: FilledButton.styleFrom(

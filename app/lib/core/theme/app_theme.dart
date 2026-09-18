@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../domain/models/credit_face.dart';
 import 'tokens.dart';
 
 /// Global MaterialApp theme. EndCrawl is a single, fixed dark theme — the
@@ -67,10 +68,9 @@ TextStyle ecUi(
   );
 }
 
-/// The credit-roll faces shipped with the app (distinct from the UI chrome
-/// face). `creditFace` selects one of these for the actual roll content.
-enum CreditFace { grotesque, serif, condensed }
-
+/// Maps the domain's [CreditFace] onto the concrete typefaces it ships as.
+/// The enum itself lives in `domain/models/credit_face.dart` because it is
+/// stored in the project document; only this rendering of it is theme code.
 extension CreditFaceX on CreditFace {
   TextStyle textStyle({
     required double size,
@@ -102,10 +102,4 @@ extension CreditFaceX on CreditFace {
         );
     }
   }
-
-  String get label => switch (this) {
-        CreditFace.grotesque => 'Grotesque · Archivo',
-        CreditFace.serif => 'Transitional serif · EB Garamond',
-        CreditFace.condensed => 'Condensed · Archivo Narrow',
-      };
 }

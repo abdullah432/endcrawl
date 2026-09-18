@@ -1,6 +1,6 @@
 import '../../project/controllers/project_controller.dart';
-import '../../project/models/credit_block.dart';
-import '../../project/models/roll_engine.dart';
+import '../../../domain/models/credit_block.dart';
+import '../../../domain/engine/roll_engine.dart';
 
 class BlockSummary {
   final String title;

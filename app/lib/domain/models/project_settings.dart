@@ -1,4 +1,5 @@
-import '../../../core/theme/app_theme.dart' show CreditFace;
+import 'credit_face.dart';
+import 'json_support.dart';
 
 enum TimingMode { duration, speed }
 
@@ -8,9 +9,7 @@ enum MonitorBackground { black, alpha, green, custom, underlay }
 
 /// Everything about the project that isn't the block document itself:
 /// format, frame rate, timing lock, look, background, and safe guides.
-/// Ported from the prototype's `state.project`.
 class ProjectSettings {
-  final String name;
   final String formatId; // 'custom' or a CanvasFormat id
   final int customW;
   final int customH;
@@ -24,11 +23,10 @@ class ProjectSettings {
   final double tilt; // degrees, 3D mode
   final double vanishingDistance; // percent, 3D mode
   final MonitorBackground background;
-  final CreditFace? face; // null = use the app default (grotesque)
+  final CreditFace? face; // null = the app default (grotesque)
   final bool safeGuides;
 
   const ProjectSettings({
-    this.name = 'UNTITLED',
     this.formatId = '239',
     this.customW = 1080,
     this.customH = 1920,
@@ -47,7 +45,6 @@ class ProjectSettings {
   });
 
   ProjectSettings copyWith({
-    String? name,
     String? formatId,
     int? customW,
     int? customH,
@@ -65,7 +62,6 @@ class ProjectSettings {
     bool? safeGuides,
   }) {
     return ProjectSettings(
-      name: name ?? this.name,
       formatId: formatId ?? this.formatId,
       customW: customW ?? this.customW,
       customH: customH ?? this.customH,
@@ -81,6 +77,45 @@ class ProjectSettings {
       background: background ?? this.background,
       face: face ?? this.face,
       safeGuides: safeGuides ?? this.safeGuides,
+    );
+  }
+
+  Map<String, Object?> toJson() => {
+        'formatId': formatId,
+        'customW': customW,
+        'customH': customH,
+        'fps': fps,
+        'mode': mode.name,
+        'durationFrames': durationFrames,
+        'ppf': ppf,
+        'headSeconds': headSeconds,
+        'tailSeconds': tailSeconds,
+        'look': look.name,
+        'tilt': tilt,
+        'vanishingDistance': vanishingDistance,
+        'background': background.name,
+        'face': face?.name,
+        'safeGuides': safeGuides,
+      };
+
+  factory ProjectSettings.fromJson(Map<String, Object?> json) {
+    const defaults = ProjectSettings();
+    return ProjectSettings(
+      formatId: asString(json['formatId'], defaults.formatId),
+      customW: asInt(json['customW'], defaults.customW),
+      customH: asInt(json['customH'], defaults.customH),
+      fps: asDouble(json['fps'], defaults.fps),
+      mode: asEnum(TimingMode.values, json['mode'], defaults.mode),
+      durationFrames: asInt(json['durationFrames'], defaults.durationFrames),
+      ppf: asDouble(json['ppf'], defaults.ppf),
+      headSeconds: asDouble(json['headSeconds'], defaults.headSeconds),
+      tailSeconds: asDouble(json['tailSeconds'], defaults.tailSeconds),
+      look: asEnum(RollLook.values, json['look'], defaults.look),
+      tilt: asDouble(json['tilt'], defaults.tilt),
+      vanishingDistance: asDouble(json['vanishingDistance'], defaults.vanishingDistance),
+      background: asEnum(MonitorBackground.values, json['background'], defaults.background),
+      face: json['face'] == null ? null : asEnum(CreditFace.values, json['face'], CreditFace.grotesque),
+      safeGuides: asBool(json['safeGuides'], defaults.safeGuides),
     );
   }
 }

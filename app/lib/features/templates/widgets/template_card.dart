@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/tokens.dart';
-import '../../project/repository/template_repository.dart';
+import '../../../data/repositories/template_repository.dart';
 
 class TemplateCard extends StatelessWidget {
   final ProjectTemplate template;

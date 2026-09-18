@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/tokens.dart';
+import '../../../domain/models/credit_face.dart';
 
 const _kColorTokens = [
   ('--bg-stage', EcColors.bgStage),
@@ -102,7 +103,7 @@ class AppendixScreen extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(f.label, style: const TextStyle(fontFamily: EcFonts.mono, fontSize: 9.5, color: EcColors.textTertiary)),
+                  Text(f.displayName, style: const TextStyle(fontFamily: EcFonts.mono, fontSize: 9.5, color: EcColors.textTertiary)),
                   const SizedBox(height: EcSpace.s2),
                   Text('DIRECTOR OF PHOTOGRAPHY', style: f.textStyle(size: 20)),
                 ],
