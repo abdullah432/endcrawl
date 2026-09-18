@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "660045439222",
+    "project_id": "endcrawl-620c2",
+    "storage_bucket": "endcrawl-620c2.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:660045439222:android:df4373495a4b9bd1f14cd7",
+        "android_client_info": {
+          "package_name": "com.endcrawl.endcrawl"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "660045439222-ct83smot6ehk7ruvuh1v34eknia9e3jg.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBwMeTv1cEu6k7IAoPSWhpa4rIU1iKubqY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "660045439222-ct83smot6ehk7ruvuh1v34eknia9e3jg.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
