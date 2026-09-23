@@ -18,3 +18,13 @@ String formatRuntime(Duration d) {
 String plural(int n, String one, [String? many]) => '$n ${n == 1 ? one : (many ?? '${one}s')}';
 
 String _trimZeros(String s) => s.contains('.') ? s.replaceFirst(RegExp(r'0+$'), '').replaceFirst(RegExp(r'\.$'), '') : s;
+
+/// "0:06", "2:41" — a block's share of the roll, on its row.
+String formatClock(double seconds) {
+  final s = seconds.round();
+  return '${s ~/ 60}:${(s % 60).toString().padLeft(2, '0')}';
+}
+
+/// "4", "6.41" — pixels per frame, whole when it is whole.
+String formatPpf(double ppf) =>
+    (ppf - ppf.roundToDouble()).abs() < 0.0008 ? ppf.round().toString() : ppf.toStringAsFixed(2);

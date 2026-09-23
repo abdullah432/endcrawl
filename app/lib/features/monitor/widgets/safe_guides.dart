@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../../core/theme/tokens.dart';
+import '../../../core/theme/theme_context.dart';
 
 /// Title-safe (80%, dashed) and action-safe (90%, solid) guides — on by
 /// default for landscape formats, always toggleable (§3 of the brief).
@@ -11,17 +11,18 @@ class SafeGuides extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final p = context.palette;
     return IgnorePointer(
       child: FractionallySizedBox(
         widthFactor: .9,
         heightFactor: .9,
         child: Container(
-          decoration: BoxDecoration(border: Border.all(color: EcColors.safeAction, width: guideWidth)),
+          decoration: BoxDecoration(border: Border.all(color: Colors.white.withValues(alpha: .22), width: guideWidth)),
           child: Center(
             child: FractionallySizedBox(
               widthFactor: 8 / 9,
               heightFactor: 8 / 9,
-              child: CustomPaint(painter: _DashedRectPainter(color: EcColors.safeTitle, strokeWidth: guideWidth)),
+              child: CustomPaint(painter: _DashedRectPainter(color: p.accentOnBlack.withValues(alpha: .55), strokeWidth: guideWidth)),
             ),
           ),
         ),

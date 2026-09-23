@@ -68,17 +68,17 @@ class BlockDescription {
 BlockDescription describeBlock(CreditBlock block) {
   String nameCount(int n) => '$n ${n == 1 ? 'name' : 'names'}';
   String cols(int c) => c > 1 ? ' · $c columns' : '';
-  String titled(String header) => header.trim().isEmpty ? block.kind.label : _sentence(header);
+  String titled(String header) => header.trim().isEmpty ? block.kind.label : sentenceCase(header);
 
   return switch (block) {
     TitleBlock(:final title, :final byline) => BlockDescription(
         block.kind.label,
-        [if (title.isNotEmpty) _sentence(title), if (byline.isNotEmpty) byline.toLowerCase()].join(' · '),
+        [if (title.isNotEmpty) sentenceCase(title), if (byline.isNotEmpty) byline.toLowerCase()].join(' · '),
       ),
     CardBlock(:final header, :final lines, :final footer) => BlockDescription(
         block.kind == BlockKind.sectionHeading ? block.kind.label : titled(header),
         block.kind == BlockKind.sectionHeading
-            ? _sentence(header)
+            ? sentenceCase(header)
             : [
                 if (lines.isNotEmpty) lines.first,
                 if (footer.isNotEmpty) '— $footer',
@@ -116,7 +116,7 @@ BlockDescription describeBlock(CreditBlock block) {
 
 /// "DIRECTOR OF PHOTOGRAPHY" → "Director of photography" for list titles;
 /// mixed-case input is left as the person typed it.
-String _sentence(String s) {
+String sentenceCase(String s) {
   final t = s.trim();
   if (t.isEmpty || t != t.toUpperCase()) return t;
   final lower = t.toLowerCase();

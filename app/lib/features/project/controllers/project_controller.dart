@@ -8,6 +8,7 @@ import '../../../data/repositories/project_repository.dart';
 import '../../../data/sources/session_store.dart';
 import '../../../data/repositories/template_repository.dart';
 import '../../../domain/engine/roll_engine.dart';
+import '../../../domain/engine/roll_engine.dart' as roll show blockSeconds, readabilityCulprit;
 import '../../../domain/models/credit_block.dart';
 import '../../../domain/models/credit_face.dart';
 import '../../../domain/models/project.dart';
@@ -62,6 +63,15 @@ class ProjectState {
         measurements: measurements,
         geometry: geometry,
       );
+
+  /// Seconds each active block is on screen, by id.
+  Map<String, double> get blockSeconds => roll.blockSeconds(engine, activeBlocks, measurements);
+
+  /// The block a "too fast" warning is pinned on, if any.
+  String? get readabilityCulprit => roll.readabilityCulprit(engine, activeBlocks);
+
+  /// The whole roll, head to tail.
+  Duration get runtime => Duration(milliseconds: (engine.totalFrames / engine.fps * 1000).round());
 
   ProjectState copyWith({
     Project? project,
@@ -299,19 +309,41 @@ class ProjectController extends Notifier<ProjectState> {
 
   // ---------- history-tracked block edits ----------
 
-  void _push(List<CreditBlock> next) {
-    final hist = [...state.history, state.blocks];
-    if (hist.length > 25) hist.removeAt(0);
-    state = state.copyWith(history: hist, future: const []);
+  /// History is bounded: the oldest step drops off past this many.
+  static const historyLimit = 50;
+
+  /// Typing into one field is one undo step, not one per keystroke: edits
+  /// sharing a [coalesce] key within this window fold into the last step.
+  static const _coalesceWindow = Duration(milliseconds: 1500);
+  String? _coalesceKey;
+  DateTime? _coalesceAt;
+
+  void _push(List<CreditBlock> next, {String? coalesce}) {
+    final now = DateTime.now();
+    final fold = coalesce != null &&
+        coalesce == _coalesceKey &&
+        _coalesceAt != null &&
+        now.difference(_coalesceAt!) < _coalesceWindow &&
+        state.history.isNotEmpty;
+    _coalesceKey = coalesce;
+    _coalesceAt = now;
+    if (!fold) {
+      final hist = [...state.history, state.blocks];
+      if (hist.length > historyLimit) hist.removeAt(0);
+      state = state.copyWith(history: hist, future: const []);
+    }
     _writeDocument(state.project.copyWith(blocks: next));
   }
 
-  void patchBlock(String id, CreditBlock Function(CreditBlock) fn) {
-    _push([for (final b in state.blocks) b.id == id ? fn(b) : b]);
+  /// Replaces one block with [fn] of it. [field] names the text field being
+  /// typed into, so a burst of keystrokes there is a single undo step.
+  void patchBlock(String id, CreditBlock Function(CreditBlock) fn, {String? field}) {
+    _push([for (final b in state.blocks) b.id == id ? fn(b) : b], coalesce: field == null ? null : '$id/$field');
   }
 
   void undo() {
     if (state.history.isEmpty) return;
+    _coalesceKey = null;
     final hist = [...state.history];
     final prev = hist.removeLast();
     final future = [state.blocks, ...state.future];
@@ -321,6 +353,7 @@ class ProjectController extends Notifier<ProjectState> {
 
   void redo() {
     if (state.future.isEmpty) return;
+    _coalesceKey = null;
     final fut = [...state.future];
     final next = fut.removeAt(0);
     final history = [...state.history, state.blocks];
@@ -333,26 +366,39 @@ class ProjectController extends Notifier<ProjectState> {
 
   void addBlock(CreditBlock block) => _push([...state.blocks, block]);
 
-  void addDepartmentSet() {
-    _push([
-      ...state.blocks,
-      for (final h in TemplateRepository.standardDepartmentOrder)
-        NameListBlock(id: newBlockId(), header: h, names: const ['Name']),
-    ]);
+  /// Inserts [block] after [afterId] — the block in focus when "+ Block"
+  /// was tapped (4.1) — or at the end when there is none.
+  void insertBlock(CreditBlock block, {String? afterId}) {
+    final at = afterId == null ? -1 : state.blocks.indexWhere((b) => b.id == afterId);
+    _push([...state.blocks]..insert(at < 0 ? state.blocks.length : at + 1, block));
   }
 
-  void duplicateBlock(String id) {
+  /// Puts a removed block back where it was — the toast's Undo (3.5), which
+  /// restores that block even if other edits have happened since.
+  void restoreBlock(CreditBlock block, int index) {
+    if (state.blocks.any((b) => b.id == block.id)) return;
+    _push([...state.blocks]..insert(index.clamp(0, state.blocks.length), block));
+  }
+
+  /// Duplicates the block in place and returns the copy's id.
+  String? duplicateBlock(String id) {
     final idx = state.blocks.indexWhere((b) => b.id == id);
-    if (idx < 0) return;
+    if (idx < 0) return null;
     final copy = state.blocks[idx].withId(newBlockId());
     _push([...state.blocks]..insert(idx + 1, copy));
+    return copy.id;
   }
-
-
 
   void toggleMute(String id) => patchBlock(id, (b) => b.withMuted(!b.muted));
 
-  void deleteBlock(String id) => _push(state.blocks.where((b) => b.id != id).toList());
+  /// Removes a block and returns it, for the "Removed … Undo" toast.
+  CreditBlock? deleteBlock(String id) {
+    final idx = state.blocks.indexWhere((b) => b.id == id);
+    if (idx < 0) return null;
+    final removed = state.blocks[idx];
+    _push([...state.blocks]..removeAt(idx));
+    return removed;
+  }
 
   void reorder(int from, int to) {
     if (from == to || from < 0 || to < 0) return;
@@ -362,18 +408,28 @@ class ProjectController extends Notifier<ProjectState> {
     _push(next);
   }
 
-  void bulkToggleCastLeader(Set<String> ids) {
+  /// Restyles the selected blocks that have the style: [leader] applies to
+  /// cast and crew lists, [columns] to name lists. Others are left alone.
+  void restyle(Set<String> ids, {LeaderStyle? leader, int? columns}) {
     _push([
       for (final b in state.blocks)
-        if (ids.contains(b.id) && b is PairListBlock)
-          b.copyWith(leader: b.leader == LeaderStyle.dots ? LeaderStyle.clean : LeaderStyle.dots)
+        if (!ids.contains(b.id))
+          b
         else
-          b,
+          switch (b) {
+            PairListBlock() when leader != null => b.copyWith(leader: leader),
+            NameListBlock() when columns != null => b.copyWith(columns: columns),
+            _ => b,
+          },
     ]);
   }
 
+  /// Mutes the selection — or unmutes it, when every selected block is
+  /// already muted — so the same button reverses itself.
   void bulkMute(Set<String> ids) {
-    _push([for (final b in state.blocks) ids.contains(b.id) ? b.withMuted(!b.muted) : b]);
+    final selected = state.blocks.where((b) => ids.contains(b.id));
+    final mute = !selected.every((b) => b.muted);
+    _push([for (final b in state.blocks) ids.contains(b.id) ? b.withMuted(mute) : b]);
   }
 
   void bulkDelete(Set<String> ids) {
@@ -403,11 +459,13 @@ class ProjectController extends Notifier<ProjectState> {
   void addCastGapRow(String blockId) =>
       patchBlock(blockId, (b) => (b as PairListBlock).copyWith(rows: [...b.rows, const GapCastRow()]));
 
-  void updateCastRow(String blockId, int index, CastRow Function(CastRow) fn) {
+  /// Edits one row; [field] ("role", "name") coalesces typing into one
+  /// undo step.
+  void updateCastRow(String blockId, int index, CastRow Function(CastRow) fn, {String? field}) {
     patchBlock(blockId, (b) {
       final cast = b as PairListBlock;
       return cast.copyWith(rows: [for (var i = 0; i < cast.rows.length; i++) i == index ? fn(cast.rows[i]) : cast.rows[i]]);
-    });
+    }, field: field == null ? null : 'row$index/$field');
   }
 
   void removeCastRow(String blockId, int index) {
@@ -415,6 +473,12 @@ class ProjectController extends Notifier<ProjectState> {
       final cast = b as PairListBlock;
       return cast.copyWith(rows: [for (var i = 0; i < cast.rows.length; i++) if (i != index) cast.rows[i]]);
     });
+  }
+
+  /// Appends pasted rows (4.2) to a cast or crew block in one undo step.
+  void appendCastRows(String blockId, List<CastRow> rows) {
+    if (rows.isEmpty) return;
+    patchBlock(blockId, (b) => (b as PairListBlock).copyWith(rows: [...b.rows, ...rows]));
   }
 
   void appendCastEntry(String blockId, String role, String actor) {

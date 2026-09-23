@@ -1,124 +1,185 @@
+import 'dart:async';
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/config/orientations.dart';
+import '../../../core/theme/ec_type.dart';
+import '../../../core/theme/theme_context.dart';
 import '../../../core/theme/tokens.dart';
+import '../../../domain/engine/roll_engine.dart';
 import '../../monitor/controllers/playback_controller.dart';
 import '../../monitor/widgets/monitor_view.dart';
 import '../../project/controllers/project_controller.dart';
-import '../../../domain/engine/roll_engine.dart';
+import 'scrub_bar.dart';
 import 'status_line.dart';
 
-/// Turning the phone to landscape expands the monitor to full-bleed with
-/// the editor UI dimmed away; turning back restores the editor (§4 of the
-/// brief — this should feel inevitable, so it triggers off the device's
-/// real orientation, not a manual toggle).
-class LandscapeMonitor extends ConsumerWidget {
+/// 3.4 — turning the phone opens a full-bleed review monitor. A review
+/// mode, not a project setting: the chrome is frosted glass on black and
+/// fades two seconds after the last touch; a tap brings it back.
+class LandscapeMonitor extends ConsumerStatefulWidget {
   const LandscapeMonitor({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final project = ref.watch(projectControllerProvider);
-    final playback = ref.watch(playbackControllerProvider);
-    final playbackCtrl = ref.read(playbackControllerProvider.notifier);
-    final e = project.engine;
+  ConsumerState<LandscapeMonitor> createState() => _LandscapeMonitorState();
+}
 
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        const MonitorView(),
-        Positioned(
-          left: EcSpace.s5,
-          right: EcSpace.s5,
-          top: EcSpace.s3,
-          child: SafeArea(
-            bottom: false,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Flexible(
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(color: Colors.black.withValues(alpha: .7), border: Border.all(color: EcColors.borderHairline), borderRadius: BorderRadius.circular(EcRadius.full)),
-                    child: StatusLine(project: project),
-                  ),
-                ),
-                const SizedBox(width: EcSpace.s3),
-                const Flexible(
-                  child: Text(
-                    'FULL-BLEED MONITOR · ROTATE BACK TO EDIT',
-                    overflow: TextOverflow.ellipsis,
-                    maxLines: 1,
-                    textAlign: TextAlign.right,
-                    style: TextStyle(fontSize: 10, letterSpacing: 1.2, color: EcColors.textTertiary),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-        Positioned(
-          left: 0,
-          right: 0,
-          bottom: EcSpace.s4,
-          child: SafeArea(
-            top: false,
-            child: Center(
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: EcSpace.s4, vertical: 8),
-                decoration: BoxDecoration(color: Colors.black.withValues(alpha: .7), border: Border.all(color: EcColors.borderHairline), borderRadius: BorderRadius.circular(EcRadius.full)),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Material(
-                      color: EcColors.accentPrimary,
-                      shape: const CircleBorder(),
-                      child: InkWell(
-                        customBorder: const CircleBorder(),
-                        onTap: playbackCtrl.togglePlay,
-                        child: SizedBox(width: 34, height: 34, child: Icon(playback.playing ? Icons.pause : Icons.play_arrow, size: 16, color: EcColors.accentInk)),
+class _LandscapeMonitorState extends ConsumerState<LandscapeMonitor> {
+  static const _linger = Duration(seconds: 2);
+  bool _chrome = true;
+  Timer? _fade;
+
+  @override
+  void initState() {
+    super.initState();
+    _wake();
+  }
+
+  @override
+  void dispose() {
+    _fade?.cancel();
+    super.dispose();
+  }
+
+  void _wake() {
+    _fade?.cancel();
+    if (!_chrome) setState(() => _chrome = true);
+    _fade = Timer(_linger, () {
+      if (mounted) setState(() => _chrome = false);
+    });
+  }
+
+  /// Back to editing without waiting for the phone to turn: pins portrait
+  /// for the rest of this editor session, so the monitor doesn't reopen
+  /// while the phone is still sideways.
+  void _exit() {
+    ref.read(playbackControllerProvider.notifier).pause();
+    SystemChrome.setPreferredOrientations(kPortraitOnly);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.palette;
+    final t = context.type;
+    final project = ref.watch(projectControllerProvider);
+    final playing = ref.watch(playbackControllerProvider.select((s) => s.playing));
+    final frame = ref.watch(playbackControllerProvider.select((s) => s.frame));
+    final playback = ref.read(playbackControllerProvider.notifier);
+
+    return Listener(
+      onPointerDown: (_) => _wake(),
+      behavior: HitTestBehavior.translucent,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          const ColoredBox(color: Colors.black),
+          const MonitorView(),
+          IgnorePointer(
+            ignoring: !_chrome,
+            child: AnimatedOpacity(
+              opacity: _chrome ? 1 : 0,
+              duration: EcMotion.slow,
+              child: SafeArea(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(28, 18, 28, 18),
+                  child: Column(
+                    children: [
+                      Row(
+                        children: [
+                          Flexible(
+                            child: _Frost(
+                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+                              child: StatusLine(project: project, onBlack: true),
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Text(caps('Rotate back to edit'), style: t.eyebrow.copyWith(color: Colors.white.withValues(alpha: .7))),
+                        ],
                       ),
-                    ),
-                    const SizedBox(width: EcSpace.s3),
-                    SizedBox(
-                      width: 104,
-                      child: Text(formatTimecode(playback.frame, e.fps), style: const TextStyle(fontFamily: EcFonts.mono, fontSize: 13, color: EcColors.textPrimary)),
-                    ),
-                    Builder(builder: (barContext) {
-                      return GestureDetector(
-                        behavior: HitTestBehavior.opaque,
-                        onPanDown: (d) => _scrub(barContext, d.globalPosition, ref),
-                        onPanUpdate: (d) => _scrub(barContext, d.globalPosition, ref),
-                        child: SizedBox(
-                          width: 260,
-                          height: 34,
-                          child: Stack(
-                            alignment: Alignment.centerLeft,
+                      const Spacer(),
+                      ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 640),
+                        child: _Frost(
+                          padding: const EdgeInsets.fromLTRB(8, 8, 10, 8),
+                          child: Row(
                             children: [
-                              Container(height: 3, decoration: BoxDecoration(color: EcColors.surfaceHi, borderRadius: BorderRadius.circular(EcRadius.full))),
-                              Align(
-                                alignment: Alignment((playback.frame / e.totalFrames).clamp(0, 1) * 2 - 1, 0),
-                                child: Container(width: 2, height: 20, color: EcColors.accentPrimary),
+                              Tooltip(
+                                message: playing ? 'Pause' : 'Play',
+                                child: Material(
+                                  type: MaterialType.transparency,
+                                  shape: const CircleBorder(),
+                                  clipBehavior: Clip.antiAlias,
+                                  child: Ink(
+                                    width: 40,
+                                    height: 40,
+                                    decoration: BoxDecoration(shape: BoxShape.circle, gradient: p.primary),
+                                    child: InkWell(
+                                      onTap: playback.togglePlay,
+                                      child: Icon(playing ? Icons.pause_rounded : Icons.play_arrow_rounded, color: p.onInk, size: 20),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 16),
+                              SizedBox(
+                                width: 104,
+                                child: Text(formatTimecode(frame, project.engine.fps),
+                                    style: t.mono.copyWith(fontSize: 13, color: Colors.white)),
+                              ),
+                              const Expanded(child: ScrubTrack(onBlack: true)),
+                              const SizedBox(width: 16),
+                              TextButton(
+                                onPressed: _exit,
+                                style: TextButton.styleFrom(
+                                  foregroundColor: Colors.white,
+                                  backgroundColor: Colors.white.withValues(alpha: .16),
+                                  minimumSize: const Size(0, 36),
+                                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                                  shape: const StadiumBorder(),
+                                  textStyle: t.bodyS.copyWith(fontSize: 12, fontWeight: FontWeight.w600),
+                                ),
+                                child: const Text('Exit'),
                               ),
                             ],
                           ),
                         ),
-                      );
-                    }),
-                    const SizedBox(width: EcSpace.s3),
-                  ],
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
+}
 
-  void _scrub(BuildContext context, Offset globalPos, WidgetRef ref) {
-    final box = context.findRenderObject() as RenderBox;
-    final local = box.globalToLocal(globalPos);
-    final t = (local.dx / box.size.width).clamp(0.0, 1.0);
-    ref.read(playbackControllerProvider.notifier).scrubToFraction(t);
+/// Frosted glass on black: white at 14 %, a faint edge, and a blur.
+class _Frost extends StatelessWidget {
+  final Widget child;
+  final EdgeInsets padding;
+  const _Frost({required this.child, required this.padding});
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(EcRadius.pill),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+        child: Container(
+          padding: padding,
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: .14),
+            borderRadius: BorderRadius.circular(EcRadius.pill),
+            border: Border.all(color: Colors.white.withValues(alpha: .2)),
+          ),
+          child: child,
+        ),
+      ),
+    );
   }
 }

@@ -56,7 +56,8 @@ class EcSheet extends StatelessWidget {
     final t = context.type;
     final maxHeight = MediaQuery.sizeOf(context).height * maxHeightFraction;
 
-    final titleRow = header ??
+    final titleRow =
+        header ??
         (title == null
             ? const SizedBox(height: 12)
             : Padding(
@@ -92,26 +93,33 @@ class EcSheet extends StatelessWidget {
         borderRadius: const BorderRadius.vertical(top: Radius.circular(EcRadius.sheet)),
         boxShadow: p.sheetShadow,
       ),
-      child: Padding(
-        padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
-        child: SafeArea(
-          top: false,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 5,
-                  margin: const EdgeInsets.only(top: 10),
-                  decoration: BoxDecoration(color: p.line2, borderRadius: BorderRadius.circular(EcRadius.pill)),
+      // A transparent Material so list tiles and ink inside the sheet paint
+      // on the sheet itself rather than under its fill.
+      child: Material(
+        type: MaterialType.transparency,
+        child: Padding(
+          padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
+          child: SafeArea(
+            top: false,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 5,
+                    margin: const EdgeInsets.only(top: 10),
+                    decoration: BoxDecoration(color: p.line2, borderRadius: BorderRadius.circular(EcRadius.pill)),
+                  ),
                 ),
-              ),
-              titleRow,
-              Flexible(child: SingleChildScrollView(padding: padding, child: child)),
-              ?footer,
-            ],
+                titleRow,
+                Flexible(
+                  child: SingleChildScrollView(padding: padding, child: child),
+                ),
+                ?footer,
+              ],
+            ),
           ),
         ),
       ),

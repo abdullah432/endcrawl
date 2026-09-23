@@ -284,3 +284,212 @@ class EcCheckbox extends StatelessWidget {
     );
   }
 }
+
+/// A 42 px inline field for grids of short values — cast rows (4.4),
+/// fast entry, and unparsed paste rows fixed in place (4.3).
+///
+/// Pass [controller] when the caller needs to read or clear it (fast
+/// entry); otherwise [initialValue] seeds a field the widget owns.
+/// [accent] marks a billing line — "and", "with" — in italic accent.
+class EcCompactField extends StatefulWidget {
+  final TextEditingController? controller;
+  final String? initialValue;
+  final String? hint;
+  final TextAlign textAlign;
+  final bool accent;
+  final bool warn;
+  final bool strong;
+
+  /// The sheet colour rather than white — the fields inside a white panel.
+  final bool recessed;
+  final double height;
+  final FocusNode? focusNode;
+  final TextInputAction? textInputAction;
+  final ValueChanged<String>? onChanged;
+  final ValueChanged<String>? onSubmitted;
+
+  const EcCompactField({
+    super.key,
+    this.controller,
+    this.initialValue,
+    this.hint,
+    this.textAlign = TextAlign.start,
+    this.accent = false,
+    this.warn = false,
+    this.strong = false,
+    this.recessed = false,
+    this.height = 42,
+    this.focusNode,
+    this.textInputAction,
+    this.onChanged,
+    this.onSubmitted,
+  }) : assert(controller == null || initialValue == null);
+
+  @override
+  State<EcCompactField> createState() => _EcCompactFieldState();
+}
+
+class _EcCompactFieldState extends State<EcCompactField> {
+  late final TextEditingController _controller = widget.controller ?? TextEditingController(text: widget.initialValue);
+  late final FocusNode _focus = widget.focusNode ?? FocusNode();
+
+  @override
+  void initState() {
+    super.initState();
+    _focus.addListener(_onFocus);
+  }
+
+  void _onFocus() => setState(() {});
+
+  /// Follows [EcCompactField.initialValue] while not being typed in — a
+  /// row removed above shifts its neighbours' values into this field.
+  @override
+  void didUpdateWidget(EcCompactField old) {
+    super.didUpdateWidget(old);
+    final next = widget.initialValue;
+    if (widget.controller == null && next != null && next != _controller.text && !_focus.hasFocus) {
+      _controller.text = next;
+    }
+  }
+
+  @override
+  void dispose() {
+    _focus.removeListener(_onFocus);
+    if (widget.focusNode == null) _focus.dispose();
+    if (widget.controller == null) _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.palette;
+    final t = context.type;
+    final focused = _focus.hasFocus;
+    final border = focused ? p.accentSolid : (widget.warn ? p.warnLine : (widget.accent ? p.accentLine : (widget.recessed ? p.line2 : p.line)));
+    final fill = widget.accent ? p.accentWash : (widget.recessed ? p.sheet : p.surface);
+    final base = t.bodyS.copyWith(fontSize: widget.height > 42 ? 13 : 12.5, color: p.ink);
+    final style = widget.accent
+        ? base.copyWith(fontStyle: FontStyle.italic, color: p.accent)
+        : (widget.strong ? base.copyWith(fontWeight: FontWeight.w500) : base.copyWith(color: p.ink2));
+
+    return AnimatedContainer(
+      duration: EcMotion.fast,
+      height: widget.height,
+      padding: const EdgeInsets.symmetric(horizontal: 10),
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: fill,
+        borderRadius: BorderRadius.circular(EcRadius.inner),
+        border: Border.all(color: border, width: focused ? 1.5 : 1),
+        boxShadow: focused ? [BoxShadow(color: p.accentWash, spreadRadius: 3)] : null,
+      ),
+      child: TextField(
+        controller: _controller,
+        focusNode: _focus,
+        textAlign: widget.textAlign,
+        textInputAction: widget.textInputAction,
+        textCapitalization: TextCapitalization.words,
+        onChanged: widget.onChanged,
+        onSubmitted: widget.onSubmitted,
+        style: style,
+        decoration: InputDecoration(
+          isCollapsed: true,
+          border: InputBorder.none,
+          hintText: widget.hint,
+          hintStyle: base.copyWith(color: p.faint, fontStyle: FontStyle.normal),
+        ),
+      ),
+    );
+  }
+}
+
+/// A multi-line field — one name per line on list blocks, the raw text on
+/// paste (4.2). [mono] sets it in the mono face, for text that is about to
+/// be split by rule.
+class EcTextArea extends StatefulWidget {
+  final TextEditingController controller;
+  final String? label;
+  final String? hint;
+  final int minLines;
+  final int? maxLines;
+  final bool mono;
+  final bool expands;
+  final ValueChanged<String>? onChanged;
+
+  const EcTextArea({
+    super.key,
+    required this.controller,
+    this.label,
+    this.hint,
+    this.minLines = 4,
+    this.maxLines = 10,
+    this.mono = false,
+    this.expands = false,
+    this.onChanged,
+  });
+
+  @override
+  State<EcTextArea> createState() => _EcTextAreaState();
+}
+
+class _EcTextAreaState extends State<EcTextArea> {
+  final _focus = FocusNode();
+
+  @override
+  void initState() {
+    super.initState();
+    _focus.addListener(_onFocus);
+  }
+
+  void _onFocus() => setState(() {});
+
+  @override
+  void dispose() {
+    _focus.removeListener(_onFocus);
+    _focus.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.palette;
+    final t = context.type;
+    final focused = _focus.hasFocus;
+    final style = widget.mono ? t.mono.copyWith(fontSize: 10.5, height: 1.6, color: p.ink2) : t.body.copyWith(color: p.ink, height: 1.5);
+
+    final box = AnimatedContainer(
+      duration: EcMotion.fast,
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: p.surface,
+        borderRadius: BorderRadius.circular(EcRadius.field),
+        border: Border.all(color: focused ? p.accentSolid : p.line, width: focused ? 1.5 : 1),
+        boxShadow: focused ? [BoxShadow(color: p.accentWash, spreadRadius: 3)] : null,
+      ),
+      child: TextField(
+        controller: widget.controller,
+        focusNode: _focus,
+        minLines: widget.expands ? null : widget.minLines,
+        maxLines: widget.expands ? null : widget.maxLines,
+        expands: widget.expands,
+        keyboardType: TextInputType.multiline,
+        textAlignVertical: TextAlignVertical.top,
+        onChanged: widget.onChanged,
+        style: style,
+        decoration: InputDecoration(
+          isCollapsed: true,
+          border: InputBorder.none,
+          hintText: widget.hint,
+          hintStyle: style.copyWith(color: p.faint),
+        ),
+      ),
+    );
+
+    if (widget.label == null) return box;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: MainAxisSize.min,
+      children: [Text(widget.label!, style: t.label), const SizedBox(height: 7), widget.expands ? Expanded(child: box) : box],
+    );
+  }
+}

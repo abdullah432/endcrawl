@@ -1,31 +1,26 @@
-/// A candidate delimiter for splitting a pasted line into role/actor —
-/// direct port of the prototype's `DELIMS`.
+/// One rule for splitting a pasted line into role and name (4.2).
 class DelimiterOption {
   final String id;
   final String label;
   final RegExp pattern;
   const DelimiterOption(this.id, this.label, this.pattern);
+
+  bool splits(String line) => line.split(pattern).where((p) => p.trim().isNotEmpty).length >= 2;
 }
 
 final kDelimiters = <DelimiterOption>[
-  DelimiterOption('dash', 'Dash', RegExp(r'\s+[-–—]\s+')),
+  DelimiterOption('dash', 'Dash —', RegExp(r'\s+[-–—]\s+')),
   DelimiterOption('comma', 'Comma', RegExp(r'\s*,\s*')),
   DelimiterOption('tab', 'Tab', RegExp(r'\t+')),
-  DelimiterOption('colon', 'Colon', RegExp(r'\s*:\s*')),
-  DelimiterOption('as', '" as "', RegExp(r'\s+as\s+', caseSensitive: false)),
-  DelimiterOption('dd', '2 spaces', RegExp(r' {2,}')),
+  DelimiterOption('as', '"as"', RegExp(r'\s+as\s+', caseSensitive: false)),
+  DelimiterOption('spaces', '2+ spaces', RegExp(r' {2,}')),
 ];
 
-const kPasteRawSeed = 'Elena Marsh - Priya Raghunathan\n'
-    'DET. AUGUST COLE - Kwame Boateng\n'
-    'Margo - Hattie Lindqvist\n'
-    'Young Elena - Sofia Navarro-Reyes\n'
-    'The Ferryman - Ibrahim Sesay\n'
-    'Dr. Halvorsen - Greta Lindemann\n'
-    'Bartender - Yusuf Demir\n'
-    'Night Nurse - Aoife Callaghan\n'
-    'Transit Cop (uncredited)\n'
-    'Woman on Platform - Xiulan Ma';
+/// The non-empty, trimmed lines of pasted text.
+List<String> pastedLines(String raw) => raw.split('\n').map((t) => t.trim()).where((t) => t.isNotEmpty).toList();
+
+/// How many of [lines] the rule would split — the count on each chip.
+int matchCount(List<String> lines, DelimiterOption rule) => lines.where(rule.splits).length;
 
 class ParsedRow {
   final bool ok;
@@ -35,22 +30,21 @@ class ParsedRow {
   const ParsedRow({required this.ok, required this.left, required this.right, required this.index});
 }
 
-/// Rule-based split — never guesses, never invents: a line that doesn't
-/// contain the chosen delimiter is flagged, not corrected. Port of
-/// `parseRaw()`.
+/// Rule-based split — never guesses, never invents: a line without the
+/// chosen delimiter is flagged, not corrected. Everything after the first
+/// delimiter is the name, so "Dr. Vance — Helen — Tsai" keeps the rest.
 List<ParsedRow> parsePastedText(String raw, DelimiterOption delimiter, bool swapColumns) {
-  final lines = raw.split('\n').map((t) => t.trim()).where((t) => t.isNotEmpty).toList();
+  final lines = pastedLines(raw);
   return [
-    for (var i = 0; i < lines.length; i++)
-      () {
-        final t = lines[i];
-        final parts = t.split(delimiter.pattern);
-        if (parts.length < 2) return ParsedRow(ok: false, left: t, right: '', index: i);
-        final l = parts.first.trim();
-        final r = parts.sublist(1).join(' ').trim();
-        return swapColumns
-            ? ParsedRow(ok: true, left: r, right: l, index: i)
-            : ParsedRow(ok: true, left: l, right: r, index: i);
-      }(),
+    for (final (i, t) in lines.indexed)
+      if (!delimiter.splits(t))
+        ParsedRow(ok: false, left: t, right: '', index: i)
+      else
+        () {
+          final parts = t.split(delimiter.pattern);
+          final l = parts.first.trim();
+          final r = parts.sublist(1).join(' ').trim();
+          return swapColumns ? ParsedRow(ok: true, left: r, right: l, index: i) : ParsedRow(ok: true, left: l, right: r, index: i);
+        }(),
   ];
 }

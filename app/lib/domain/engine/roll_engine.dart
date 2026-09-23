@@ -319,3 +319,67 @@ String formatTimecode(double frames, double fps) {
   final h = f ~/ (b * 3600);
   return [h, m, s, ff].map((n) => n.toString().padLeft(2, '0')).join(':');
 }
+
+/// How long each active block is on screen, in seconds — the "0:48" on
+/// its row. A hold or spacer is its own stated time; a scrolling block is
+/// its measured height at the current rate. Blocks not yet measured are
+/// left out rather than shown as zero.
+Map<String, double> blockSeconds(RollEngineResult e, List<CreditBlock> activeBlocks, RollMeasurements m) {
+  final out = <String, double>{};
+  for (var i = 0; i < activeBlocks.length; i++) {
+    final b = activeBlocks[i];
+    switch (b) {
+      case HoldBlock(:final fadeIn, :final hold, :final fadeOut):
+        out[b.id] = fadeIn + hold + fadeOut;
+        continue;
+      case SpacerBlock(:final seconds):
+        out[b.id] = seconds;
+        continue;
+      default:
+    }
+    final y = m.blockY[b.id];
+    if (y == null || e.pps == 0) continue;
+    final nextY = i < activeBlocks.length - 1 ? m.blockY[activeBlocks[i + 1].id] : null;
+    final end = nextY ?? (e.travel - e.canvasH);
+    out[b.id] = max(0.0, end - y) / e.pps;
+  }
+  return out;
+}
+
+/// The block a "too fast" warning is pinned on: the one with the most
+/// lines to read, which is where a short dwell bites first. Null when the
+/// roll is readable or nothing has more than one line.
+String? readabilityCulprit(RollEngineResult e, List<CreditBlock> activeBlocks) {
+  if (e.readable) return null;
+  String? id;
+  var most = 1;
+  for (final b in activeBlocks) {
+    final lines = switch (b) {
+      NameListBlock(:final names) => names.length,
+      PairListBlock(:final rows) => rows.length,
+      MainCreditsBlock(:final cards) => cards.fold<int>(0, (a, c) => a + c.names.length),
+      _ => 1,
+    };
+    if (lines > most) {
+      most = lines;
+      id = b.id;
+    }
+  }
+  return id;
+}
+
+/// One-tap fixes for a juddering or too-fast roll (3.2): the nearest whole
+/// pixel-per-frame rates that also keep every line on screen for the 3 s
+/// floor, nearest first, with the runtime each gives.
+List<(int ppf, double totalFrames)> timingFixes(RollEngineResult e, {int count = 2}) {
+  if (e.fps == 0 || e.travel <= 1) return const [];
+  final readableMax = max(1, (e.canvasH / (3 * e.fps)).floor());
+  final start = min(readableMax, max(1, e.ppf.round()));
+  final out = <(int, double)>[];
+  for (var k = start; k >= 1 && out.length < count; k--) {
+    if (e.clean && e.readable) break;
+    if ((k - e.ppf).abs() < 0.0008) continue;
+    out.add((k, (e.travel / k).ceilToDouble() + e.fixedFrames));
+  }
+  return out;
+}

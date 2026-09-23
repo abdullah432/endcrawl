@@ -2,25 +2,22 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../core/theme/tokens.dart';
+import '../../../core/config/orientations.dart';
+import '../../../core/theme/theme_context.dart';
+import '../../../core/widgets/ec_scaffold.dart';
 import '../../monitor/widgets/monitor_view.dart';
 import '../../project/controllers/project_controller.dart';
 import '../controllers/editor_ui_controller.dart';
 import '../widgets/block_list.dart';
-import '../widgets/bottom_action_bar.dart';
+import '../widgets/editor_dock.dart';
 import '../widgets/landscape_monitor.dart';
+import '../widgets/readability_banner.dart';
 import '../widgets/scrub_bar.dart';
-import '../widgets/sheets/add_block_sheet.dart';
-import '../widgets/sheets/background_sheet.dart';
-import '../widgets/sheets/block_editor_sheet.dart';
-import '../widgets/sheets/duration_sheet.dart';
-import '../widgets/sheets/export_sheet.dart';
-import '../widgets/sheets/look_sheet.dart';
-import '../widgets/sheets/paste_sheet.dart';
 import '../widgets/status_line.dart';
 import '../widgets/transport_bar.dart';
-import '../widgets/warn_banner.dart';
 
+/// 3.1 — the hub. Monitor on top, blocks below, four actions in a dock.
+/// Turning the phone opens the review monitor (3.4).
 class EditorScreen extends ConsumerStatefulWidget {
   const EditorScreen({super.key});
 
@@ -38,6 +35,7 @@ class _EditorScreenState extends ConsumerState<EditorScreen> {
   void initState() {
     super.initState();
     _project = ref.read(projectControllerProvider.notifier);
+    SystemChrome.setPreferredOrientations(kEditorOrientations);
 
     // A debounced autosave is a lost edit if the app is backgrounded mid
     // debounce, so a pause flushes whatever is pending immediately.
@@ -50,112 +48,135 @@ class _EditorScreenState extends ConsumerState<EditorScreen> {
   @override
   void dispose() {
     _lifecycle?.dispose();
-    SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
+    SystemChrome.setPreferredOrientations(kPortraitOnly);
     super.dispose();
   }
 
   /// Clean close: writes the document and clears the left-open flag so the
   /// next launch offers a plain resume rather than a crash recovery.
   ///
-  /// Deliberately driven by the pop rather than [dispose]: Riverpod forbids
-  /// modifying a provider during a widget lifecycle callback. If a pop path
-  /// ever bypassed this, autosave has still persisted every edit — the only
-  /// cost is being offered a recovery for a session that ended cleanly.
+  /// Driven by the pop rather than [dispose]: Riverpod forbids modifying a
+  /// provider during a widget lifecycle callback. If a pop path ever
+  /// bypassed this, autosave has still persisted every edit — the only cost
+  /// is being offered a recovery for a session that ended cleanly.
   void _handlePop(bool didPop) {
     if (didPop) _project.closeProject();
   }
 
   @override
   Widget build(BuildContext context) {
-    ref.listen(editorUiControllerProvider.select((s) => s.sheet), (prev, next) {
-      if (next == EditorSheet.none) return;
-      final blockId = ref.read(editorUiControllerProvider).sheetBlockId;
-      showModalBottomSheet(
-        context: context,
-        backgroundColor: Colors.transparent,
-        isScrollControlled: true,
-        builder: (_) => switch (next) {
-          EditorSheet.add => const AddBlockSheet(),
-          EditorSheet.look => const LookSheet(),
-          EditorSheet.background => const BackgroundSheet(),
-          EditorSheet.duration => const DurationSheet(),
-          EditorSheet.paste => const PasteSheet(),
-          EditorSheet.export => const ExportSheet(),
-          EditorSheet.block => BlockEditorSheet(blockId: blockId ?? ''),
-          EditorSheet.none => const SizedBox.shrink(),
-        },
-      ).whenComplete(() => ref.read(editorUiControllerProvider.notifier).closeSheet());
-    });
-
     return PopScope(
       onPopInvokedWithResult: (didPop, _) => _handlePop(didPop),
       child: OrientationBuilder(
-        builder: (context, orientation) {
-          if (orientation == Orientation.landscape) {
-            return const Scaffold(backgroundColor: Colors.black, body: LandscapeMonitor());
-          }
-          return _portrait(context);
-        },
+        builder: (context, orientation) => orientation == Orientation.landscape
+            ? const Scaffold(backgroundColor: Colors.black, body: LandscapeMonitor())
+            : const _PortraitEditor(),
       ),
     );
   }
+}
 
-  Widget _portrait(BuildContext context) {
+class _PortraitEditor extends ConsumerWidget {
+  const _PortraitEditor();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final p = context.palette;
+    final t = context.type;
     final project = ref.watch(projectControllerProvider);
     final controller = ref.read(projectControllerProvider.notifier);
-    final ui = ref.watch(editorUiControllerProvider);
+    final selectMode = ref.watch(editorUiControllerProvider.select((s) => s.selectMode));
 
     return Scaffold(
-      backgroundColor: EcColors.surfaceCanvas,
-      body: SafeArea(
-        child: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: EcSpace.s3, vertical: EcSpace.s2),
-              child: Row(
+      backgroundColor: p.ground,
+      body: EcGround(
+        child: SafeArea(
+          bottom: false,
+          child: Stack(
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  IconButton(
-                    onPressed: () => Navigator.of(context).maybePop(),
-                    icon: const Icon(Icons.chevron_left, color: EcColors.textSecondary),
+                  SizedBox(
+                    height: 48,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      child: Row(
+                        children: [
+                          EcCircleButton.glass(
+                            icon: Icons.chevron_left_rounded,
+                            tooltip: 'Back',
+                            onPressed: () => Navigator.of(context).maybePop(),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              project.name,
+                              textAlign: TextAlign.center,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: t.barTitle.copyWith(fontSize: 21),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          _HistoryButton(icon: Icons.undo_rounded, tooltip: 'Undo', onPressed: controller.canUndo ? controller.undo : null),
+                          const SizedBox(width: 4),
+                          _HistoryButton(icon: Icons.redo_rounded, tooltip: 'Redo', onPressed: controller.canRedo ? controller.redo : null),
+                        ],
+                      ),
+                    ),
                   ),
-                  Expanded(
-                    child: Text(project.name, textAlign: TextAlign.center, overflow: TextOverflow.ellipsis, maxLines: 1, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: EcColors.textPrimary)),
+                  const SizedBox(height: 4),
+                  const SizedBox(height: 220, child: ColoredBox(color: Colors.black, child: MonitorView())),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Center(child: StatusLine(project: project)),
+                        const SizedBox(height: 8),
+                        const ScrubBar(),
+                        const TransportBar(),
+                      ],
+                    ),
                   ),
-                  IconButton(
-                    onPressed: controller.canUndo ? controller.undo : null,
-                    icon: Icon(Icons.undo, size: 18, color: controller.canUndo ? EcColors.textSecondary : EcColors.textDisabled),
-                  ),
-                  IconButton(
-                    onPressed: controller.canRedo ? controller.redo : null,
-                    icon: Icon(Icons.redo, size: 18, color: controller.canRedo ? EcColors.textSecondary : EcColors.textDisabled),
-                  ),
+                  const ReadabilityBanner(),
+                  const SizedBox(height: 6),
+                  const Expanded(child: BlockList()),
                 ],
               ),
-            ),
-            Center(child: StatusLine(project: project)),
-            const SizedBox(height: EcSpace.s2),
-            SizedBox(
-              height: 214,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: EcSpace.s3),
-                child: const MonitorView(),
+              Positioned(
+                left: 12,
+                right: 12,
+                bottom: 18 + MediaQuery.paddingOf(context).bottom,
+                child: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 200),
+                  child: selectMode ? const BulkBar(key: ValueKey('bulk')) : const EditorDock(key: ValueKey('dock')),
+                ),
               ),
-            ),
-            const WarnBanner(),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(EcSpace.s4, EcSpace.s2, EcSpace.s4, 0),
-              child: const ScrubBar(),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(EcSpace.s4, EcSpace.s1, EcSpace.s4, 0),
-              child: const TransportBar(),
-            ),
-            const SizedBox(height: EcSpace.s2),
-            const Expanded(child: BlockList()),
-            if (!ui.selectMode) const BottomActionBar(),
-          ],
+            ],
+          ),
         ),
       ),
+    );
+  }
+}
+
+/// Undo and redo: glass when there is something to step to, bare and faint
+/// when there isn't.
+class _HistoryButton extends StatelessWidget {
+  final IconData icon;
+  final String tooltip;
+  final VoidCallback? onPressed;
+
+  const _HistoryButton({required this.icon, required this.tooltip, required this.onPressed});
+
+  @override
+  Widget build(BuildContext context) {
+    if (onPressed != null) return EcCircleButton.glass(icon: icon, tooltip: tooltip, onPressed: onPressed);
+    return Tooltip(
+      message: tooltip,
+      child: SizedBox(width: 40, height: 40, child: Icon(icon, size: 20, color: context.palette.faint)),
     );
   }
 }

@@ -124,34 +124,31 @@ class EcGlassRow extends StatelessWidget {
 }
 
 /// The 36 px three-letter block code tile — "CST", "DPT", "TTL".
+///
+/// Neutral in a list, [EcTone.accent] for the block in focus, and
+/// [EcTone.warn] for the one a readability warning is pinned on.
 class EcCodeTile extends StatelessWidget {
   final String code;
-  final bool selected;
-  final bool warn;
+  final EcTone tone;
   final double size;
 
-  const EcCodeTile(this.code, {super.key, this.selected = false, this.warn = false, this.size = 36});
+  const EcCodeTile(this.code, {super.key, this.tone = EcTone.neutral, this.size = 36});
 
   @override
   Widget build(BuildContext context) {
     final p = context.palette;
-    final (fill, fg) = selected
-        ? (null, p.onInk)
-        : warn
-            ? (p.warnWash, p.warn)
-            : (p.accentWash, p.accent);
+    final (fill, fg) = switch (tone) {
+      EcTone.accent => (p.accentWash, p.accent),
+      EcTone.warn => (p.warnWash, p.warn),
+      EcTone.ok => (p.okWash, p.ok),
+      EcTone.neutral => (p.tint, p.ink2),
+    };
     return Container(
       width: size,
       height: size,
       alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: fill,
-        gradient: selected ? p.primary : null,
-        borderRadius: BorderRadius.circular(EcRadius.tile),
-      ),
-      child: selected
-          ? Icon(Icons.check_rounded, size: 18, color: fg)
-          : Text(code, style: context.type.code.copyWith(color: fg)),
+      decoration: BoxDecoration(color: fill, borderRadius: BorderRadius.circular(EcRadius.tile)),
+      child: Text(code, style: context.type.code.copyWith(color: fg, fontSize: code.length > 3 ? 8.5 : null)),
     );
   }
 }

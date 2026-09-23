@@ -1,80 +1,117 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/theme/theme_context.dart';
 import '../../../core/theme/tokens.dart';
-import '../../project/controllers/project_controller.dart';
-import '../../../domain/models/credit_block.dart';
 import '../../../domain/engine/roll_engine.dart';
+import '../../../domain/models/credit_block.dart';
 import '../../monitor/controllers/playback_controller.dart';
+import '../../project/controllers/project_controller.dart';
 
-/// Scrub bar with timecode and block markers, so the user can jump to
-/// e.g. "Cast" instantly (§8 of the brief).
+/// Timecode, then a track with a tick at each block so "Cast" is one drag
+/// away (3.1).
 class ScrubBar extends ConsumerWidget {
   const ScrubBar({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final project = ref.watch(projectControllerProvider);
-    final e = project.engine;
-    final frame = ref.watch(playbackControllerProvider).frame;
-
-    final markers = <(double pct, Color color)>[];
-    for (final b in project.activeBlocks) {
-      if (b is SpacerBlock) continue;
-      final y = project.measurements.blockY[b.id] ?? 0;
-      final fr = e.headFrames + (e.ppf == 0 ? 0 : y / e.ppf);
-      final pct = (fr / e.totalFrames * 100).clamp(0, 100).toDouble();
-      markers.add((pct, b is PairListBlock ? EcColors.accentPrimary : EcColors.borderStrong));
-    }
-
-    void handleDrag(BuildContext context, Offset globalPos) {
-      final box = context.findRenderObject() as RenderBox;
-      final local = box.globalToLocal(globalPos);
-      final t = (local.dx / box.size.width).clamp(0.0, 1.0);
-      ref.read(playbackControllerProvider.notifier).scrubToFraction(t);
-    }
+    final t = context.type;
+    final p = context.palette;
+    final e = ref.watch(projectControllerProvider.select((s) => s.engine));
+    final frame = ref.watch(playbackControllerProvider.select((s) => s.frame));
 
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(formatTimecode(frame, e.fps), style: const TextStyle(fontFamily: EcFonts.mono, fontSize: 12, color: EcColors.textPrimary)),
-            Text(formatTimecode(e.totalFrames, e.fps), style: const TextStyle(fontFamily: EcFonts.mono, fontSize: 11, color: EcColors.textTertiary)),
+            Text(formatTimecode(frame, e.fps), style: t.mono.copyWith(fontSize: 11, color: p.ink)),
+            Text(formatTimecode(e.totalFrames, e.fps), style: t.mono.copyWith(fontSize: 11)),
           ],
         ),
-        const SizedBox(height: 4),
-        Builder(builder: (barContext) {
-          return GestureDetector(
+        const ScrubTrack(),
+      ],
+    );
+  }
+}
+
+/// The draggable track itself — shared by the editor and, [onBlack], the
+/// landscape monitor (3.4).
+class ScrubTrack extends ConsumerWidget {
+  final bool onBlack;
+  const ScrubTrack({super.key, this.onBlack = false});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final p = context.palette;
+    final project = ref.watch(projectControllerProvider);
+    final e = project.engine;
+    final frame = ref.watch(playbackControllerProvider.select((s) => s.frame));
+    final progress = e.totalFrames == 0 ? 0.0 : (frame / e.totalFrames).clamp(0.0, 1.0);
+
+    final ticks = onBlack
+        ? const <double>[]
+        : [
+            for (final b in project.activeBlocks)
+              if (b is! SpacerBlock && project.measurements.blockY[b.id] != null)
+                ((e.headFrames + (e.ppf == 0 ? 0 : project.measurements.blockY[b.id]! / e.ppf)) / e.totalFrames)
+                    .clamp(0.0, 1.0),
+          ];
+
+    void scrub(Offset local, double width) =>
+        ref.read(playbackControllerProvider.notifier).scrubToFraction((local.dx / width).clamp(0.0, 1.0));
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final w = constraints.maxWidth;
+        return Semantics(
+          slider: true,
+          label: 'Playhead',
+          value: formatTimecode(frame, e.fps),
+          child: GestureDetector(
             behavior: HitTestBehavior.opaque,
-            onPanDown: (d) => handleDrag(barContext, d.globalPosition),
-            onPanUpdate: (d) => handleDrag(barContext, d.globalPosition),
+            onPanDown: (d) => scrub(d.localPosition, w),
+            onPanUpdate: (d) => scrub(d.localPosition, w),
             child: SizedBox(
-              height: 24,
+              height: onBlack ? 30 : 22,
               child: Stack(
                 alignment: Alignment.centerLeft,
+                clipBehavior: Clip.none,
                 children: [
-                  Container(height: 3, decoration: BoxDecoration(color: EcColors.surfaceHi, borderRadius: BorderRadius.circular(EcRadius.full))),
-                  for (final m in markers)
-                    Align(
-                      alignment: Alignment(m.$1 / 50 - 1, 0),
-                      child: Container(width: 1, height: 10, color: m.$2),
+                  Container(
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: onBlack ? Colors.white.withValues(alpha: .2) : p.ink.withValues(alpha: .1),
+                      borderRadius: BorderRadius.circular(EcRadius.pill),
                     ),
-                  Align(
-                    alignment: Alignment((frame / e.totalFrames).clamp(0, 1) * 2 - 1, 0),
+                  ),
+                  Container(
+                    width: w * progress,
+                    height: 4,
+                    decoration: BoxDecoration(gradient: p.primary, borderRadius: BorderRadius.circular(EcRadius.pill)),
+                  ),
+                  for (final x in ticks)
+                    Positioned(left: w * x, top: 6, child: Container(width: 1, height: 10, color: p.faint)),
+                  Positioned(
+                    left: w * progress - 7,
                     child: Container(
-                      width: 2,
-                      height: 16,
-                      decoration: BoxDecoration(color: EcColors.accentPrimary, boxShadow: [BoxShadow(color: EcColors.accentPrimary.withValues(alpha: .6), blurRadius: 8)]),
+                      width: 14,
+                      height: 14,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                        border: onBlack ? null : Border.all(color: p.accentSolid, width: 3),
+                        boxShadow: onBlack ? null : p.primaryShadow,
+                      ),
                     ),
                   ),
                 ],
               ),
             ),
-          );
-        }),
-      ],
+          ),
+        );
+      },
     );
   }
 }

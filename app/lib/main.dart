@@ -3,11 +3,15 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'bootstrap.dart';
+import 'core/config/orientations.dart';
 import 'core/theme/app_theme.dart';
 import 'features/auth/widgets/auth_gate.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // Portrait everywhere; the editor alone opens up landscape, where turning
+  // the phone is how the full-bleed monitor (3.4) is reached.
+  await SystemChrome.setPreferredOrientations(kPortraitOnly);
 
   // Firebase, Firestore's cache settings and platform storage are all
   // resolved before the first frame, so no screen has to render a loading
