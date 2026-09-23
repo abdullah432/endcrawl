@@ -161,7 +161,7 @@ class FirebaseAuthRepository implements AuthRepository {
       isEmailVerified: user.emailVerified,
       methods: {
         for (final info in user.providerData)
-          if (_methodFor(info.providerId) case final method?) method,
+          ?_methodFor(info.providerId),
       },
     );
   }

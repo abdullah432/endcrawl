@@ -2,7 +2,9 @@ import 'dart:convert';
 
 import 'package:endcrawl/domain/models/credit_block.dart';
 import 'package:endcrawl/domain/models/credit_face.dart';
+import 'package:endcrawl/domain/models/entitlement.dart';
 import 'package:endcrawl/domain/models/project.dart';
+import 'package:endcrawl/domain/models/render_summary.dart';
 import 'package:endcrawl/domain/models/project_settings.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -233,6 +235,64 @@ void main() {
       final long = 'A' * (Project.maxTitleLength + 50);
 
       expect(sanitizeProjectTitle(long), hasLength(Project.maxTitleLength));
+    });
+  });
+
+  group('schema v2', () {
+    test('a v1 document reads with no last render, and is written back as v2', () {
+      final v1 = _fullProject().toJson()
+        ..['schemaVersion'] = 1
+        ..remove('lastRender');
+
+      final loaded = Project.fromJson(v1);
+
+      expect(loaded.lastRender, isNull);
+      expect(loaded.toJson()['schemaVersion'], 2);
+    });
+
+    test('the last render round-trips', () {
+      final at = DateTime.utc(2026, 9, 20, 10);
+      final project = _fullProject().copyWith(
+        lastRender: RenderSummary(outcome: RenderOutcome.failed, codec: 'H.264', width: 1920, height: 1080, at: at),
+      );
+
+      final back = Project.fromJson(project.toJson()).lastRender!;
+
+      expect(back.outcome, RenderOutcome.failed);
+      expect(back.codec, 'H.264');
+      expect(back.at, at);
+    });
+
+    test('a title stored before the 60-character cap is clamped on load', () {
+      final json = _fullProject().toJson()..['title'] = 'T' * 120;
+      expect(Project.fromJson(json).title, hasLength(60));
+    });
+
+    test('the library preview is the first card with names', () {
+      final project = Project.create(blocks: const [
+        TitleBlock(id: 't', title: 'THE LONG WAY DOWN'),
+        DeptBlock(id: 'd', header: 'Directed by', names: ['Maya Okonkwo']),
+      ]);
+
+      expect(project.summary.preview.header, 'Directed by');
+      expect(project.summary.preview.names, ['Maya Okonkwo']);
+    });
+  });
+
+  group('entitlement', () {
+    test('free keeps three projects and shows ads', () {
+      const free = Entitlement.free();
+      expect(free.canAddProject(2), isTrue);
+      expect(free.canAddProject(3), isFalse);
+      expect(free.slotsLeft(2), 1);
+      expect(free.showsAds, isTrue);
+    });
+
+    test('pro is unlimited and ad-free', () {
+      const pro = Entitlement.pro(period: BillingPeriod.yearly);
+      expect(pro.canAddProject(300), isTrue);
+      expect(pro.slotsLeft(300), isNull);
+      expect(pro.showsAds, isFalse);
     });
   });
 }

@@ -21,6 +21,16 @@ class AuthGate extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final auth = ref.watch(authStateProvider);
 
+    // The gate swaps what's at the root, but screens pushed on top of it
+    // (Settings, the editor) belong to the account that pushed them. When
+    // that account signs out, is deleted or is replaced, clear them, or the
+    // welcome screen would appear *underneath* a stale Settings screen.
+    ref.listen(currentUidProvider, (previous, next) {
+      if (previous != null && previous != next) {
+        Navigator.of(context).popUntil((route) => route.isFirst);
+      }
+    });
+
     return switch (auth) {
       // The first event is the restored session, so this is the brief
       // moment before Firebase has answered — not a signed-out state.

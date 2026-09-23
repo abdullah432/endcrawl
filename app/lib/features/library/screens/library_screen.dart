@@ -3,266 +3,298 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../bootstrap.dart';
 import '../../../core/result.dart';
-import '../../../core/theme/tokens.dart';
-import '../../../domain/models/project.dart';
-import '../../appendix/screens/appendix_screen.dart';
-import '../widgets/account_menu.dart';
-import '../../editor/screens/editor_screen.dart';
-import '../../monitor/controllers/playback_controller.dart';
-import '../../project/controllers/project_controller.dart';
-import '../../templates/screens/templates_screen.dart';
+import '../../../core/theme/theme_context.dart';
+import '../../../core/widgets/ec_ad_slot.dart';
+import '../../../core/widgets/ec_button.dart';
+import '../../../core/widgets/ec_scaffold.dart';
+import '../../../core/widgets/ec_surfaces.dart';
+import '../../../core/widgets/ec_toast.dart';
+import '../../../domain/models/entitlement.dart';
+import '../../new_project/new_project_flow.dart';
+import '../../new_project/screens/new_project_sheet.dart';
+import '../../new_project/widgets/template_list.dart';
+import '../../plan/plan_navigation.dart';
+import '../../plan/screens/pro_sheet.dart';
+import '../../project/project_navigation.dart';
+import '../../settings/screens/settings_screen.dart';
 import '../controllers/library_controller.dart';
+import '../widgets/delete_project_sheet.dart';
+import '../widgets/project_actions_sheet.dart';
 import '../widgets/project_card.dart';
-import '../widgets/resume_card.dart';
+import '../widgets/rename_sheet.dart';
+import '../widgets/slot_card.dart';
 
-/// The app's home: everything already saved on this device, with the
-/// last-open project offered back at the top.
-class LibraryScreen extends ConsumerStatefulWidget {
+/// 1.1 / 1.2 / 1.7 — the home screen, where finished work lives.
+///
+/// Every project is a credit frame numbered like a reel. On the free plan
+/// the next empty reel is shown as a slot, so the cap is visible long before
+/// it blocks anyone. With no projects yet, the empty state *is* the
+/// template picker — no illustration, no "get started" button.
+class LibraryScreen extends ConsumerWidget {
   const LibraryScreen({super.key});
 
   @override
-  ConsumerState<LibraryScreen> createState() => _LibraryScreenState();
-}
+  Widget build(BuildContext context, WidgetRef ref) {
+    final view = ref.watch(libraryViewProvider);
 
-class _LibraryScreenState extends ConsumerState<LibraryScreen> {
-  bool _resumeDismissed = false;
-
-  Future<void> _open(String id) async {
-    final result = await ref.read(projectControllerProvider.notifier).openProject(id);
-    if (!mounted) return;
-
-    switch (result) {
-      case Ok():
-        ref.read(playbackControllerProvider.notifier).resetToHead();
-        // Flags the document as open before the editor appears, so a kill
-        // while editing leaves something to recover.
-        await ref.read(projectControllerProvider.notifier).markOpened();
-        if (!mounted) return;
-        await Navigator.of(context).push(MaterialPageRoute(builder: (_) => const EditorScreen()));
-        if (!mounted) return;
-        ref.invalidate(projectSummariesProvider);
-      case Err(:final failure):
-        _showMessage(failure.message);
-    }
-  }
-
-  void _showMessage(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
-  }
-
-  Future<void> _handleAction(ProjectSummary summary, ProjectCardAction action) async {
-    final library = ref.read(libraryControllerProvider);
-
-    switch (action) {
-      case ProjectCardAction.rename:
-        final title = await _promptForTitle(summary.title);
-        if (title == null) return;
-        final result = await library.rename(summary.id, title);
-        if (result case Err(:final failure)) _showMessage(failure.message);
-      case ProjectCardAction.duplicate:
-        final result = await library.duplicate(summary.id);
-        if (result case Err(:final failure)) _showMessage(failure.message);
-      case ProjectCardAction.delete:
-        final confirmed = await _confirmDelete(summary.title);
-        if (confirmed != true) return;
-        final result = await library.delete(summary.id);
-        if (result case Err(:final failure)) _showMessage(failure.message);
-    }
-  }
-
-  Future<String?> _promptForTitle(String current) {
-    final controller = TextEditingController(text: current);
-    return showDialog<String>(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: EcColors.surfaceOverlay,
-        title: const Text('Rename project', style: TextStyle(fontSize: 16)),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          textCapitalization: TextCapitalization.characters,
-          onSubmitted: (value) => Navigator.of(context).pop(value),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel')),
-          TextButton(onPressed: () => Navigator.of(context).pop(controller.text), child: const Text('Rename')),
-        ],
-      ),
-    );
-  }
-
-  Future<bool?> _confirmDelete(String title) {
-    return showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: EcColors.surfaceOverlay,
-        title: const Text('Delete project?', style: TextStyle(fontSize: 16)),
-        content: Text('"$title" will be permanently deleted from this device.',
-            style: const TextStyle(fontSize: 13, color: EcColors.textSecondary)),
-        actions: [
-          TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Delete', style: TextStyle(color: EcColors.warn)),
+    return EcScaffold(
+      scrollable: false,
+      padding: EdgeInsets.zero,
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _Header(view: view.value),
+          Expanded(
+            child: switch (view) {
+              AsyncValue(:final value?) when value.items.isEmpty => _EmptyLibrary(view: value),
+              AsyncValue(:final value?) => _ProjectList(view: value),
+              AsyncError(:final error) => _ErrorState(
+                  message: error is AppFailure ? error.message : 'Could not open your projects.',
+                  onRetry: () => ref.invalidate(projectSummariesProvider),
+                ),
+              _ => const Center(child: SizedBox.square(dimension: 20, child: CircularProgressIndicator(strokeWidth: 2))),
+            },
           ),
         ],
       ),
     );
   }
+}
+
+class _Header extends ConsumerWidget {
+  final LibraryView? view;
+  const _Header({required this.view});
 
   @override
-  Widget build(BuildContext context) {
-    final summaries = ref.watch(projectSummariesProvider);
-    final resume = ref.watch(resumeCandidateProvider).value;
+  Widget build(BuildContext context, WidgetRef ref) {
+    final p = context.palette;
+    final t = context.type;
     final user = ref.watch(authStateProvider).value;
+    final view = this.view;
+    final full = view?.isFull ?? false;
 
-    return Scaffold(
-      backgroundColor: EcColors.surfaceCanvas,
-      body: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(EcSpace.s4, EcSpace.s4, EcSpace.s3, 0),
-              child: Row(
-                children: [
-                  const Expanded(
-                    child: Text(
-                      'ENDCRAWL',
-                      style: TextStyle(
-                        fontFamily: EcFonts.archivoNarrow,
-                        fontWeight: FontWeight.w700,
-                        fontSize: 18,
-                        letterSpacing: 4.5,
-                        color: EcColors.textPrimary,
-                      ),
-                    ),
-                  ),
-                  IconButton(
-                    tooltip: 'Design system',
-                    icon: const Icon(Icons.palette_outlined, color: EcColors.textTertiary, size: 20),
-                    onPressed: () => Navigator.of(context).push(
-                      MaterialPageRoute(builder: (_) => const AppendixScreen()),
-                    ),
-                  ),
-                  if (user != null) AccountMenu(user: user),
-                ],
-              ),
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 6, 20, 20),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (view != null) EcEyebrow(view.reelLabel, color: full ? p.warn : null),
+                const SizedBox(height: 8),
+                Text('Projects', style: t.displayXL),
+              ],
             ),
-            Expanded(
-              child: switch (summaries) {
-                AsyncLoading() => const Center(
-                    child: CircularProgressIndicator(color: EcColors.accentPrimary, strokeWidth: 2),
-                  ),
-                AsyncError(:final error) => _ErrorState(
-                    message: error is AppFailure ? error.message : 'Could not open your projects.',
-                    onRetry: () => ref.invalidate(projectSummariesProvider),
-                  ),
-                AsyncValue(:final value) => _List(
-                    summaries: value ?? const [],
-                    resume: _resumeDismissed ? null : resume,
-                    onOpen: _open,
-                    onAction: _handleAction,
-                    onDismissResume: () => setState(() => _resumeDismissed = true),
-                  ),
-              },
+          ),
+          if (user != null)
+            EcAvatar(
+              initials: user.initials,
+              onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const SettingsScreen())),
+            ),
+          // No "+ New" on the empty library: the template list below is the
+          // way in.
+          if (view != null && view.items.isNotEmpty) ...[
+            const SizedBox(width: 8),
+            EcButton(
+              label: 'New',
+              variant: full ? EcButtonVariant.secondary : EcButtonVariant.primary,
+              size: EcButtonSize.medium,
+              leading: Icon(Icons.add_rounded, size: 18, color: full ? p.ink2 : p.onInk),
+              onPressed: () => _startNew(context, view),
             ),
           ],
-        ),
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        backgroundColor: EcColors.accentPrimary,
-        foregroundColor: EcColors.accentInk,
-        onPressed: () async {
-          await Navigator.of(context).push(MaterialPageRoute(builder: (_) => const TemplatesScreen()));
-          if (!context.mounted) return;
-          ref.invalidate(projectSummariesProvider);
-        },
-        icon: const Icon(Icons.add, size: 20),
-        label: const Text('New project', style: TextStyle(fontWeight: FontWeight.w600)),
+        ],
       ),
     );
   }
+
+  void _startNew(BuildContext context, LibraryView view) {
+    if (view.isFull) {
+      handleSlotsFull(context);
+      return;
+    }
+    final label = view.limit == null ? 'reel ${view.nextReel}' : 'slot ${view.nextReel} of ${view.limit}';
+    NewProjectSheet.show(context, slotLabel: label);
+  }
 }
 
-class _List extends StatelessWidget {
-  final List<ProjectSummary> summaries;
-  final ResumeCandidate? resume;
-  final ValueChanged<String> onOpen;
-  final void Function(ProjectSummary, ProjectCardAction) onAction;
-  final VoidCallback onDismissResume;
-
-  const _List({
-    required this.summaries,
-    required this.resume,
-    required this.onOpen,
-    required this.onAction,
-    required this.onDismissResume,
-  });
+class _EmptyLibrary extends ConsumerWidget {
+  final LibraryView view;
+  const _EmptyLibrary({required this.view});
 
   @override
-  Widget build(BuildContext context) {
-    if (summaries.isEmpty) return const _EmptyState();
-
+  Widget build(BuildContext context, WidgetRef ref) {
+    final t = context.type;
     return ListView(
-      padding: const EdgeInsets.fromLTRB(EcSpace.s4, EcSpace.s5, EcSpace.s4, 96),
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 22),
       children: [
-        if (resume != null)
-          ResumeCard(
-            summary: resume!.summary,
-            recovered: resume!.recovered,
-            onOpen: () => onOpen(resume!.summary.id),
-            onDismiss: onDismissResume,
+        Padding(
+          padding: const EdgeInsets.fromLTRB(4, 4, 4, 12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Pick a starting point.', style: t.displayS.copyWith(fontStyle: FontStyle.italic, height: 1.1)),
+              const SizedBox(height: 6),
+              Text('Change anything later. Every project stays here until you delete it.', style: t.bodyS.copyWith(color: context.palette.muted)),
+            ],
           ),
-        const Padding(
-          padding: EdgeInsets.only(bottom: EcSpace.s3),
-          child: Text('YOUR PROJECTS', style: TextStyle(fontSize: 11, letterSpacing: 2.2, color: EcColors.textTertiary)),
         ),
-        for (final summary in summaries)
-          Padding(
-            padding: const EdgeInsets.only(bottom: EcSpace.s3),
-            child: ProjectCard(
-              summary: summary,
-              recovered: resume?.recovered == true && resume?.summary.id == summary.id,
-              onOpen: () => onOpen(summary.id),
-              onAction: (action) => onAction(summary, action),
-            ),
-          ),
+        TemplateList(onPick: (template) => startNewProject(context, template)),
+        if (view.entitlement.showsAds) ...[
+          const SizedBox(height: 28),
+          EcAdSlot(onHideAds: () => ProSheet.show(context)),
+        ],
       ],
     );
   }
 }
 
-class _EmptyState extends StatelessWidget {
-  const _EmptyState();
+class _ProjectList extends ConsumerWidget {
+  final LibraryView view;
+  const _ProjectList({required this.view});
 
   @override
-  Widget build(BuildContext context) {
-    return const Center(
-      child: Padding(
-        padding: EdgeInsets.all(EcSpace.s6),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              'No projects yet',
-              style: TextStyle(
-                fontFamily: EcFonts.archivo,
-                fontWeight: FontWeight.w600,
-                fontSize: 22,
-                color: EcColors.textPrimary,
+  Widget build(BuildContext context, WidgetRef ref) {
+    final ui = ref.watch(libraryUiProvider);
+    final now = ref.watch(clockProvider)();
+    final actions = _LibraryActions(context, ref, view);
+
+    // The fresh copy after a duplicate goes to the top, highlighted (1.7).
+    final items = [
+      ...view.items.where((i) => i.summary.id == ui.highlightedId),
+      ...view.items.where((i) => i.summary.id != ui.highlightedId),
+    ];
+    final slotsLeft = view.slotsLeft;
+
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 22),
+      children: [
+        if (ui.freeingSlot) ...[
+          EcNotice(
+            tone: EcTone.accent,
+            icon: Icons.backspace_outlined,
+            title: 'Delete a project to free a slot.',
+            body: 'Undo stays available for ten seconds after each delete.',
+            actions: [
+              EcButton.secondary(
+                label: 'Done',
+                size: EcButtonSize.small,
+                onPressed: () => ref.read(libraryUiProvider.notifier).setFreeingSlot(false),
               ),
-            ),
-            SizedBox(height: 8),
-            Text(
-              'Start one from a template — the card order is already right.',
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 13, color: EcColors.textSecondary, height: 1.4),
-            ),
-          ],
-        ),
-      ),
+            ],
+          ),
+          const SizedBox(height: 14),
+        ],
+        for (final (i, item) in items.indexed) ...[
+          ProjectCard(
+            item: item,
+            now: now,
+            frameHeight: i == 0 ? 150 : 120,
+            highlighted: item.summary.id == ui.highlightedId,
+            onOpen: () => actions.open(item),
+            onMore: () => actions.more(item),
+            onRename: () => actions.rename(item),
+            onDelete: ui.freeingSlot ? () => actions.delete(item) : null,
+          ),
+          const SizedBox(height: 14),
+        ],
+        if (slotsLeft != null && slotsLeft > 0 && !ui.freeingSlot) ...[
+          SlotCard(reel: view.nextReel, slotsLeft: slotsLeft, onUpgrade: () => ProSheet.show(context)),
+          const SizedBox(height: 14),
+        ],
+        if (view.entitlement.showsAds) ...[
+          const SizedBox(height: 14),
+          EcAdSlot(onHideAds: () => ProSheet.show(context)),
+        ],
+      ],
     );
+  }
+}
+
+/// The library's project actions, each ending in the design's feedback:
+/// a dark toast with a ten-second undo for anything that removes or adds a
+/// project.
+class _LibraryActions {
+  final BuildContext context;
+  final WidgetRef ref;
+  final LibraryView view;
+
+  _LibraryActions(this.context, this.ref, this.view);
+
+  LibraryController get _library => ref.read(libraryControllerProvider);
+
+  void open(LibraryItem item) {
+    ref.read(libraryUiProvider.notifier).highlight(null);
+    openStoredProject(context, item.summary.id);
+  }
+
+  Future<void> more(LibraryItem item) async {
+    final action = await ProjectActionsSheet.show(context, item.summary, slotsLeft: view.slotsLeft);
+    if (!context.mounted) return;
+    switch (action) {
+      case ProjectAction.open:
+        open(item);
+      case ProjectAction.duplicate:
+        await duplicate(item);
+      case ProjectAction.rename:
+        await rename(item);
+      case ProjectAction.delete:
+        await delete(item);
+      case null:
+        break;
+    }
+  }
+
+  // Undo runs after the toast outlives this widget (the list can rebuild
+  // into the empty state), so it captures the controller and notifier, which
+  // live in providers, rather than going back through this widget's ref.
+
+  Future<void> duplicate(LibraryItem item) async {
+    final library = _library;
+    final ui = ref.read(libraryUiProvider.notifier);
+    final result = await library.duplicate(item.summary.id);
+    if (!context.mounted) return;
+    switch (result) {
+      case Ok(value: final copy):
+        final nowFull = !view.entitlement.canAddProject(view.count + 1);
+        showEcToast(
+          context,
+          nowFull ? 'Duplicated · slots now full' : 'Duplicated',
+          actionLabel: 'Undo',
+          onAction: () {
+            ui.highlight(null);
+            library.delete(copy.id);
+          },
+        );
+      case Err(:final failure) when isSlotsFull(failure):
+        await handleSlotsFull(context);
+      case Err(:final failure):
+        showEcToast(context, failure.message);
+    }
+  }
+
+  Future<void> rename(LibraryItem item) async {
+    final title = await RenameSheet.show(context, item.summary.title);
+    if (title == null || !context.mounted) return;
+    final result = await _library.rename(item.summary.id, title);
+    if (result case Err(:final failure) when context.mounted) showEcToast(context, failure.message);
+  }
+
+  Future<void> delete(LibraryItem item) async {
+    final library = _library;
+    final confirmed = await DeleteProjectSheet.confirm(context, item.summary);
+    if (!confirmed || !context.mounted) return;
+    final result = await library.delete(item.summary.id);
+    if (!context.mounted) return;
+    switch (result) {
+      case Ok(value: final deleted):
+        ref.read(libraryUiProvider.notifier).setFreeingSlot(false);
+        showEcToast(context, 'Deleted “${deleted.title}”', actionLabel: 'Undo', onAction: () => library.restore(deleted));
+      case Err(:final failure):
+        showEcToast(context, failure.message);
+    }
   }
 }
 
@@ -276,22 +308,13 @@ class _ErrorState extends StatelessWidget {
   Widget build(BuildContext context) {
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(EcSpace.s6),
+        padding: const EdgeInsets.all(24),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(message,
-                textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 13, color: EcColors.textSecondary, height: 1.4)),
-            const SizedBox(height: EcSpace.s4),
-            OutlinedButton(
-              onPressed: onRetry,
-              style: OutlinedButton.styleFrom(
-                foregroundColor: EcColors.textPrimary,
-                side: const BorderSide(color: EcColors.borderStrong),
-              ),
-              child: const Text('Try again'),
-            ),
+            Text(message, textAlign: TextAlign.center, style: context.type.body),
+            const SizedBox(height: 16),
+            EcButton.secondary(label: 'Try again', size: EcButtonSize.medium, onPressed: onRetry),
           ],
         ),
       ),

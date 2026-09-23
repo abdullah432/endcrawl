@@ -167,3 +167,39 @@ TextStyle creditNameStyle(double size) => GoogleFonts.archivoNarrow(
       letterSpacing: size * 0.13,
       color: Colors.white,
     );
+
+/// A 64 × 48 black thumbnail with two credit "lines" — the shorthand for a
+/// project or template in lists and sheet headers. [portrait] draws a
+/// vertical frame inside it, for 9:16 templates.
+class EcFrameThumb extends StatelessWidget {
+  final bool portrait;
+  final bool wideFirst;
+
+  const EcFrameThumb({super.key, this.portrait = false, this.wideFirst = true});
+
+  @override
+  Widget build(BuildContext context) {
+    Widget bar(double w, double a) => Container(width: w, height: 2, color: Colors.white.withValues(alpha: a));
+    final lines = [bar(wideFirst ? 30 : 24, 0.85), const SizedBox(height: 4), bar(wideFirst ? 20 : 32, 0.45)];
+    return Container(
+      width: 64,
+      height: 48,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(color: context.palette.monitor, borderRadius: BorderRadius.circular(EcRadius.tile)),
+      child: portrait
+          ? Container(
+              width: 22,
+              height: 40,
+              decoration: BoxDecoration(
+                border: Border.all(color: Colors.white.withValues(alpha: 0.4)),
+                borderRadius: BorderRadius.circular(3),
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [bar(12, 0.85), const SizedBox(height: 3), bar(12, 0.5)],
+              ),
+            )
+          : Column(mainAxisAlignment: MainAxisAlignment.center, children: lines),
+    );
+  }
+}

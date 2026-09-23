@@ -1,111 +1,150 @@
 import 'package:flutter/material.dart';
 
-import '../../../core/theme/tokens.dart';
+import '../../../core/theme/ec_palette.dart';
+import '../../../core/theme/theme_context.dart';
+import '../../../core/utils/formatting.dart';
 import '../../../core/utils/relative_time.dart';
-import '../../../domain/engine/roll_engine.dart';
+import '../../../core/widgets/ec_button.dart';
+import '../../../core/widgets/ec_credit_frame.dart';
+import '../../../core/widgets/ec_scaffold.dart';
+import '../../../core/widgets/ec_surfaces.dart';
 import '../../../domain/models/canvas_format.dart';
 import '../../../domain/models/project.dart';
-import '../../../domain/models/project_settings.dart';
+import '../../../domain/models/render_summary.dart';
+import '../controllers/library_controller.dart';
 
-enum ProjectCardAction { rename, duplicate, delete }
-
+/// A project on the library (1.1): a credit frame showing its first card,
+/// numbered like a reel, with its runtime, frame rate and last edit.
+///
+/// Two variants from the design: [highlighted] is the fresh copy after a
+/// duplicate (1.7), with Open and Rename side by side so two renders never
+/// end up with the same name; [onDelete] replaces "···" with a delete
+/// button while the user is freeing a slot (1.6).
 class ProjectCard extends StatelessWidget {
-  final ProjectSummary summary;
-  final bool recovered;
+  final LibraryItem item;
+  final DateTime now;
+  final double frameHeight;
+  final bool highlighted;
+  final double? renderProgress;
   final VoidCallback onOpen;
-  final ValueChanged<ProjectCardAction> onAction;
+  final VoidCallback onMore;
+  final VoidCallback? onRename;
+  final VoidCallback? onDelete;
 
   const ProjectCard({
     super.key,
-    required this.summary,
+    required this.item,
+    required this.now,
     required this.onOpen,
-    required this.onAction,
-    this.recovered = false,
+    required this.onMore,
+    this.frameHeight = 120,
+    this.highlighted = false,
+    this.renderProgress,
+    this.onRename,
+    this.onDelete,
   });
+
+  ProjectSummary get _s => item.summary;
 
   @override
   Widget build(BuildContext context) {
-    final settings = summary.settings;
-    final format = settings.formatId == 'custom'
-        ? '${settings.customW}×${settings.customH}'
-        : CanvasFormat.byId(settings.formatId).label;
+    final p = context.palette;
+    final t = context.type;
+    final format = CanvasFormat.byId(_s.settings.formatId);
+    final (status, statusColor) = _status(p);
 
-    // In duration mode the target runtime is the user's own input, so it is
-    // exact. In speed mode the runtime falls out of the measured content
-    // height, which the library has not laid out — so it stays honest and
-    // shows nothing rather than a guess.
-    final runtime = settings.mode == TimingMode.duration
-        ? formatTimecode(settings.durationFrames.toDouble(), settings.fps)
-        : null;
+    final meta = [
+      if (_s.runtime != null) formatRuntime(_s.runtime!),
+      formatFps(_s.settings.fps),
+      formatRelativeTime(_s.updatedAt, now: now),
+    ].join(' · ');
 
-    return Material(
-      color: EcColors.surfaceRaised,
-      borderRadius: BorderRadius.circular(EcRadius.lg),
-      child: InkWell(
-        onTap: onOpen,
-        borderRadius: BorderRadius.circular(EcRadius.lg),
-        child: Container(
-          padding: const EdgeInsets.all(EcSpace.s4),
-          decoration: BoxDecoration(
-            border: Border.all(color: EcColors.borderHairline),
-            borderRadius: BorderRadius.circular(EcRadius.lg),
-          ),
-          child: Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
+    return Semantics(
+      button: true,
+      label: '${_s.title}, reel ${item.reel}',
+      child: EcGlassCard(
+        highlighted: highlighted,
+        onTap: highlighted ? null : onOpen,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            EcCreditFrame(
+              height: highlighted ? 110 : frameHeight,
+              status: status,
+              statusColor: statusColor,
+              corner: format.aspect,
+              progress: renderProgress,
+              child: highlighted
+                  ? Text('NO RENDER YET', style: t.pill.copyWith(fontSize: 10, color: Colors.white.withValues(alpha: 0.62)))
+                  : _preview(context),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(10, 12, 8, 6),
+              child: Column(
+                children: [
+                  Row(
+                    children: [
+                      Text(item.reel.toString().padLeft(2, '0'),
+                          style: t.reel.copyWith(color: highlighted ? p.accentSolid : p.muted)),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(_s.title, style: t.titleM, maxLines: 1, overflow: TextOverflow.ellipsis),
+                            const SizedBox(height: 4),
+                            Text(meta, style: t.mono.copyWith(fontSize: 10), maxLines: 1, overflow: TextOverflow.ellipsis),
+                          ],
+                        ),
+                      ),
+                      if (!highlighted)
+                        onDelete != null
+                            ? EcButton(
+                                label: 'Delete',
+                                variant: EcButtonVariant.destructive,
+                                size: EcButtonSize.small,
+                                onPressed: onDelete,
+                              )
+                            : EcCircleButton.tint(icon: Icons.more_horiz_rounded, tooltip: 'Project actions', onPressed: onMore),
+                    ],
+                  ),
+                  if (highlighted) ...[
+                    const SizedBox(height: 10),
                     Row(
                       children: [
-                        Flexible(
-                          child: Text(
-                            summary.title,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: EcColors.textPrimary),
-                          ),
-                        ),
-                        if (recovered)
-                          Container(
-                            margin: const EdgeInsets.only(left: 6),
-                            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-                            decoration: BoxDecoration(
-                              border: Border.all(color: EcColors.accentDim),
-                              borderRadius: BorderRadius.circular(EcRadius.sm),
-                            ),
-                            child: const Text('RECOVERED', style: TextStyle(fontSize: 9, letterSpacing: 1, color: EcColors.accentPrimary)),
-                          ),
+                        Expanded(child: EcButton(label: 'Open', size: EcButtonSize.medium, onPressed: onOpen)),
+                        const SizedBox(width: 8),
+                        EcButton.secondary(label: 'Rename', size: EcButtonSize.medium, onPressed: onRename),
                       ],
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      '$format · ${settings.fps} fps${runtime == null ? '' : ' · $runtime'}',
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontFamily: EcFonts.mono, fontSize: 10.5, color: EcColors.textTertiary),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      '${summary.blockCount} blocks · ${formatRelativeTime(summary.updatedAt)}',
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontSize: 12, color: EcColors.textSecondary),
-                    ),
                   ],
-                ),
-              ),
-              PopupMenuButton<ProjectCardAction>(
-                onSelected: onAction,
-                color: EcColors.surfaceOverlay,
-                icon: const Icon(Icons.more_vert, size: 18, color: EcColors.textTertiary),
-                itemBuilder: (context) => const [
-                  PopupMenuItem(value: ProjectCardAction.rename, child: Text('Rename')),
-                  PopupMenuItem(value: ProjectCardAction.duplicate, child: Text('Duplicate')),
-                  PopupMenuItem(value: ProjectCardAction.delete, child: Text('Delete', style: TextStyle(color: EcColors.warn))),
                 ],
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
+    );
+  }
+
+  (String?, Color?) _status(EcPalette p) {
+    if (highlighted) return ('Just created', p.accentOnBlack);
+    if (renderProgress != null) return ('Rendering ${(renderProgress! * 100).round()}%', p.accentOnBlack);
+    return switch (_s.lastRender?.outcome) {
+      RenderOutcome.rendered => ('Rendered', p.okOnBlack),
+      RenderOutcome.failed => ('Render failed', p.warnOnBlack),
+      null => (null, null),
+    };
+  }
+
+  Widget _preview(BuildContext context) {
+    final preview = _s.preview;
+    if (preview.isEmpty) {
+      return Text('EMPTY ROLL', style: context.type.pill.copyWith(fontSize: 10, color: Colors.white.withValues(alpha: 0.5)));
+    }
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: CreditCard(header: preview.header, names: preview.names, nameSize: frameHeight > 130 ? 17 : 13),
     );
   }
 }

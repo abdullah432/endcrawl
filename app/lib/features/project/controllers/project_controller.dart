@@ -114,7 +114,7 @@ class ProjectController extends Notifier<ProjectState> {
   void createFromTemplate(ProjectTemplate t) {
     state = ProjectState(
       project: Project.create(
-        title: t.projectName ?? 'UNTITLED',
+        title: t.defaultTitle,
         blocks: _templates.seed(t.id),
         settings: ProjectSettings(
           formatId: t.formatId,

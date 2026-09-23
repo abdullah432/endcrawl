@@ -60,6 +60,9 @@ class EcPalette extends ThemeExtension<EcPalette> {
   final Color warnWash;
   final Color warnLine;
 
+  /// Warn readable on black — "RENDER FAILED" on a monitor frame.
+  final Color warnOnBlack;
+
   final Color ok;
   final Color okWash;
   final Color okOnBlack;
@@ -104,6 +107,7 @@ class EcPalette extends ThemeExtension<EcPalette> {
     required this.warnFill,
     required this.warnWash,
     required this.warnLine,
+    required this.warnOnBlack,
     required this.ok,
     required this.okWash,
     required this.okOnBlack,
@@ -148,6 +152,7 @@ class EcPalette extends ThemeExtension<EcPalette> {
     warnFill: Color(0xFFD2432E),
     warnWash: Color(0x14D2432E), // 8 %
     warnLine: Color(0x52D2432E), // 32 %
+    warnOnBlack: Color(0xFFFF8E78),
     ok: Color(0xFF157A57),
     okWash: Color(0x1A16875F), // 10 %
     okOnBlack: Color(0xFF2BE0A0),

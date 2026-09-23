@@ -69,43 +69,47 @@ class TemplateRepository {
 
   SpacerBlock mkSpacer() => SpacerBlock(id: newBlockId(), seconds: 1.5);
 
-  List<CreditBlock> seed(String kind) {
+  /// The blocks a template starts with.
+  List<CreditBlock> seed(String templateId) {
     final t = mkTitle();
-    if (kind == 'youtube') {
-      return [
-        t,
-        mkDept('WRITTEN & DIRECTED BY', ['Mara Oyelaran']),
-        mkDept('EDITED BY', ['Sam Oduya']),
-        mkSong(),
-        mkThanks(),
-        mkHold(3, ['THANKS FOR WATCHING', 'SUBSCRIBE FOR MORE']),
-      ];
-    }
-    if (kind == 'music') {
-      return [
-        t,
-        mkDept('DIRECTED BY', ['Mara Oyelaran']),
-        mkSong(),
-        mkDept('PRODUCTION COMPANY', ['Harbour Post']),
-        mkLogos(),
-      ];
-    }
-    return [
-      t,
-      mkDept('DIRECTED BY', ['Mara Oyelaran']),
-      mkDept('WRITTEN BY', ['Mara Oyelaran', 'Tobias Renn']),
-      mkDept('PRODUCED BY', ['Ines Kovač', 'Daniel Whitfield']),
-      mkCast(),
-      mkDept('DIRECTOR OF PHOTOGRAPHY', ['Aurélie Banks']),
-      mkDept('EDITED BY', ['Sam Oduya']),
-      mkDept('PRODUCTION DESIGNER', ['Noor Haddad']),
-      mkDept('MUSIC BY', ['Felix Arinze']),
-      mkSong(),
-      mkThanks(),
-      mkLogos(),
-      mkHold(4, ['IN LOVING MEMORY', 'JUNE WHITFIELD', '1948 — 2024']),
-      mkHold(5, ['© MMXXVI OYELARAN PICTURES LLC', 'ALL RIGHTS RESERVED']),
-    ];
+    return switch (templateId) {
+      // Lean crew list, single column, one music cue.
+      'short' => [
+          t,
+          mkDept('DIRECTED BY', ['Mara Oyelaran']),
+          mkDept('WRITTEN BY', ['Mara Oyelaran']),
+          mkDept('DIRECTOR OF PHOTOGRAPHY', ['Aurélie Banks']),
+          mkDept('EDITED BY', ['Sam Oduya']),
+          mkSong(),
+          mkHold(4, ['© MMXXVI OYELARAN PICTURES', 'ALL RIGHTS RESERVED']),
+        ],
+      // Stacked pairs, larger type, caption-safe.
+      'vertical' => [
+          t,
+          mkDept('WRITTEN & DIRECTED BY', ['Mara Oyelaran']),
+          mkDept('EDITED BY', ['Sam Oduya']),
+          mkSong(),
+          mkThanks(),
+          mkHold(3, ['THANKS FOR WATCHING']),
+        ],
+      // Department order, billing block, two-column cast.
+      _ => [
+          t,
+          mkDept('DIRECTED BY', ['Mara Oyelaran']),
+          mkDept('WRITTEN BY', ['Mara Oyelaran', 'Tobias Renn']),
+          mkDept('PRODUCED BY', ['Ines Kovač', 'Daniel Whitfield']),
+          mkCast(),
+          mkDept('DIRECTOR OF PHOTOGRAPHY', ['Aurélie Banks']),
+          mkDept('EDITED BY', ['Sam Oduya']),
+          mkDept('PRODUCTION DESIGNER', ['Noor Haddad']),
+          mkDept('MUSIC BY', ['Felix Arinze']),
+          mkSong(),
+          mkThanks(),
+          mkLogos(),
+          mkHold(4, ['IN LOVING MEMORY', 'JUNE WHITFIELD', '1948 — 2024']),
+          mkHold(5, ['© MMXXVI OYELARAN PICTURES LLC', 'ALL RIGHTS RESERVED']),
+        ],
+    };
   }
 
   static const standardDepartmentOrder = [
@@ -122,73 +126,60 @@ class TemplateRepository {
   ];
 }
 
+/// A starting point for a new project (1.2 / 2.1): its format, frame rate
+/// and runtime, and — through [TemplateRepository.seed] — its blocks.
+///
+/// The "24 fps · 2.39:1 · 18 blocks" line is derived from these values and
+/// the seed, never written by hand, so it can't drift from what the template
+/// actually creates.
 class ProjectTemplate {
   final String id;
   final String name;
   final String description;
-  final String meta;
   final String formatId;
   final double fps;
   final double durationSeconds;
-  final String? projectName;
+
+  /// The default title for a project started from this template.
+  final String defaultTitle;
 
   const ProjectTemplate({
     required this.id,
     required this.name,
     required this.description,
-    required this.meta,
     required this.formatId,
     required this.fps,
     required this.durationSeconds,
-    this.projectName,
+    required this.defaultTitle,
   });
 }
 
 const kProjectTemplates = <ProjectTemplate>[
   ProjectTemplate(
-    id: 'short',
-    name: 'Short Film',
-    description: 'Title card, department stack, two-column cast, copyright hold.',
-    meta: '2.39:1 · 24 fps · 01:44',
-    formatId: '239',
-    fps: 24,
-    durationSeconds: 104,
-  ),
-  ProjectTemplate(
     id: 'feature',
-    name: 'Feature',
-    description: 'Full contractual order with billing block and studio logos.',
-    meta: '2.39:1 · 24 fps · 06:00',
+    name: 'Feature film',
+    description: 'Department order, billing block, two-column cast.',
     formatId: '239',
     fps: 24,
-    durationSeconds: 360,
+    durationSeconds: 161,
+    defaultTitle: 'Untitled feature',
   ),
   ProjectTemplate(
-    id: 'youtube',
-    name: 'YouTube',
-    description: 'Vertical, fast, soundtrack credit and an end card.',
-    meta: '9:16 · 30 fps · 00:22',
+    id: 'short',
+    name: 'Short film',
+    description: 'Lean crew list, single column, one music cue.',
+    formatId: '16x9',
+    fps: 24,
+    durationSeconds: 60,
+    defaultTitle: 'Untitled short',
+  ),
+  ProjectTemplate(
+    id: 'vertical',
+    name: 'Vertical social cut',
+    description: 'Stacked pairs, larger type, caption-safe.',
     formatId: '9x16',
     fps: 30,
     durationSeconds: 22,
-    projectName: 'CHANNEL OUTRO',
-  ),
-  ProjectTemplate(
-    id: 'music',
-    name: 'Music Video',
-    description: 'Compact crew roll under the last chorus.',
-    meta: '16:9 · 25 fps · 00:40',
-    formatId: '16x9',
-    fps: 25,
-    durationSeconds: 40,
-  ),
-  ProjectTemplate(
-    id: 'student',
-    name: 'Student Film',
-    description: 'Teaches the standard card order as you fill it in.',
-    meta: '16:9 · 24 fps · 01:20',
-    formatId: '16x9',
-    fps: 24,
-    durationSeconds: 80,
+    defaultTitle: 'Untitled vertical',
   ),
 ];

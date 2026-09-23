@@ -8,24 +8,31 @@ class CanvasFormat {
   final int w;
   final int h;
 
+  /// The short ratio shown in a frame's corner and on template rows —
+  /// "2.39:1", "16:9", "9:16".
+  final String aspect;
+
   const CanvasFormat({
     required this.id,
     required this.label,
     required this.sub,
     required this.w,
     required this.h,
+    required this.aspect,
   });
 
+  bool get isPortrait => h > w;
+
   static const presets = <CanvasFormat>[
-    CanvasFormat(id: '9x16', label: '9:16 Vertical', sub: '1080×1920', w: 1080, h: 1920),
-    CanvasFormat(id: '4x5', label: '4:5', sub: '1080×1350', w: 1080, h: 1350),
-    CanvasFormat(id: '1x1', label: '1:1 Square', sub: '1080×1080', w: 1080, h: 1080),
-    CanvasFormat(id: '16x9', label: '16:9 HD', sub: '1920×1080', w: 1920, h: 1080),
-    CanvasFormat(id: 'uhd', label: '16:9 UHD', sub: '3840×2160', w: 3840, h: 2160),
-    CanvasFormat(id: '185', label: '1.85:1 Flat', sub: '1998×1080', w: 1998, h: 1080),
-    CanvasFormat(id: '239', label: '2.39:1 Scope', sub: '2048×858', w: 2048, h: 858),
-    CanvasFormat(id: 'dcif', label: 'DCI 4K Flat', sub: '3996×2160', w: 3996, h: 2160),
-    CanvasFormat(id: 'dcis', label: 'DCI 4K Scope', sub: '4096×1716', w: 4096, h: 1716),
+    CanvasFormat(id: '9x16', label: '9:16 Vertical', sub: '1080×1920', w: 1080, h: 1920, aspect: '9:16'),
+    CanvasFormat(id: '4x5', label: '4:5', sub: '1080×1350', w: 1080, h: 1350, aspect: '4:5'),
+    CanvasFormat(id: '1x1', label: '1:1 Square', sub: '1080×1080', w: 1080, h: 1080, aspect: '1:1'),
+    CanvasFormat(id: '16x9', label: '16:9 HD', sub: '1920×1080', w: 1920, h: 1080, aspect: '16:9'),
+    CanvasFormat(id: 'uhd', label: '16:9 UHD', sub: '3840×2160', w: 3840, h: 2160, aspect: '16:9'),
+    CanvasFormat(id: '185', label: '1.85:1 Flat', sub: '1998×1080', w: 1998, h: 1080, aspect: '1.85:1'),
+    CanvasFormat(id: '239', label: '2.39:1 Scope', sub: '2048×858', w: 2048, h: 858, aspect: '2.39:1'),
+    CanvasFormat(id: 'dcif', label: 'DCI 4K Flat', sub: '3996×2160', w: 3996, h: 2160, aspect: '1.85:1'),
+    CanvasFormat(id: 'dcis', label: 'DCI 4K Scope', sub: '4096×1716', w: 4096, h: 1716, aspect: '2.39:1'),
   ];
 
   static CanvasFormat byId(String id) =>

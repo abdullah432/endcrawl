@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'fake_auth_repository.dart';
+import 'fake_entitlement_repository.dart';
 import 'fake_external_links.dart';
 import 'fake_project_repository.dart';
 import 'fake_user_profile_repository.dart';
@@ -21,6 +22,7 @@ class AppHarness {
   InMemorySessionStore session;
   FakeUserProfileRepository profile;
   FakeExternalLinks links;
+  FakeEntitlementRepository plan;
   DateTime now;
 
   AppHarness({
@@ -29,12 +31,14 @@ class AppHarness {
     InMemorySessionStore? session,
     FakeUserProfileRepository? profile,
     FakeExternalLinks? links,
+    FakeEntitlementRepository? plan,
     DateTime? now,
   })  : auth = auth ?? FakeAuthRepository(initialUser: testUser),
         projects = projects ?? FakeProjectRepository(),
         session = session ?? InMemorySessionStore(),
         profile = profile ?? FakeUserProfileRepository(),
         links = links ?? FakeExternalLinks(),
+        plan = plan ?? FakeEntitlementRepository(),
         now = now ?? DateTime.utc(2026, 9, 23, 12);
 
   /// A signed-out start.
@@ -67,6 +71,7 @@ class AppHarness {
           sessionStoreProvider.overrideWithValue(session),
           userProfileRepositoryForProvider.overrideWith((ref, uid) => profile),
           externalLinksProvider.overrideWithValue(links),
+          entitlementRepositoryProvider.overrideWithValue(plan),
           clockProvider.overrideWithValue(() => now),
         ],
         child: const EndcrawlApp(),

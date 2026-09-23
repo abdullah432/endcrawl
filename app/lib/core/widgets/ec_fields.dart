@@ -11,10 +11,16 @@ import '../theme/tokens.dart';
 /// Material's border so it can sit outside the field, as in the design.
 class EcTextField extends StatefulWidget {
   final TextEditingController controller;
-  final String label;
+
+  /// Null when the caller labels the field itself (e.g. a mono section
+  /// label on the rename sheet).
+  final String? label;
   final String? hint;
   final String? error;
   final String? helper;
+
+  /// Shown at the right of the helper line — "17/60".
+  final String? counter;
   final bool obscure;
   final TextInputType? keyboardType;
   final Iterable<String>? autofillHints;
@@ -37,6 +43,7 @@ class EcTextField extends StatefulWidget {
     this.hint,
     this.error,
     this.helper,
+    this.counter,
     this.obscure = false,
     this.keyboardType,
     this.autofillHints,
@@ -87,8 +94,7 @@ class _EcTextFieldState extends State<EcTextField> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text(widget.label, style: t.label),
-        const SizedBox(height: 7),
+        if (widget.label != null) ...[Text(widget.label!, style: t.label), const SizedBox(height: 7)],
         AnimatedContainer(
           duration: EcMotion.fast,
           height: 52,
@@ -129,11 +135,19 @@ class _EcTextFieldState extends State<EcTextField> {
             ],
           ),
         ),
-        if (hasError || widget.helper != null) ...[
+        if (hasError || widget.helper != null || widget.counter != null) ...[
           const SizedBox(height: 7),
-          Text(
-            widget.error ?? widget.helper!,
-            style: t.caption.copyWith(color: hasError ? p.warn : p.muted, height: 1.4),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Text(
+                  widget.error ?? widget.helper ?? '',
+                  style: t.caption.copyWith(color: hasError ? p.warn : p.muted, height: 1.4),
+                ),
+              ),
+              if (widget.counter != null) Text(widget.counter!, style: t.mono.copyWith(fontSize: 10)),
+            ],
           ),
         ],
       ],

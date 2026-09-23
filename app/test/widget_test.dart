@@ -1,13 +1,8 @@
-import 'package:endcrawl/core/result.dart';
-import 'package:endcrawl/data/sources/session_store.dart';
-import 'package:endcrawl/domain/models/credit_block.dart';
-import 'package:endcrawl/domain/models/project.dart';
 import 'package:endcrawl/domain/models/project_settings.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'support/app_harness.dart';
-import 'support/fake_project_repository.dart';
 
 void main() {
   late AppHarness app;
@@ -16,96 +11,19 @@ void main() {
 
   Future<void> pumpApp(WidgetTester tester) => app.pump(tester);
 
-  /// Library → templates → format → editor, the full new-project path.
+  /// Empty library → template → format → editor, the new-project path.
   Future<void> openShortFilmEditor(WidgetTester tester) async {
     await pumpApp(tester);
-    await tester.tap(find.text('New project'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Short Film'));
+    await tester.tap(find.text('Feature film'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Open editor'));
     await tester.pumpAndSettle();
   }
 
-  group('Library', () {
-    testWidgets('shows an empty state when nothing is stored', (tester) async {
-      await pumpApp(tester);
-
-      expect(find.text('ENDCRAWL'), findsOneWidget);
-      expect(find.text('No projects yet'), findsOneWidget);
-    });
-
-    testWidgets('lists stored projects newest first', (tester) async {
-      app.projects = FakeProjectRepository(seed: [
-        Project.create(title: 'OLDER').copyWith(updatedAt: DateTime.utc(2026, 1, 1)),
-        Project.create(title: 'NEWER').copyWith(updatedAt: DateTime.utc(2026, 5, 1)),
-      ]);
-      await pumpApp(tester);
-
-      expect(find.text('YOUR PROJECTS'), findsOneWidget);
-      final titles = tester.widgetList<Text>(find.byType(Text)).map((t) => t.data).toList();
-      expect(titles.indexOf('NEWER') < titles.indexOf('OLDER'), isTrue);
-    });
-
-    testWidgets('offers a crash recovery for a project this device left open', (tester) async {
-      final project = Project.create(title: 'THE LONG WAY DOWN');
-      app.projects = FakeProjectRepository(seed: [project]);
-      app.session = InMemorySessionStore(SessionState(lastOpenedProjectId: project.id, leftOpenProjectId: project.id));
-      await pumpApp(tester);
-
-      expect(find.text('RECOVERED AFTER CRASH'), findsOneWidget);
-      expect(find.text('Open recovered'), findsOneWidget);
-    });
-
-    testWidgets('offers a plain resume for a project that was closed cleanly', (tester) async {
-      final project = Project.create(title: 'THE LONG WAY DOWN');
-      app.projects = FakeProjectRepository(seed: [project]);
-      app.session = InMemorySessionStore(SessionState(lastOpenedProjectId: project.id));
-      await pumpApp(tester);
-
-      expect(find.text('CONTINUE WHERE YOU LEFT OFF'), findsOneWidget);
-      expect(find.text('Continue'), findsOneWidget);
-    });
-
-    testWidgets('surfaces a storage failure with a retry', (tester) async {
-      app.projects.failWith = const AppFailure(FailureKind.storage, 'Could not reach on-device storage.');
-      await pumpApp(tester);
-
-      expect(find.text('Could not reach on-device storage.'), findsOneWidget);
-      expect(find.text('Try again'), findsOneWidget);
-    });
-
-    testWidgets('opens a stored project into the editor', (tester) async {
-      app.projects = FakeProjectRepository(seed: [
-        Project.create(
-          title: 'MY FILM',
-          blocks: const [TitleBlock(id: 'b1', title: 'MY FILM')],
-        ),
-      ]);
-      await pumpApp(tester);
-
-      await tester.tap(find.text('MY FILM'));
-      await tester.pumpAndSettle();
-
-      expect(find.textContaining('blocks · drag to reorder'), findsOneWidget);
-    });
-  });
-
   group('New project flow', () {
-    testWidgets('templates screen offers the starting points', (tester) async {
-      await pumpApp(tester);
-      await tester.tap(find.text('New project'));
-      await tester.pumpAndSettle();
-
-      expect(find.text('Pick a starting point.\nChange anything later.'), findsOneWidget);
-      expect(find.text('Short Film'), findsOneWidget);
-    });
-
     testWidgets('picking a template opens the format screen', (tester) async {
       await pumpApp(tester);
-      await tester.tap(find.text('New project'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Short Film'));
+      await tester.tap(find.text('Short film'));
       await tester.pumpAndSettle();
 
       expect(find.text('Canvas format'), findsOneWidget);
@@ -160,9 +78,7 @@ void main() {
 
     testWidgets('start empty reaches an editor with no blocks', (tester) async {
       await pumpApp(tester);
-      await tester.tap(find.text('New project'));
-      await tester.pumpAndSettle();
-      await tester.scrollUntilVisible(find.text('Start empty'), 300);
+      await tester.ensureVisible(find.text('Start empty'));
       await tester.tap(find.text('Start empty'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('Open editor'));

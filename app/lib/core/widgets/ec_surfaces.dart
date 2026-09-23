@@ -272,6 +272,7 @@ class EcAvatar extends StatelessWidget {
     return Semantics(
       button: onTap != null,
       label: 'Account',
+      excludeSemantics: true,
       child: GestureDetector(
         onTap: onTap,
         child: Container(

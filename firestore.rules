@@ -4,17 +4,18 @@ rules_version = '2';
 // Assumed Data Model
 // ===============================================================
 //
-// Collection: users/{uid}/projects/{projectId}
+// Collection: users/{uid}/projects/{projectId}   (schema v2)
 // Document ID: 20-character Firestore-style auto-id, minted client-side
 // Fields:
-//   - schemaVersion: int       (required, must equal the deployed version)
+//   - schemaVersion: int       (required, == 2)
 //   - id: string               (required, must equal {projectId}, immutable)
 //   - ownerId: string          (required, must equal {uid}, immutable)
-//   - title: string            (required, 1..200 chars)
+//   - title: string            (required, 1..60 chars — it names render files)
 //   - settings: map            (required — format, fps, timing, look)
 //   - blocks: list             (required, <= 500 entries — the credit roll)
 //   - createdAt: timestamp     (required, immutable after create)
 //   - updatedAt: timestamp     (required)
+//   - lastRender: map          (optional — outcome of the last finished render)
 //
 // Document: users/{uid}   (the account's profile — schema v1)
 // Fields:
@@ -56,7 +57,7 @@ service cloud.firestore {
     // stash arbitrary data in a project document.
     function hasOnlyKnownFields() {
       return incoming().keys().hasOnly([
-        'schemaVersion', 'id', 'ownerId', 'title', 'settings', 'blocks', 'createdAt', 'updatedAt'
+        'schemaVersion', 'id', 'ownerId', 'title', 'settings', 'blocks', 'createdAt', 'updatedAt', 'lastRender'
       ]) && incoming().keys().hasAll([
         'schemaVersion', 'id', 'ownerId', 'title', 'settings', 'blocks', 'createdAt', 'updatedAt'
       ]);
@@ -68,19 +69,20 @@ service cloud.firestore {
     function isValidProject(uid, projectId) {
       return hasOnlyKnownFields()
         && incoming().schemaVersion is int
-        && incoming().schemaVersion == 1
+        && incoming().schemaVersion == 2
         && incoming().id is string
         && incoming().id == projectId
         && incoming().ownerId is string
         && incoming().ownerId == uid
         && incoming().title is string
         && incoming().title.size() > 0
-        && incoming().title.size() <= 200
+        && incoming().title.size() <= 60
         && incoming().settings is map
         && incoming().blocks is list
         && incoming().blocks.size() <= 500
         && incoming().createdAt is timestamp
-        && incoming().updatedAt is timestamp;
+        && incoming().updatedAt is timestamp
+        && (!('lastRender' in incoming()) || incoming().lastRender is map);
     }
 
     function isValidProfile() {

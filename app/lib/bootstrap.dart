@@ -6,12 +6,14 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'core/services/external_links.dart';
 import 'data/repositories/auth_repository.dart';
+import 'data/repositories/entitlement_repository.dart';
 import 'data/repositories/firebase_auth_repository.dart';
 import 'data/repositories/firestore_project_repository.dart';
 import 'data/repositories/project_repository.dart';
 import 'data/repositories/user_profile_repository.dart';
 import 'data/sources/session_store.dart';
 import 'domain/models/app_user.dart';
+import 'domain/models/entitlement.dart';
 import 'domain/models/user_profile.dart';
 import 'firebase_options.dart';
 
@@ -82,6 +84,16 @@ final userProfileRepositoryProvider = Provider<UserProfileRepository>((ref) {
 
 final userProfileProvider = StreamProvider<UserProfile>((ref) {
   return ref.watch(userProfileRepositoryProvider).watch();
+});
+
+/// The plan source. Free for everyone until a store is wired in.
+final entitlementRepositoryProvider = Provider<EntitlementRepository>((ref) => const FreeEntitlementRepository());
+
+/// The signed-in account's plan. Defaults to Free while loading, so a slow
+/// store never makes the cap disappear.
+final entitlementProvider = StreamProvider<Entitlement>((ref) {
+  ref.watch(currentUidProvider);
+  return ref.watch(entitlementRepositoryProvider).watch();
 });
 
 /// The platform services `main` seeds the root `ProviderScope` with.
