@@ -2,63 +2,58 @@ import 'package:flutter/material.dart';
 
 import '../../../domain/models/project_settings.dart';
 
+/// What the roll plays over (5.3).
 class MonitorBackgroundLayer extends StatelessWidget {
   final MonitorBackground background;
 
   const MonitorBackgroundLayer({super.key, required this.background});
 
+  /// Paper for print proofs.
+  static const paper = Color(0xFFF3F1EC);
+
   @override
   Widget build(BuildContext context) {
-    switch (background) {
-      case MonitorBackground.black:
-        return const ColoredBox(color: Colors.black);
-      case MonitorBackground.green:
-        return const ColoredBox(color: Color(0xFF12B34A));
-      case MonitorBackground.custom:
-        return const ColoredBox(color: Color(0xFF101820));
-      case MonitorBackground.alpha:
-        return const ColoredBox(color: Colors.black, child: CustomPaint(painter: _CheckerboardPainter(), size: Size.infinite));
-      case MonitorBackground.underlay:
-        return Stack(
-          children: [
-            Container(
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment(-0.6, -1),
-                  end: Alignment(0.6, 1),
-                  colors: [Color(0xFF30241A), Color(0xFF0D0F14), Color(0xFF16202B), Color(0xFF080A0C)],
-                  stops: [0, 0.42, 0.72, 1],
-                ),
-              ),
+    return switch (background) {
+      MonitorBackground.black => const ColoredBox(color: Colors.black),
+      MonitorBackground.alpha => const CustomPaint(painter: CheckerboardPainter(), size: Size.infinite),
+      MonitorBackground.paper => const ColoredBox(color: paper),
+      MonitorBackground.reference => const DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment(0.5, -1),
+              end: Alignment(-0.5, 1),
+              colors: [Color(0xFF4A3524), Color(0xFF101216), Color(0xFF1C2A38)],
             ),
-            const Positioned(
-              left: 8,
-              bottom: 5,
-              child: Text('SCENE_042_GRADE.mov', style: TextStyle(fontFamily: 'IBM Plex Mono', fontSize: 8, color: Colors.white54)),
-            ),
-          ],
-        );
-    }
+          ),
+        ),
+    };
   }
 }
 
-class _CheckerboardPainter extends CustomPainter {
-  const _CheckerboardPainter();
+/// Transparency, shown the way every editor shows it.
+class CheckerboardPainter extends CustomPainter {
+  final double tile;
+  const CheckerboardPainter({this.tile = 12});
 
   @override
   void paint(Canvas canvas, Size size) {
-    const tile = 14.0;
-    final a = Paint()..color = const Color(0xFF2A2D31);
-    final b = Paint()..color = const Color(0xFF16181B);
-    canvas.drawRect(Offset.zero & size, b);
-    for (double y = 0; y < size.height; y += tile) {
-      for (double x = 0; x < size.width; x += tile) {
-        final alt = (((x / tile).round() + (y / tile).round()) % 2) == 0;
-        canvas.drawRect(Rect.fromLTWH(x, y, tile, tile), alt ? a : b);
+    canvas.drawRect(Offset.zero & size, Paint()..color = Colors.white);
+    final dark = Paint()..color = const Color(0xFFE3DCD0);
+    for (var y = 0.0; y < size.height; y += tile) {
+      for (var x = 0.0; x < size.width; x += tile) {
+        if (((x / tile).round() + (y / tile).round()).isEven) canvas.drawRect(Rect.fromLTWH(x, y, tile, tile), dark);
       }
     }
   }
 
   @override
-  bool shouldRepaint(covariant _CheckerboardPainter oldDelegate) => false;
+  bool shouldRepaint(covariant CheckerboardPainter oldDelegate) => oldDelegate.tile != tile;
 }
+
+/// White credits read as ink on paper: the roll is inverted, alpha kept.
+const kPaperInvert = ColorFilter.matrix(<double>[
+  -1, 0, 0, 0, 255, //
+  0, -1, 0, 0, 255, //
+  0, 0, -1, 0, 255, //
+  0, 0, 0, 1, 0, //
+]);

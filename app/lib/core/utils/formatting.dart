@@ -28,3 +28,10 @@ String formatClock(double seconds) {
 /// "4", "6.41" — pixels per frame, whole when it is whole.
 String formatPpf(double ppf) =>
     (ppf - ppf.roundToDouble()).abs() < 0.0008 ? ppf.round().toString() : ppf.toStringAsFixed(2);
+
+/// "1:00", "0:12" — seconds and frames, for head and tail black.
+String formatSecondsFrames(double seconds, double fps) {
+  final base = fps.round().clamp(1, 1000);
+  final frames = (seconds * fps).round();
+  return '${frames ~/ base}:${(frames % base).toString().padLeft(2, '0')}';
+}

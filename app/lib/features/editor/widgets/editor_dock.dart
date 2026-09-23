@@ -11,9 +11,9 @@ import '../../../core/widgets/ec_toast.dart';
 import '../../../domain/models/credit_block.dart';
 import '../../blocks/screens/add_block_sheet.dart';
 import '../../paste/screens/paste_sheet.dart';
+import '../../timing/screens/timing_sheet.dart';
 import '../../project/controllers/project_controller.dart';
 import '../controllers/editor_ui_controller.dart';
-import 'sheets/duration_sheet.dart';
 import 'sheets/export_sheet.dart';
 import 'status_line.dart';
 
@@ -49,7 +49,7 @@ class EditorDock extends ConsumerWidget {
                 glyph: Text(runtime, style: context.type.mono.copyWith(fontSize: 11, color: healthy ? p.ink : p.warn)),
                 label: 'Timing',
                 warn: !healthy,
-                onTap: () => showEcSheet<void>(context, builder: (_) => const DurationSheet()),
+                onTap: () => TimingSheet.show(context),
               ),
               const SizedBox(width: 4),
               Expanded(

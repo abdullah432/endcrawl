@@ -6,7 +6,23 @@ enum TimingMode { duration, speed }
 
 enum RollLook { flat2d, crawl3d }
 
-enum MonitorBackground { black, alpha, green, custom, underlay }
+/// What the roll plays over on the monitor (5.3). Only [alpha] reaches the
+/// export — as an alpha codec; the others are for checking the roll.
+enum MonitorBackground {
+  black,
+  alpha,
+  reference,
+  paper;
+
+  /// Reads a stored value, mapping v1's backgrounds onto the v2 set: the
+  /// footage underlay became the reference clip; green and custom colours
+  /// fall back to black.
+  static MonitorBackground fromWire(Object? value) => switch (value) {
+        'underlay' => reference,
+        'green' || 'custom' => black,
+        _ => values.where((v) => v.name == value).firstOrNull ?? black,
+      };
+}
 
 /// Everything about the project that isn't the block document itself:
 /// format, frame rate, timing lock, look, background, and safe guides.
@@ -118,7 +134,7 @@ class ProjectSettings {
       look: asEnum(RollLook.values, json['look'], defaults.look),
       tilt: asDouble(json['tilt'], defaults.tilt),
       vanishingDistance: asDouble(json['vanishingDistance'], defaults.vanishingDistance),
-      background: asEnum(MonitorBackground.values, json['background'], defaults.background),
+      background: json['background'] == null ? defaults.background : MonitorBackground.fromWire(json['background']),
       face: json['face'] == null ? null : asEnum(CreditFace.values, json['face'], CreditFace.grotesque),
       safeGuides: asBool(json['safeGuides'], defaults.safeGuides),
     );

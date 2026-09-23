@@ -295,4 +295,14 @@ void main() {
       expect(pro.showsAds, isFalse);
     });
   });
+
+  group('monitor background', () {
+    test('v1 backgrounds map onto the v2 set', () {
+      expect(ProjectSettings.fromJson(const {'background': 'underlay'}).background, MonitorBackground.reference);
+      expect(ProjectSettings.fromJson(const {'background': 'green'}).background, MonitorBackground.black);
+      expect(ProjectSettings.fromJson(const {'background': 'custom'}).background, MonitorBackground.black);
+      expect(ProjectSettings.fromJson(const {'background': 'paper'}).background, MonitorBackground.paper);
+      expect(ProjectSettings.fromJson(const {}).background, MonitorBackground.black);
+    });
+  });
 }

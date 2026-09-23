@@ -8,7 +8,7 @@ import '../../../export/controllers/export_controller.dart';
 import '../../../export/models/export_models.dart';
 import '../../../project/controllers/project_controller.dart';
 import '../../../../domain/engine/roll_engine.dart';
-import 'duration_sheet.dart';
+import '../../../timing/screens/timing_sheet.dart';
 
 /// The export sheet, designed as a confidence-building screen (§9 of the
 /// brief): restated, non-editable settings; codec choices with alpha
@@ -67,7 +67,7 @@ class ExportSheet extends ConsumerWidget {
                 children: [
                   const Text('LOCKED FOR THIS RENDER', style: TextStyle(fontSize: 10.5, letterSpacing: 1.2, color: EcColors.textTertiary)),
                   TextButton(
-                    onPressed: () => showEcSheet<void>(context, builder: (_) => const DurationSheet()),
+                    onPressed: () => TimingSheet.show(context),
                     style: TextButton.styleFrom(minimumSize: Size.zero, padding: EdgeInsets.zero),
                     child: const Text('Edit', style: TextStyle(fontSize: 11.5, color: EcColors.accentPrimary)),
                   ),

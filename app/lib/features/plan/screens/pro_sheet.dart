@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/theme_context.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../core/widgets/ec_button.dart';
+import '../../../core/widgets/ec_choice_card.dart';
 import '../../../core/widgets/ec_headline.dart';
 import '../../../core/widgets/ec_scaffold.dart';
 import '../../../core/widgets/ec_sheet.dart';
@@ -20,8 +21,7 @@ import '../widgets/plan_meter.dart';
 class ProSheet extends ConsumerWidget {
   const ProSheet({super.key});
 
-  static Future<void> show(BuildContext context) =>
-      showEcSheet<void>(context, builder: (_) => const ProSheet());
+  static Future<void> show(BuildContext context) => showEcSheet<void>(context, builder: (_) => const ProSheet());
 
   static const _comparison = <(String, String, String)>[
     ('Projects', '${Entitlement.freeProjectLimit}', 'Unlimited'),
@@ -155,67 +155,50 @@ class _OfferTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final p = context.palette;
     final t = context.type;
-    final shape = BorderRadius.circular(EcRadius.card);
-    return Semantics(
+    return EcChoiceCard(
       selected: selected,
-      button: true,
-      child: AnimatedContainer(
-        duration: EcMotion.fast,
-        decoration: BoxDecoration(
-          color: selected ? p.surface : p.glass,
-          borderRadius: shape,
-          border: Border.all(color: selected ? p.accentSolid : p.glassEdge, width: selected ? 1.5 : 1),
-          boxShadow: selected ? [BoxShadow(color: p.accentWash, spreadRadius: 4), ...p.glassShadow] : null,
-        ),
-        child: Material(
-          type: MaterialType.transparency,
-          borderRadius: shape,
-          clipBehavior: Clip.antiAlias,
-          child: InkWell(
-            onTap: onTap,
-            child: Padding(
-              padding: const EdgeInsets.all(14),
-              child: Row(
-                children: [
-                  Container(
-                    width: 22,
-                    height: 22,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      gradient: selected ? p.primary : null,
-                      border: selected ? null : Border.all(color: p.line2, width: 1.5),
-                    ),
-                    child: selected ? Icon(Icons.check_rounded, size: 14, color: p.onInk) : null,
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Text(offer.period == BillingPeriod.yearly ? 'Yearly' : 'Monthly', style: t.titleS),
-                            if (offer.badge != null) ...[
-                              const SizedBox(width: 6),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                decoration: BoxDecoration(gradient: p.primary, borderRadius: BorderRadius.circular(EcRadius.pill)),
-                                child: Text(offer.badge!.toUpperCase(), style: t.pill.copyWith(fontSize: 8.5, color: p.onInk)),
-                              ),
-                            ],
-                          ],
+      onTap: onTap,
+      padding: const EdgeInsets.all(14),
+      child: Row(
+        children: [
+          Container(
+            width: 22,
+            height: 22,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: selected ? p.primary : null,
+              border: selected ? null : Border.all(color: p.line2, width: 1.5),
+            ),
+            child: selected ? Icon(Icons.check_rounded, size: 14, color: p.onInk) : null,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Text(offer.period == BillingPeriod.yearly ? 'Yearly' : 'Monthly', style: t.titleS),
+                    if (offer.badge != null) ...[
+                      const SizedBox(width: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          gradient: p.primary,
+                          borderRadius: BorderRadius.circular(EcRadius.pill),
                         ),
-                        const SizedBox(height: 2),
-                        Text(offer.detail, style: t.caption),
-                      ],
-                    ),
-                  ),
-                  Text(offer.price, style: t.monoM.copyWith(fontSize: 15, fontWeight: FontWeight.w500)),
-                ],
-              ),
+                        child: Text(offer.badge!.toUpperCase(), style: t.pill.copyWith(fontSize: 8.5, color: p.onInk)),
+                      ),
+                    ],
+                  ],
+                ),
+                const SizedBox(height: 2),
+                Text(offer.detail, style: t.caption),
+              ],
             ),
           ),
-        ),
+          Text(offer.price, style: t.monoM.copyWith(fontSize: 15, fontWeight: FontWeight.w500)),
+        ],
       ),
     );
   }
@@ -236,12 +219,22 @@ class _ComparisonTable extends StatelessWidget {
         padding: EdgeInsets.symmetric(horizontal: 14, vertical: header ? 10 : 11),
         child: Row(
           children: [
-            Expanded(flex: 3, child: Text(header ? a.toUpperCase() : a, style: header ? base : base.copyWith(color: p.ink2))),
-            Expanded(flex: 2, child: Text(header ? b.toUpperCase() : b, style: base.copyWith(color: p.muted))),
+            Expanded(
+              flex: 3,
+              child: Text(header ? a.toUpperCase() : a, style: header ? base : base.copyWith(color: p.ink2)),
+            ),
             Expanded(
               flex: 2,
-              child: Text(header ? c.toUpperCase() : c,
-                  style: header ? base.copyWith(color: p.accent) : base.copyWith(color: p.ink, fontWeight: FontWeight.w600)),
+              child: Text(header ? b.toUpperCase() : b, style: base.copyWith(color: p.muted)),
+            ),
+            Expanded(
+              flex: 2,
+              child: Text(
+                header ? c.toUpperCase() : c,
+                style: header
+                    ? base.copyWith(color: p.accent)
+                    : base.copyWith(color: p.ink, fontWeight: FontWeight.w600),
+              ),
             ),
           ],
         ),

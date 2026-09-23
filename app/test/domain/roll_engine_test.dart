@@ -71,4 +71,22 @@ void main() {
       expect(timingFixes(e), isEmpty);
     });
   });
+
+  group('neighbourRates', () {
+    test('a whole rate offers one faster and one slower', () {
+      final e = _engine(const ProjectSettings(fps: 24, mode: TimingMode.speed, ppf: 4));
+      final n = neighbourRates(e);
+      expect(n.shorter!.$1, 5);
+      expect(n.longer!.$1, 3);
+      expect(n.shorter!.$2, lessThan(e.totalFrames));
+      expect(n.longer!.$2, greaterThan(e.totalFrames));
+    });
+
+    test('a fractional rate offers the whole rates either side', () {
+      final e = _engine(const ProjectSettings(fps: 24, mode: TimingMode.duration, durationFrames: 24 * 47 + 5));
+      final n = neighbourRates(e);
+      expect(n.shorter!.$1, e.ppf.ceil());
+      expect(n.longer!.$1, e.ppf.floor());
+    });
+  });
 }

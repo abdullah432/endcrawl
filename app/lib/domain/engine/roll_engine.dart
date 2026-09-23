@@ -296,19 +296,6 @@ RollPaint paintAt(RollEngineResult e, double frame) {
   return RollPaint(offset: off, holdId: holdId, holdOpacity: holdOp);
 }
 
-/// Nearest whole-pixel-per-frame rates, offered as one-tap "judder-free"
-/// fixes when the current duration lands on a fractional rate.
-List<(int ppf, double totalFrames)> engineSnaps(RollEngineResult e) {
-  final out = <(int, double)>[];
-  for (final k in {e.ppf.floor(), e.ppf.ceil()}) {
-    if (k < 1) continue;
-    final sf = (e.travel / k).ceilToDouble();
-    final tf = sf + e.fixedFrames;
-    if (!out.any((o) => o.$1 == k)) out.add((k, tf));
-  }
-  return out;
-}
-
 /// `HH:MM:SS:FF` timecode, frame-accurate at the given frame rate.
 String formatTimecode(double frames, double fps) {
   final b = fps.round().clamp(1, 1000000);
@@ -382,4 +369,15 @@ List<(int ppf, double totalFrames)> timingFixes(RollEngineResult e, {int count =
     out.add((k, (e.travel / k).ceilToDouble() + e.fixedFrames));
   }
   return out;
+}
+
+/// The whole-pixel rates either side of the current one — faster (a
+/// shorter runtime) and slower (longer) — with the runtime each gives (5.1).
+({(int, double)? shorter, (int, double)? longer}) neighbourRates(RollEngineResult e) {
+  if (e.fps == 0 || e.travel <= 1) return (shorter: null, longer: null);
+  final whole = (e.ppf - e.ppf.roundToDouble()).abs() < 0.0008;
+  final up = whole ? e.ppf.round() + 1 : e.ppf.ceil();
+  final down = whole ? e.ppf.round() - 1 : e.ppf.floor();
+  (int, double) at(int k) => (k, (e.travel / k).ceilToDouble() + e.fixedFrames);
+  return (shorter: at(up), longer: down >= 1 ? at(down) : null);
 }

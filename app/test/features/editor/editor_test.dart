@@ -1,35 +1,16 @@
 import 'package:endcrawl/domain/models/credit_block.dart';
-import 'package:endcrawl/domain/models/project.dart';
 import 'package:endcrawl/domain/models/project_settings.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../../support/app_harness.dart';
 import '../../support/fake_project_repository.dart';
-
-/// A small, fully known document: five blocks, one of each common shape.
-Project _film({TimingMode mode = TimingMode.speed, int durationFrames = 24 * 60}) {
-  return Project.create(
-    title: 'The Long Way Down',
-    now: DateTime.utc(2026, 9, 20),
-    settings: ProjectSettings(formatId: '16x9', fps: 24, mode: mode, durationFrames: durationFrames, ppf: 4),
-    blocks: const [
-      TitleBlock(id: 'ttl', title: 'THE LONG WAY DOWN', byline: 'A FILM BY'),
-      NameListBlock(id: 'dir', header: 'Directed by', names: ['Maya Okonkwo']),
-      PairListBlock(id: 'cst', header: 'Cast', rows: [
-        PairCastRow(role: 'Renny', actor: 'Sofia Alvarez'),
-        PairCastRow(role: 'Marcus', actor: 'Idris Oyelaran'),
-      ]),
-      SongBlock(id: 'sng', songTitle: '"Low Tide"', artist: 'Hana Bexley'),
-      NameListBlock(id: 'thx', kind: BlockKind.thanks, header: 'Special thanks', names: ['A', 'B', 'C']),
-    ],
-  );
-}
+import '../../support/fixtures.dart';
 
 void main() {
   late AppHarness app;
 
-  setUp(() => app = AppHarness(projects: FakeProjectRepository(seed: [_film()])));
+  setUp(() => app = AppHarness(projects: FakeProjectRepository(seed: [film()])));
 
   Future<void> tapText(WidgetTester tester, String text) async {
     final finder = find.text(text).last;
@@ -86,7 +67,7 @@ void main() {
       final before = app.projects.saveCount;
 
       await tapText(tester, '2D');
-      await tapText(tester, '3D perspective crawl');
+      await tapText(tester, '3D crawl');
       expect(app.projects.saveCount, before, reason: 'debounced');
 
       await flushAutosave(tester);
@@ -115,7 +96,7 @@ void main() {
 
   group('3.2 readability warning', () {
     testWidgets('a fractional rate states the runtime and cause, with fixes and Ignore', (tester) async {
-      app = AppHarness(projects: FakeProjectRepository(seed: [_film(mode: TimingMode.duration, durationFrames: 24 * 47 + 5)]));
+      app = AppHarness(projects: FakeProjectRepository(seed: [film(mode: TimingMode.duration, durationFrames: 24 * 47 + 5)]));
       await openEditor(tester);
 
       expect(find.textContaining('will judder.', findRichText: true), findsOneWidget);
@@ -127,7 +108,7 @@ void main() {
     });
 
     testWidgets('a fix locks a whole-pixel speed and clears the warning', (tester) async {
-      app = AppHarness(projects: FakeProjectRepository(seed: [_film(mode: TimingMode.duration, durationFrames: 24 * 47 + 5)]));
+      app = AppHarness(projects: FakeProjectRepository(seed: [film(mode: TimingMode.duration, durationFrames: 24 * 47 + 5)]));
       await openEditor(tester);
 
       await tester.tap(find.textContaining(RegExp(r'px/f$')).first);

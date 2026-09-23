@@ -69,29 +69,32 @@ class MonitorView extends ConsumerWidget {
                     SizedBox(
                       width: g.w,
                       height: g.h,
-                      child: ClipRect(
-                        child: Consumer(
-                          builder: (context, ref, _) {
-                            final frame = ref.watch(playbackControllerProvider).frame;
-                            final paint = paintAt(project.engine, frame);
-                            final translated = Transform.translate(
-                              offset: Offset(0, g.h - paint.offset),
-                              child: OverflowBox(
-                                alignment: Alignment.topLeft,
-                                minWidth: g.w,
-                                maxWidth: g.w,
-                                minHeight: 0,
-                                maxHeight: double.infinity,
-                                child: SizedBox(width: g.w, child: content),
-                              ),
-                            );
-                            if (settings.look != RollLook.crawl3d) return translated;
-                            final perspectivePx = g.h * (settings.vanishingDistance / 100) * 2;
-                            final m = Matrix4.identity()
-                              ..setEntry(3, 2, perspectivePx == 0 ? 0 : -1 / perspectivePx)
-                              ..rotateX(settings.tilt * math.pi / 180);
-                            return Transform(alignment: Alignment.bottomCenter, transform: m, child: translated);
-                          },
+                      child: _Ink(
+                        paper: settings.background == MonitorBackground.paper,
+                        child: ClipRect(
+                          child: Consumer(
+                            builder: (context, ref, _) {
+                              final frame = ref.watch(playbackControllerProvider).frame;
+                              final paint = paintAt(project.engine, frame);
+                              final translated = Transform.translate(
+                                offset: Offset(0, g.h - paint.offset),
+                                child: OverflowBox(
+                                  alignment: Alignment.topLeft,
+                                  minWidth: g.w,
+                                  maxWidth: g.w,
+                                  minHeight: 0,
+                                  maxHeight: double.infinity,
+                                  child: SizedBox(width: g.w, child: content),
+                                ),
+                              );
+                              if (settings.look != RollLook.crawl3d) return translated;
+                              final perspectivePx = g.h * (settings.vanishingDistance / 100) * 2;
+                              final m = Matrix4.identity()
+                                ..setEntry(3, 2, perspectivePx == 0 ? 0 : -1 / perspectivePx)
+                                ..rotateX(settings.tilt * math.pi / 180);
+                              return Transform(alignment: Alignment.bottomCenter, transform: m, child: translated);
+                            },
+                          ),
                         ),
                       ),
                     ),
@@ -100,7 +103,16 @@ class MonitorView extends ConsumerWidget {
                     builder: (context, ref, _) {
                       final frame = ref.watch(playbackControllerProvider).frame;
                       final paint = paintAt(project.engine, frame);
-                      return atFullRes(SizedBox(width: g.w, height: g.h, child: HoldOverlay(holds: holds, geometry: g, paint: paint)));
+                      return atFullRes(
+                        SizedBox(
+                          width: g.w,
+                          height: g.h,
+                          child: _Ink(
+                            paper: settings.background == MonitorBackground.paper,
+                            child: HoldOverlay(holds: holds, geometry: g, paint: paint),
+                          ),
+                        ),
+                      );
                     },
                   ),
                   if (settings.safeGuides) SafeGuides(guideWidth: (guideWidth * scale).clamp(1.0, double.infinity)),
@@ -112,4 +124,14 @@ class MonitorView extends ConsumerWidget {
       },
     );
   }
+}
+
+/// Credits are drawn white; on paper they are inverted to ink.
+class _Ink extends StatelessWidget {
+  final bool paper;
+  final Widget child;
+  const _Ink({required this.paper, required this.child});
+
+  @override
+  Widget build(BuildContext context) => paper ? ColorFiltered(colorFilter: kPaperInvert, child: child) : child;
 }

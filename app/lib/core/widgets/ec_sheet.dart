@@ -8,7 +8,15 @@ import 'ec_surfaces.dart';
 
 /// Shows [child] as a bottom sheet with the app's scrim and transparent
 /// Material background, so the sheet draws its own [EcSheet] chrome.
-Future<T?> showEcSheet<T>(BuildContext context, {required WidgetBuilder builder, bool dismissible = true}) {
+///
+/// [scrim] false leaves what is behind the sheet undimmed — the look and
+/// background sheets (5.2, 5.3), where the monitor shows each change live.
+Future<T?> showEcSheet<T>(
+  BuildContext context, {
+  required WidgetBuilder builder,
+  bool dismissible = true,
+  bool scrim = true,
+}) {
   return showModalBottomSheet<T>(
     context: context,
     isScrollControlled: true,
@@ -16,7 +24,7 @@ Future<T?> showEcSheet<T>(BuildContext context, {required WidgetBuilder builder,
     isDismissible: dismissible,
     enableDrag: dismissible,
     backgroundColor: Colors.transparent,
-    barrierColor: context.palette.scrim,
+    barrierColor: scrim ? context.palette.scrim : Colors.transparent,
     builder: builder,
   );
 }

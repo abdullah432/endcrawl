@@ -6,6 +6,7 @@ import '../../../core/theme/theme_context.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../core/widgets/ec_button.dart';
 import '../../../core/widgets/ec_chip.dart';
+import '../../../core/widgets/ec_choice_card.dart';
 import '../../../core/widgets/ec_scaffold.dart';
 import '../../../core/widgets/ec_sheet.dart';
 import '../../../domain/models/canvas_format.dart';
@@ -119,14 +120,23 @@ class _CanvasScreenState extends ConsumerState<CanvasScreen> {
                 EcSectionLabel(settings.formatId == CanvasFormat.customId ? 'Custom · in use' : 'Custom'),
                 Row(
                   children: [
-                    Expanded(child: _SizeField(controller: _customW, label: 'Width')),
+                    Expanded(
+                      child: _SizeField(controller: _customW, label: 'Width'),
+                    ),
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 8),
                       child: Text('×', style: t.body.copyWith(color: p.muted)),
                     ),
-                    Expanded(child: _SizeField(controller: _customH, label: 'Height')),
+                    Expanded(
+                      child: _SizeField(controller: _customH, label: 'Height'),
+                    ),
                     const SizedBox(width: 8),
-                    EcButton(label: 'Use', variant: EcButtonVariant.secondary, size: EcButtonSize.medium, onPressed: _useCustom),
+                    EcButton(
+                      label: 'Use',
+                      variant: EcButtonVariant.secondary,
+                      size: EcButtonSize.medium,
+                      onPressed: _useCustom,
+                    ),
                   ],
                 ),
                 const SizedBox(height: 18),
@@ -169,53 +179,34 @@ class _FormatTile extends StatelessWidget {
     final t = context.type;
     // The frame preview keeps the real ratio inside a 96 × 44 box.
     final scale = [96 / format.w, 44 / format.h].reduce((a, b) => a < b ? a : b);
-    final shape = BorderRadius.circular(EcRadius.row);
-    return Semantics(
+    return EcChoiceCard(
       selected: selected,
-      button: true,
-      label: '${format.label}, ${format.sub}',
-      child: AnimatedContainer(
-        duration: EcMotion.fast,
-        decoration: BoxDecoration(
-          color: selected ? p.surface : p.glass,
-          borderRadius: shape,
-          border: Border.all(color: selected ? p.accentSolid : p.glassEdge, width: selected ? 1.5 : 1),
-          boxShadow: selected ? [BoxShadow(color: p.accentWash, spreadRadius: 4)] : null,
-        ),
-        child: Material(
-          type: MaterialType.transparency,
-          borderRadius: shape,
-          clipBehavior: Clip.antiAlias,
-          child: InkWell(
-            onTap: onTap,
-            child: Padding(
-              padding: const EdgeInsets.all(12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  SizedBox(
-                    height: 44,
-                    child: Center(
-                      child: Container(
-                        width: format.w * scale,
-                        height: format.h * scale,
-                        alignment: Alignment.center,
-                        decoration: BoxDecoration(color: p.monitor, borderRadius: BorderRadius.circular(4)),
-                        child: format.id == 'uhd'
-                            ? Text('4K', style: t.pill.copyWith(fontSize: 8, color: Colors.white.withValues(alpha: .6)))
-                            : null,
-                      ),
-                    ),
-                  ),
-                  const Spacer(),
-                  Text(format.label, style: t.titleS.copyWith(fontSize: 13.5), maxLines: 1, overflow: TextOverflow.ellipsis),
-                  const SizedBox(height: 2),
-                  Text(format.sub, style: t.mono.copyWith(fontSize: 10)),
-                ],
+      onTap: onTap,
+      radius: EcRadius.row,
+      padding: const EdgeInsets.all(12),
+      semanticLabel: '${format.label}, ${format.sub}',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            height: 44,
+            child: Center(
+              child: Container(
+                width: format.w * scale,
+                height: format.h * scale,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(color: p.monitor, borderRadius: BorderRadius.circular(4)),
+                child: format.id == 'uhd'
+                    ? Text('4K', style: t.pill.copyWith(fontSize: 8, color: Colors.white.withValues(alpha: .6)))
+                    : null,
               ),
             ),
           ),
-        ),
+          const Spacer(),
+          Text(format.label, style: t.titleS.copyWith(fontSize: 13.5), maxLines: 1, overflow: TextOverflow.ellipsis),
+          const SizedBox(height: 2),
+          Text(format.sub, style: t.mono.copyWith(fontSize: 10)),
+        ],
       ),
     );
   }

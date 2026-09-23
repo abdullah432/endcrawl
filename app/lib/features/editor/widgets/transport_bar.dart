@@ -3,12 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/theme_context.dart';
 import '../../../core/theme/tokens.dart';
-import '../../../core/widgets/ec_sheet.dart';
 import '../../../domain/models/project_settings.dart';
 import '../../monitor/controllers/playback_controller.dart';
 import '../../project/controllers/project_controller.dart';
-import 'sheets/background_sheet.dart';
-import 'sheets/look_sheet.dart';
+import '../../timing/screens/background_sheet.dart';
+import '../../timing/screens/look_sheet.dart';
 
 /// ⏮ −1f ▶ +1f ⏭, and the two look pills — "2D", "Black" — that open
 /// 5.2 and 5.3 (3.1).
@@ -48,12 +47,14 @@ class TransportBar extends ConsumerWidget {
         const Spacer(),
         LookPill(
           label: settings.look == RollLook.flat2d ? '2D' : '3D',
-          onTap: () => showEcSheet<void>(context, builder: (_) => const LookSheet()),
+          onTap: () => LookSheet.show(context),
         ),
         const SizedBox(width: 6),
-        LookPill(
-          label: backgroundLabel(settings.background),
-          onTap: () => showEcSheet<void>(context, builder: (_) => const BackgroundSheet()),
+        Flexible(
+          child: LookPill(
+            label: backgroundLabel(settings.background),
+            onTap: () => BackgroundSheet.show(context),
+          ),
         ),
       ],
     );
@@ -63,9 +64,8 @@ class TransportBar extends ConsumerWidget {
 String backgroundLabel(MonitorBackground bg) => switch (bg) {
       MonitorBackground.black => 'Black',
       MonitorBackground.alpha => 'Alpha',
-      MonitorBackground.green => 'Green',
-      MonitorBackground.underlay => 'Underlay',
-      MonitorBackground.custom => 'Colour',
+      MonitorBackground.reference => 'Reference',
+      MonitorBackground.paper => 'Paper',
     };
 
 class _TransportButton extends StatelessWidget {
@@ -122,7 +122,12 @@ class LookPill extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 12),
             child: Center(
               widthFactor: 1,
-              child: Text(label, style: context.type.bodyS.copyWith(fontSize: 11.5, fontWeight: FontWeight.w500, color: p.ink)),
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: context.type.bodyS.copyWith(fontSize: 11.5, fontWeight: FontWeight.w500, color: p.ink),
+              ),
             ),
           ),
         ),
