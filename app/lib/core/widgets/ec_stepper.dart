@@ -1,49 +1,54 @@
 import 'package:flutter/material.dart';
 
-import '../theme/tokens.dart';
+import '../theme/theme_context.dart';
+import 'ec_scaffold.dart';
 
-/// A compact "− value +" stepper used for head/tail black, hold/fade
-/// durations, spacer length and title scale.
+/// "− value +" — head/tail black, hold length, spacer, runtime nudges.
+///
+/// [label] puts a caption above it, in the white card the design uses on
+/// 5.1; without one it renders bare, for use inside another card.
 class EcStepper extends StatelessWidget {
   final String display;
-  final VoidCallback onDec;
-  final VoidCallback onInc;
+  final VoidCallback? onDec;
+  final VoidCallback? onInc;
+  final String? label;
+  final double buttonSize;
 
-  const EcStepper({super.key, required this.display, required this.onDec, required this.onInc});
+  const EcStepper({
+    super.key,
+    required this.display,
+    required this.onDec,
+    required this.onInc,
+    this.label,
+    this.buttonSize = 36,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: EcColors.surfaceRaised,
-        border: Border.all(color: EcColors.borderHairline),
-        borderRadius: BorderRadius.circular(EcRadius.md),
-      ),
-      padding: const EdgeInsets.all(EcSpace.s2),
-      child: Row(
-        children: [
-          _btn(Icons.remove, onDec),
-          Expanded(
-            child: Text(
-              display,
-              textAlign: TextAlign.center,
-              style: const TextStyle(fontFamily: EcFonts.mono, fontSize: 15, color: EcColors.textPrimary),
-            ),
-          ),
-          _btn(Icons.add, onInc),
-        ],
-      ),
+    final p = context.palette;
+    final t = context.type;
+    final row = Row(
+      children: [
+        EcCircleButton.tint(icon: Icons.remove_rounded, onPressed: onDec, size: buttonSize, tooltip: 'Decrease'),
+        Expanded(child: Text(display, textAlign: TextAlign.center, style: t.monoM)),
+        EcCircleButton.tint(icon: Icons.add_rounded, onPressed: onInc, size: buttonSize, tooltip: 'Increase'),
+      ],
     );
-  }
-
-  Widget _btn(IconData icon, VoidCallback onTap) {
-    return Material(
-      color: EcColors.surfaceHi,
-      borderRadius: BorderRadius.circular(EcRadius.sm),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(EcRadius.sm),
-        child: SizedBox(width: 40, height: 36, child: Icon(icon, size: 16, color: EcColors.textPrimary)),
+    if (label == null) return row;
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: p.surface,
+        border: Border.all(color: p.line),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label!, style: t.caption),
+          const SizedBox(height: 8),
+          row,
+        ],
       ),
     );
   }

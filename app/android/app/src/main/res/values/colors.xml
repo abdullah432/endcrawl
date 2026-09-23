@@ -1,8 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- EcColors.surfaceCanvas. EndCrawl is a single fixed dark theme, so the
-         launch window uses the same canvas the first Flutter frame paints and
-         there is no white flash between them. Keep in sync with
-         lib/core/theme/tokens.dart. -->
-    <color name="ec_surface_canvas">#0B0D10</color>
+    <!-- EcPalette.light.ground. The launch window uses the same warm
+         off-white the first Flutter frame paints, so launch doesn't flash
+         a different colour. Keep in sync with lib/core/theme/ec_palette.dart. -->
+    <color name="ec_ground">#F4EEE5</color>
 </resources>

@@ -32,7 +32,7 @@ class EndcrawlApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: SystemUiOverlayStyle.light,
+      value: SystemUiOverlayStyle.dark,
       child: MaterialApp(
         title: 'EndCrawl',
         debugShowCheckedModeBanner: false,

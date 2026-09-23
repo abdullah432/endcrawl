@@ -48,6 +48,21 @@ class EcSpace {
 
 class EcRadius {
   EcRadius._();
+
+  // v2 design system (Foundations: "999 buttons · 18 cards · 16 rows ·
+  // 12 inner · 28 sheets", fields 14).
+  static const pill = 999.0;
+  static const sheet = 28.0;
+  static const hero = 22.0;
+  static const group = 20.0;
+  static const card = 18.0;
+  static const row = 16.0;
+  static const field = 14.0;
+  static const inner = 12.0;
+  static const tile = 10.0;
+
+  // v1 names, still used by screens not yet migrated. Removed once the last
+  // v1 screen is rebuilt.
   static const sm = 6.0;
   static const md = 10.0;
   static const lg = 14.0;

@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- See drawable/launch_background.xml. Pinned to the app's canvas colour
-     rather than ?android:colorBackground, which follows the device theme and
-     would be white for anyone not using system dark mode. -->
+<!-- See drawable/launch_background.xml. Pinned to the app's ground colour
+     rather than ?android:colorBackground, which follows the device theme. -->
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
-    <item android:drawable="@color/ec_surface_canvas" />
+    <item android:drawable="@color/ec_ground" />
 </layer-list>

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- The window shown while the process starts. The app has one fixed dark
-     theme, so this is the app's own canvas colour rather than white — the
+<!-- The window shown while the process starts. The app has one light theme
+     with a warm off-white ground, so this is that colour rather than white — the
      launch window and the first Flutter frame are then the same colour. -->
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
-    <item android:drawable="@color/ec_surface_canvas" />
+    <item android:drawable="@color/ec_ground" />
 </layer-list>
