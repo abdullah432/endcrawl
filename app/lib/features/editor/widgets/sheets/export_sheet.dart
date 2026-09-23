@@ -7,7 +7,6 @@ import '../../../../core/widgets/ec_sheet.dart';
 import '../../../export/controllers/export_controller.dart';
 import '../../../export/models/export_models.dart';
 import '../../../project/controllers/project_controller.dart';
-import '../../../../domain/models/canvas_format.dart';
 import '../../../../domain/engine/roll_engine.dart';
 import '../../controllers/editor_ui_controller.dart';
 
@@ -45,7 +44,7 @@ class ExportSheet extends ConsumerWidget {
   }
 
   Widget _idle(BuildContext context, WidgetRef ref, ProjectState project, ExportController ctrl, ExportState state, RollEngineResult e, double secs, double sizeMB) {
-    final formatLabel = project.settings.formatId == 'custom' ? 'Custom' : CanvasFormat.byId(project.settings.formatId).label;
+    final formatLabel = project.settings.format.label;
     final facts = [
       ('Format', formatLabel),
       ('Frame rate', '${project.settings.fps} fps'),

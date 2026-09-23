@@ -5,7 +5,6 @@ import '../../../core/utils/formatting.dart';
 import '../../../core/widgets/ec_button.dart';
 import '../../../core/widgets/ec_credit_frame.dart';
 import '../../../core/widgets/ec_sheet.dart';
-import '../../../domain/models/canvas_format.dart';
 import '../../../domain/models/project.dart';
 
 enum ProjectAction { open, duplicate, rename, delete }
@@ -33,7 +32,7 @@ class ProjectActionsSheet extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = context.type;
     final p = context.palette;
-    final format = CanvasFormat.byId(summary.settings.formatId);
+    final format = summary.settings.format;
     final meta = [
       formatFps(summary.settings.fps),
       format.aspect,

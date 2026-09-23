@@ -14,6 +14,12 @@ class EcChip extends StatelessWidget {
   /// A count or glyph after the label — split-rule counts on 4.2.
   final Widget? trailing;
 
+  /// Selected as a solid gradient pill rather than a tinted outline — the
+  /// frame-rate picker on 2.3, where the choice is the screen's main one.
+  final bool filled;
+
+  final double height;
+
   const EcChip({
     super.key,
     required this.label,
@@ -21,6 +27,8 @@ class EcChip extends StatelessWidget {
     required this.onTap,
     this.mono = false,
     this.trailing,
+    this.filled = false,
+    this.height = 34,
   });
 
   @override
@@ -40,12 +48,13 @@ class EcChip extends StatelessWidget {
           onTap: onTap,
           child: AnimatedContainer(
             duration: EcMotion.fast,
-            height: 34,
-            padding: const EdgeInsets.symmetric(horizontal: 14),
+            height: height,
+            padding: EdgeInsets.symmetric(horizontal: height > 34 ? 15 : 14),
             decoration: BoxDecoration(
-              color: selected ? p.accentWash : p.surface.withValues(alpha: 0.7),
+              color: selected ? (filled ? null : p.accentWash) : p.surface.withValues(alpha: 0.7),
+              gradient: selected && filled ? p.primary : null,
               borderRadius: shape,
-              border: Border.all(color: selected ? p.accentLine : p.line),
+              border: selected && filled ? null : Border.all(color: selected ? p.accentLine : p.line),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
@@ -56,8 +65,8 @@ class EcChip extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: base.copyWith(
-                      color: selected ? p.accent : p.ink2,
-                      fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+                      color: selected ? (filled ? p.onInk : p.accent) : p.ink2,
+                      fontWeight: selected ? (filled ? FontWeight.w500 : FontWeight.w600) : FontWeight.w400,
                     ),
                   ),
                 ),

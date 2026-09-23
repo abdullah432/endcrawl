@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 import '../../../core/theme/tokens.dart';
 import '../../project/controllers/project_controller.dart';
-import '../../../domain/models/canvas_format.dart';
 import '../../../domain/engine/roll_engine.dart';
 
 /// The persistent, quiet status readout: format · fps · duration · judder
@@ -16,9 +15,7 @@ class StatusLine extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final e = project.engine;
-    final sub = project.settings.formatId == 'custom'
-        ? '${project.settings.customW}×${project.settings.customH}'
-        : CanvasFormat.byId(project.settings.formatId).sub;
+    final sub = project.settings.format.sub;
     final rate = e.clean ? 'judder-free' : '${e.ppf.toStringAsFixed(2)} px/f';
     final text = '$sub · ${project.settings.fps} fps · ${formatTimecode(e.totalFrames, e.fps)} · $rate';
     final dotColor = e.clean ? (e.readable ? EcColors.accentPrimary : EcColors.warn) : EcColors.warn;

@@ -11,24 +11,18 @@ void main() {
 
   Future<void> pumpApp(WidgetTester tester) => app.pump(tester);
 
-  /// Empty library → template → format → editor, the new-project path.
+  /// Empty library → template → contents → canvas → editor.
   Future<void> openShortFilmEditor(WidgetTester tester) async {
     await pumpApp(tester);
     await tester.tap(find.text('Feature film'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.textContaining('Continue with'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Open editor'));
     await tester.pumpAndSettle();
   }
 
-  group('New project flow', () {
-    testWidgets('picking a template opens the format screen', (tester) async {
-      await pumpApp(tester);
-      await tester.tap(find.text('Short film'));
-      await tester.pumpAndSettle();
-
-      expect(find.text('Canvas format'), findsOneWidget);
-    });
-
+  group('Opening a new project', () {
     testWidgets('opening the editor persists the project and renders the block list', (tester) async {
       await openShortFilmEditor(tester);
 
@@ -76,16 +70,6 @@ void main() {
       expect(app.projects.projects.values.single.settings.look, RollLook.crawl3d);
     });
 
-    testWidgets('start empty reaches an editor with no blocks', (tester) async {
-      await pumpApp(tester);
-      await tester.ensureVisible(find.text('Start empty'));
-      await tester.tap(find.text('Start empty'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Open editor'));
-      await tester.pumpAndSettle();
-
-      expect(find.text('No blocks yet'), findsOneWidget);
-    });
   });
 
   group('Editor', () {

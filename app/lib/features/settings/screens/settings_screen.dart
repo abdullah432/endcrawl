@@ -80,7 +80,7 @@ class SettingsScreen extends ConsumerWidget {
                   context,
                   title: 'Canvas',
                   selected: prefs.defaultFormatId,
-                  options: [for (final f in CanvasFormat.presets) EcOption(f.id, f.label, detail: f.sub)],
+                  options: [for (final f in CanvasFormat.picker) EcOption(f.id, f.label, detail: f.sub)],
                 );
                 if (id != null) update((p) => p.copyWith(defaultFormatId: id));
               },

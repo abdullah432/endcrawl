@@ -8,7 +8,6 @@ import '../../../data/repositories/project_repository.dart';
 import '../../../data/sources/session_store.dart';
 import '../../../data/repositories/template_repository.dart';
 import '../../../domain/engine/roll_engine.dart';
-import '../../../domain/models/canvas_format.dart';
 import '../../../domain/models/credit_block.dart';
 import '../../../domain/models/credit_face.dart';
 import '../../../domain/models/project.dart';
@@ -50,8 +49,8 @@ class ProjectState {
 
   List<CreditBlock> get activeBlocks => blocks.where((b) => !b.muted).toList();
 
-  int get formatW => settings.formatId == 'custom' ? settings.customW : CanvasFormat.byId(settings.formatId).w;
-  int get formatH => settings.formatId == 'custom' ? settings.customH : CanvasFormat.byId(settings.formatId).h;
+  int get formatW => settings.format.w;
+  int get formatH => settings.format.h;
 
   CreditFace get face => settings.face ?? CreditFace.grotesque;
 
@@ -101,6 +100,11 @@ class ProjectController extends Notifier<ProjectState> {
 
   Timer? _debounce;
 
+  /// True while a new document is still being set up (2.2, 2.3). Edits then
+  /// change it in memory only: the first write is [markOpened], so backing
+  /// out of the flow leaves nothing behind.
+  bool _draft = false;
+
   @override
   ProjectState build() {
     ref.onDispose(() => _debounce?.cancel());
@@ -109,13 +113,17 @@ class ProjectController extends Notifier<ProjectState> {
 
   // ---------- document lifecycle ----------
 
-  /// Starts a new document from a template. Not persisted until the editor
-  /// opens it, so backing out of the format step leaves nothing behind.
-  void createFromTemplate(ProjectTemplate t) {
+  /// Starts a new document from a template, with only the [include]d
+  /// sections (all of its defaults when null). Not persisted until the
+  /// editor opens it, so backing out of the new-project flow leaves nothing
+  /// behind.
+  void createFromTemplate(ProjectTemplate t, {Set<String>? include}) {
+    _debounce?.cancel();
+    _draft = true;
     state = ProjectState(
       project: Project.create(
         title: t.defaultTitle,
-        blocks: _templates.seed(t.id),
+        blocks: _templates.blocksFor(t.id, include: include),
         settings: ProjectSettings(
           formatId: t.formatId,
           fps: t.fps,
@@ -126,14 +134,33 @@ class ProjectController extends Notifier<ProjectState> {
     );
   }
 
-  void createEmpty() => state = ProjectState.newDocument();
+  /// Starts an empty document using the account's defaults for new
+  /// projects (Settings → Defaults).
+  void createEmpty({double fps = 24, String formatId = '16x9', bool safeGuides = true}) {
+    _debounce?.cancel();
+    _draft = true;
+    state = ProjectState(
+      project: Project.create(
+        settings: ProjectSettings(
+          formatId: formatId,
+          fps: fps,
+          safeGuides: safeGuides,
+          durationFrames: (60 * fps).round(),
+        ),
+      ),
+    );
+  }
 
   /// Loads a stored project into the editor. Marking it open is the
   /// editor's job ([markOpened]), so the flag tracks what is actually on
   /// screen rather than what was merely loaded.
   Future<Result<Project>> openProject(String id) async {
     final result = await _repository.load(id);
-    if (result case Ok(:final value)) state = ProjectState(project: value);
+    if (result case Ok(:final value)) {
+      _debounce?.cancel();
+      _draft = false;
+      state = ProjectState(project: value);
+    }
     return result;
   }
 
@@ -145,6 +172,7 @@ class ProjectController extends Notifier<ProjectState> {
   /// document: with a cloud store the document is shared across devices, and
   /// "I had this open" is not true of all of them.
   Future<void> markOpened() async {
+    _draft = false;
     final project = state.project;
     await _session.setLastOpened(project.id);
     await _session.setLeftOpen(project.id);
@@ -185,6 +213,7 @@ class ProjectController extends Notifier<ProjectState> {
   }
 
   void _scheduleSave() {
+    if (_draft) return;
     _debounce?.cancel();
     _debounce = Timer(_autosaveDebounce, () => _save(state.project));
   }

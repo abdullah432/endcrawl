@@ -1,3 +1,4 @@
+import 'canvas_format.dart';
 import 'credit_face.dart';
 import 'json_support.dart';
 
@@ -43,6 +44,10 @@ class ProjectSettings {
     this.face,
     this.safeGuides = true,
   });
+
+  /// The output format, whether a preset or a custom size.
+  CanvasFormat get format =>
+      formatId == CanvasFormat.customId ? CanvasFormat.custom(customW, customH) : CanvasFormat.byId(formatId);
 
   ProjectSettings copyWith({
     String? formatId,

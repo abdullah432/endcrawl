@@ -8,7 +8,6 @@ import '../../../core/widgets/ec_button.dart';
 import '../../../core/widgets/ec_credit_frame.dart';
 import '../../../core/widgets/ec_scaffold.dart';
 import '../../../core/widgets/ec_surfaces.dart';
-import '../../../domain/models/canvas_format.dart';
 import '../../../domain/models/project.dart';
 import '../../../domain/models/render_summary.dart';
 import '../controllers/library_controller.dart';
@@ -50,7 +49,7 @@ class ProjectCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final p = context.palette;
     final t = context.type;
-    final format = CanvasFormat.byId(_s.settings.formatId);
+    final format = _s.settings.format;
     final (status, statusColor) = _status(p);
 
     final meta = [
