@@ -73,38 +73,6 @@ ThemeData buildEndcrawlTheme({EcPalette palette = EcPalette.light}) {
   );
 }
 
-/// Monospace text style helper (IBM Plex Mono), used for timecodes,
-/// pixel-per-frame readouts and every other numeric/technical readout.
-TextStyle ecMono(
-  double size, {
-  Color color = EcColors.textPrimary,
-  FontWeight weight = FontWeight.w400,
-  double? letterSpacing,
-}) {
-  return GoogleFonts.ibmPlexMono(
-    fontSize: size,
-    color: color,
-    fontWeight: weight,
-    letterSpacing: letterSpacing,
-  );
-}
-
-TextStyle ecUi(
-  double size, {
-  Color color = EcColors.textPrimary,
-  FontWeight weight = FontWeight.w400,
-  double? letterSpacing,
-  double? height,
-}) {
-  return GoogleFonts.ibmPlexSans(
-    fontSize: size,
-    color: color,
-    fontWeight: weight,
-    letterSpacing: letterSpacing,
-    height: height,
-  );
-}
-
 /// Maps the domain's [CreditFace] onto the concrete typefaces it ships as.
 /// The enum itself lives in `domain/models/credit_face.dart` because it is
 /// stored in the project document; only this rendering of it is theme code.

@@ -17,38 +17,36 @@ prototype exported by Claude Design (see [`design/`](design/)).
 - [`firestore.indexes.json`](firestore.indexes.json) / [`firebase.json`](firebase.json) /
   [`.firebaserc`](.firebaserc) — Firebase CLI project config, so rules deploy
   with a single `firebase deploy`.
-- [`design/`](design/) — the original Claude Design handoff bundle this app was
-  built from: the design prompt, chat transcript, and the interactive HTML/JS
-  prototype (`design/project/EndCrawl.dc.html`). Kept for reference; not part
-  of the shipped app.
+- [`design/app-light/`](design/app-light/) — the current design the app is
+  built to (`EndCrawl App Light.dc.html`).
+- [`design/`](design/) — the original handoff bundle (prompt, transcript and
+  first prototype), kept for reference; not part of the shipped app.
 
 ## Status
 
-UI/UX is implemented with full fidelity to the prototype: format & fps setup,
-the block editor (title, two-column cast, department, hold cards, logos,
-soundtrack, special thanks, spacers), the roll engine (frame-locked scroll,
-judder/readability checks, duration & speed lock), the real-time monitor
-(2D/3D look, backgrounds, safe guides, rotate-to-preview), paste-and-split
-bulk entry, and the export flow. Export itself is simulated — there is no
-video encoder behind it in this build.
+The app follows the v2 design in [`design/app-light/`](design/app-light/)
+(light, "Aurora Noir"): onboarding with Apple, Google and email; a library
+of numbered reels with a three-project free plan; templates with editable
+contents; the editor with its readability warnings, multi-select and swipe
+actions; 27 block types with paste-and-split and a fast cast editor; timing,
+look and background; export; and settings with account management and
+account deletion.
 
-Projects live in Firestore under `users/{uid}/projects/{projectId}`, with
-offline persistence on, behind a `ProjectRepository` seam: a versioned
-document schema, debounced autosave, a project library, and real crash
-recovery. Accounts are Firebase Authentication — email/password and Google
-Sign-in — behind a one-screen welcome with a live credit roll for a backdrop.
-See [`app/README.md`](app/README.md#data-layer) for the schema and the
-layering, and [Onboarding and accounts](app/README.md#onboarding-and-accounts)
-for the sign-in flow.
+Projects live in Firestore under `users/{uid}/projects/{projectId}` (with a
+`users/{uid}` profile for preferences), offline-first, with autosave and
+crash recovery. Export is simulated — there is no video encoder in this
+build — and purchases and ads sit behind seams awaiting a store and an ad
+SDK. See [`app/README.md`](app/README.md) for the architecture and what is
+a placeholder.
 
 ## Firebase setup
 
 The app code is wired up, but the generated Firebase config is
 machine-specific and not in the repo. One person has to run the steps in
 [`app/README.md`](app/README.md#firebase-setup) once against the
-`endcrawl-620c2` project — `flutterfire configure`, enabling the two sign-in
-providers, and `firebase deploy --only firestore` — before the app will
-build.
+`endcrawl-620c2` project — `flutterfire configure`, enabling the Apple, Google
+and email providers, and `firebase deploy --only firestore` (redeploy after
+this update: the rules changed) — before the app will build.
 
-**Next:** a real export pipeline. Guest mode (Firebase Anonymous Auth,
+**Next:** a real export pipeline, a store for Pro, and an ad SDK. Guest mode (Firebase Anonymous Auth,
 upgradable in place) is a deliberate deferral, not an oversight.
