@@ -73,16 +73,10 @@ class FirebaseAuthRepository implements AuthRepository {
       // on Android, GoogleService-Info.plist on iOS. Hard-coding them here
       // would mean a second place to update every time the Firebase project
       // changes, and would put OAuth client ids in source control.
-      await (_googleInitialization ??= _google.initialize());
-
       // 7.x: authenticate() returns a non-null account or throws — a user
       // backing out arrives as GoogleSignInException(code: canceled), not
       // as a null account the way the 6.x signIn() API worked.
-      final account = await _google.authenticate();
-      final credential = GoogleAuthProvider.credential(
-        idToken: account.authentication.idToken,
-      );
-      final result = await _auth.signInWithCredential(credential);
+      final result = await _auth.signInWithCredential(await _googleCredential());
       return _requireUser(result.user);
     });
   }
@@ -92,10 +86,7 @@ class FirebaseAuthRepository implements AuthRepository {
     return _guard(() async {
       // Firebase drives Sign in with Apple natively on iOS and through a
       // web flow elsewhere; no extra package is needed.
-      final provider = AppleAuthProvider()
-        ..addScope('email')
-        ..addScope('name');
-      final result = await _auth.signInWithProvider(provider);
+      final result = await _auth.signInWithProvider(_appleProvider());
       return _requireUser(result.user);
     });
   }
@@ -120,6 +111,86 @@ class FirebaseAuthRepository implements AuthRepository {
       await _auth.currentUser?.reload();
     });
   }
+
+  @override
+  Future<Result<AppUser>> linkGoogle() {
+    return _guard(() async {
+      final credential = await _googleCredential();
+      await _requireFirebaseUser().linkWithCredential(credential);
+      return _reloaded();
+    });
+  }
+
+  @override
+  Future<Result<AppUser>> linkApple() {
+    return _guard(() async {
+      await _requireFirebaseUser().linkWithProvider(_appleProvider());
+      return _reloaded();
+    });
+  }
+
+  @override
+  Future<Result<AppUser>> linkPassword({required String email, required String password}) {
+    return _guard(() async {
+      final credential = EmailAuthProvider.credential(email: email.trim(), password: password);
+      await _requireFirebaseUser().linkWithCredential(credential);
+      return _reloaded();
+    });
+  }
+
+  @override
+  Future<Result<AppUser>> unlink(SignInMethod method) async {
+    final user = currentUser;
+    if (user == null || !user.canUnlink(method)) return const Err(lastSignInMethod);
+    return _guard(() async {
+      await _requireFirebaseUser().unlink(_providerIdFor(method));
+      return _reloaded();
+    });
+  }
+
+  @override
+  Future<Result<void>> reauthenticate({String? password}) {
+    return _guard(() async {
+      final user = _requireFirebaseUser();
+      switch (currentUser?.primaryMethod) {
+        case SignInMethod.apple:
+          await user.reauthenticateWithProvider(_appleProvider());
+        case SignInMethod.google:
+          await user.reauthenticateWithCredential(await _googleCredential());
+        case SignInMethod.password || null:
+          await user.reauthenticateWithCredential(
+            EmailAuthProvider.credential(email: user.email ?? '', password: password ?? ''),
+          );
+      }
+    });
+  }
+
+  Future<AuthCredential> _googleCredential() async {
+    await (_googleInitialization ??= _google.initialize());
+    final account = await _google.authenticate();
+    return GoogleAuthProvider.credential(idToken: account.authentication.idToken);
+  }
+
+  AppleAuthProvider _appleProvider() => AppleAuthProvider()
+    ..addScope('email')
+    ..addScope('name');
+
+  User _requireFirebaseUser() {
+    final user = _auth.currentUser;
+    if (user == null) throw FirebaseAuthException(code: 'user-not-found', message: 'Signed out.');
+    return user;
+  }
+
+  Future<AppUser> _reloaded() async {
+    await _auth.currentUser?.reload();
+    return _requireUser(_auth.currentUser);
+  }
+
+  static String _providerIdFor(SignInMethod method) => switch (method) {
+        SignInMethod.apple => 'apple.com',
+        SignInMethod.google => 'google.com',
+        SignInMethod.password => 'password',
+      };
 
   @override
   Future<Result<void>> deleteCurrentUser() {
@@ -234,6 +305,12 @@ class FirebaseAuthRepository implements AuthRepository {
         ),
       'too-many-requests' => (FailureKind.permission, 'Too many attempts. Try again in a few minutes.'),
       'network-request-failed' => (FailureKind.network, 'No connection. Check your network and try again.'),
+      'provider-already-linked' => (FailureKind.unknown, 'That method is already connected.'),
+      'credential-already-in-use' => (
+          FailureKind.permission,
+          'That account already belongs to another EndCrawl login.',
+        ),
+      'user-mismatch' => (FailureKind.permission, 'That isn’t the account you’re signed in with.'),
       'account-exists-with-different-credential' => (
           FailureKind.permission,
           'That email is already registered with a different sign-in method.',

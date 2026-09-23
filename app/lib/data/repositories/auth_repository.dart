@@ -38,6 +38,22 @@ abstract interface class AuthRepository {
 
   Future<Result<void>> updateDisplayName(String name);
 
+  /// Adds a sign-in method to the signed-in account (7.2).
+  Future<Result<AppUser>> linkGoogle();
+
+  Future<Result<AppUser>> linkApple();
+
+  /// Adds email & password, for devices without Apple or Google.
+  Future<Result<AppUser>> linkPassword({required String email, required String password});
+
+  /// Removes a sign-in method. Fails rather than removing the last one.
+  Future<Result<AppUser>> unlink(SignInMethod method);
+
+  /// Proves it's still the account holder before a sensitive change —
+  /// deleting the account. Uses the account's main method: [password] for
+  /// email accounts, the provider's own sheet for Apple and Google.
+  Future<Result<void>> reauthenticate({String? password});
+
   /// Deletes the signed-in auth account only. Callers that own data
   /// elsewhere (projects, profile) delete that first.
   Future<Result<void>> deleteCurrentUser();
@@ -59,3 +75,9 @@ abstract final class AuthField {
 const cancelledByUser = AppFailure(FailureKind.unknown, 'Sign-in cancelled.');
 
 bool isCancellation(AppFailure failure) => identical(failure, cancelledByUser);
+
+/// Returned by [AuthRepository.unlink] for the account's only method.
+const lastSignInMethod = AppFailure(
+  FailureKind.permission,
+  'You always need at least one way to sign in, so your only connected method can’t be removed.',
+);

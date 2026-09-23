@@ -136,6 +136,42 @@ class FakeAuthRepository implements AuthRepository {
     return const Ok(null);
   }
 
+  int reauthentications = 0;
+  String? reauthPassword;
+
+  Future<Result<AppUser>> _withMethods(Set<SignInMethod> Function(Set<SignInMethod>) change) async {
+    if (failWith case final failure?) return Err(failure);
+    final user = _user;
+    if (user == null) return const Err(AppFailure(FailureKind.permission, 'Signed out.'));
+    final next = user.copyWith(methods: change({...user.methods}));
+    _emit(next);
+    return Ok(next);
+  }
+
+  @override
+  Future<Result<AppUser>> linkGoogle() => _withMethods((m) => m..add(SignInMethod.google));
+
+  @override
+  Future<Result<AppUser>> linkApple() => _withMethods((m) => m..add(SignInMethod.apple));
+
+  @override
+  Future<Result<AppUser>> linkPassword({required String email, required String password}) =>
+      _withMethods((m) => m..add(SignInMethod.password));
+
+  @override
+  Future<Result<AppUser>> unlink(SignInMethod method) async {
+    if (!(_user?.canUnlink(method) ?? false)) return const Err(lastSignInMethod);
+    return _withMethods((m) => m..remove(method));
+  }
+
+  @override
+  Future<Result<void>> reauthenticate({String? password}) async {
+    reauthentications++;
+    reauthPassword = password;
+    if (failWith case final failure?) return Err(failure);
+    return const Ok(null);
+  }
+
   @override
   Future<Result<void>> deleteCurrentUser() async {
     if (failWith case final failure?) return Err(failure);

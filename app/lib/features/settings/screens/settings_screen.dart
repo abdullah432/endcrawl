@@ -23,7 +23,11 @@ import '../../plan/screens/pro_sheet.dart';
 import '../../plan/widgets/plan_meter.dart';
 import '../controllers/settings_controller.dart';
 import '../models/legal_document.dart';
+import 'delete_account_screen.dart';
 import 'legal_document_screen.dart';
+import 'privacy_screen.dart';
+import 'profile_screen.dart';
+import 'subscription_screen.dart';
 
 /// 7.1 — Settings.
 ///
@@ -120,6 +124,7 @@ class SettingsScreen extends ConsumerWidget {
           ]),
           const SizedBox(height: 22),
           EcGroup(label: 'Legal & privacy', children: [
+            EcGroupRow(title: 'Privacy & data', onTap: () => PrivacyScreen.open(context)),
             EcGroupRow(title: 'Privacy policy', onTap: () => LegalDocumentScreen.open(context, privacyPolicy)),
             EcGroupRow(title: 'Terms of service', onTap: () => LegalDocumentScreen.open(context, termsOfService)),
             EcGroupRow(
@@ -138,6 +143,12 @@ class SettingsScreen extends ConsumerWidget {
                 final result = await settings.signOut();
                 if (result case Err(:final failure) when context.mounted) showEcToast(context, failure.message);
               },
+            ),
+            EcGroupRow(
+              title: 'Delete account',
+              destructive: true,
+              chevron: false,
+              onTap: () => DeleteAccountScreen.open(context),
             ),
           ]),
           const SizedBox(height: 18),
@@ -161,6 +172,7 @@ class _ProfileCard extends StatelessWidget {
       strong: true,
       radius: EcRadius.group,
       padding: const EdgeInsets.all(14),
+      onTap: () => ProfileScreen.open(context),
       child: Row(
         children: [
           EcAvatar(initials: user.initials, size: 56, gradient: true),
@@ -181,6 +193,7 @@ class _ProfileCard extends StatelessWidget {
               ],
             ),
           ),
+          Icon(Icons.chevron_right_rounded, color: p.faint),
         ],
       ),
     );
@@ -199,7 +212,7 @@ class _PlanCard extends ConsumerWidget {
     final plan = ref.watch(planControllerProvider);
     final limit = entitlement.projectLimit;
 
-    return Container(
+    final card = Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: p.surface,
@@ -249,6 +262,13 @@ class _PlanCard extends ConsumerWidget {
           ],
         ],
       ),
+    );
+    // On Pro the card is the way into the subscription (7.3); on Free its
+    // buttons lead to the Pro sheet instead.
+    if (!entitlement.isPro) return card;
+    return Semantics(
+      button: true,
+      child: GestureDetector(onTap: () => SubscriptionScreen.open(context), child: card),
     );
   }
 }

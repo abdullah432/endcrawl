@@ -39,6 +39,19 @@ class AppUser {
     return null;
   }
 
+  AppUser copyWith({String? displayName, bool? isEmailVerified, Set<SignInMethod>? methods}) => AppUser(
+        uid: uid,
+        email: email,
+        displayName: displayName ?? this.displayName,
+        photoUrl: photoUrl,
+        isEmailVerified: isEmailVerified ?? this.isEmailVerified,
+        methods: methods ?? this.methods,
+      );
+
+  /// A method can be removed only while another remains — there must
+  /// always be a way back in (7.2).
+  bool canUnlink(SignInMethod method) => methods.contains(method) && methods.length > 1;
+
   /// What to show in the account menu: a name if there is one, otherwise the
   /// email, otherwise something that is at least not blank.
   String get label => displayName?.trim().isNotEmpty == true
