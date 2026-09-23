@@ -51,7 +51,7 @@ void main() {
 
     testWidgets('template meta is derived from what the template creates', (tester) async {
       await AppHarness().pump(tester);
-      expect(find.textContaining('24 fps · 2.39:1 · 14 blocks'), findsOneWidget);
+      expect(find.textContaining('24 fps · 2.39:1 · 28 blocks'), findsOneWidget);
       expect(find.textContaining('30 fps · 9:16 · 6 blocks'), findsOneWidget);
     });
 
@@ -84,7 +84,7 @@ void main() {
     testWidgets('each card shows the first credit and the runtime', (tester) async {
       await withProjects([
         _project('The Long Way Down', day: 1, blocks: const [
-          DeptBlock(id: 'd', header: 'Directed by', names: ['Maya Okonkwo']),
+          NameListBlock(id: 'd', header: 'Directed by', names: ['Maya Okonkwo']),
         ]),
       ]).pump(tester);
 

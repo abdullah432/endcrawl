@@ -25,7 +25,7 @@ class BlockEditorSheet extends ConsumerWidget {
 
     return EcSheet(
       title: 'Edit block',
-      child: block is CastBlock ? CastBlockEditor(blockId: blockId) : GenericBlockEditor(block: block),
+      child: block is PairListBlock ? CastBlockEditor(blockId: blockId) : GenericBlockEditor(block: block),
     );
   }
 }

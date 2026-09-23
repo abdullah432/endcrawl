@@ -93,9 +93,9 @@ class PasteController extends Notifier<PasteState> {
 
     final project = ref.read(projectControllerProvider.notifier);
     final blocks = ref.read(projectControllerProvider).blocks;
-    CastBlock? target;
+    PairListBlock? target;
     for (final b in blocks) {
-      if (b is CastBlock) {
+      if (b is PairListBlock) {
         target = b;
         break;
       }
@@ -103,7 +103,7 @@ class PasteController extends Notifier<PasteState> {
     if (target != null) {
       project.setCastRows(target.id, rows);
     } else {
-      project.addBlock(CastBlock(id: newBlockId(), rows: rows));
+      project.addBlock(PairListBlock(id: newBlockId(), rows: rows));
     }
     reset();
   }

@@ -122,8 +122,12 @@ void main() {
     testWidgets('tapping the cast block card opens the cast editor', (tester) async {
       await openShortFilmEditor(tester);
 
-      await tester.scrollUntilVisible(find.text('Cast'), 300);
-      await tester.tap(find.text('Cast'));
+      // Scroll past it a little: the floating action bar covers the last
+      // row of the viewport.
+      await tester.scrollUntilVisible(find.text('Cast · two column'), 300);
+      await tester.drag(find.text('Cast · two column'), const Offset(0, -120));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Cast · two column'));
       await tester.pumpAndSettle();
 
       expect(find.text('Centre gutter'), findsOneWidget);

@@ -67,7 +67,7 @@ class CastGeometry {
   });
 }
 
-CastGeometry computeCastGeometry(CastBlock block, RollGeometry g) {
+CastGeometry computeCastGeometry(PairListBlock block, RollGeometry g) {
   final gut = g.w * block.gutter;
   final colW = (g.safeWidth - gut) / 2;
   var maxc = 0;
@@ -77,8 +77,7 @@ CastGeometry computeCastGeometry(CastBlock block, RollGeometry g) {
     }
   }
   final need = maxc * g.base * 0.5;
-  final collapse = block.collapse == CastCollapseMode.always ||
-      (block.collapse != CastCollapseMode.never && colW < need);
+  final collapse = block.alwaysStacked || (block.collapse != CastCollapseMode.never && colW < need);
   return CastGeometry(gutter: gut, colWidth: colW, collapse: collapse, need: need, maxChars: maxc);
 }
 

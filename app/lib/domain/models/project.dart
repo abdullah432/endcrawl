@@ -255,8 +255,11 @@ class CreditPreview {
     final live = blocks.where((b) => !b.muted);
     for (final block in live) {
       final preview = switch (block) {
-        DeptBlock(:final header, :final names) when names.isNotEmpty => CreditPreview(header: header, names: names.take(2).toList()),
-        CastBlock(:final header, :final rows) => CreditPreview(
+        NameListBlock(:final header, :final names) when names.isNotEmpty =>
+          CreditPreview(header: header, names: names.take(2).toList()),
+        CardBlock(kind: BlockKind.directedBy || BlockKind.scoreBy, :final header, :final lines) when lines.isNotEmpty =>
+          CreditPreview(header: header, names: lines.take(2).toList()),
+        PairListBlock(:final header, :final rows) => CreditPreview(
             header: header.isEmpty ? 'Cast' : header,
             names: rows.whereType<PairCastRow>().map((r) => r.actor).take(2).toList(),
           ),

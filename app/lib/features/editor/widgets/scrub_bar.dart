@@ -24,7 +24,7 @@ class ScrubBar extends ConsumerWidget {
       final y = project.measurements.blockY[b.id] ?? 0;
       final fr = e.headFrames + (e.ppf == 0 ? 0 : y / e.ppf);
       final pct = (fr / e.totalFrames * 100).clamp(0, 100).toDouble();
-      markers.add((pct, b is CastBlock ? EcColors.accentPrimary : EcColors.borderStrong));
+      markers.add((pct, b is PairListBlock ? EcColors.accentPrimary : EcColors.borderStrong));
     }
 
     void handleDrag(BuildContext context, Offset globalPos) {

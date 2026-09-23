@@ -5,7 +5,7 @@ import '../../../../core/theme/tokens.dart';
 import '../../../../core/widgets/ec_sheet.dart';
 import '../../../project/controllers/project_controller.dart';
 import '../../../../domain/models/credit_block.dart';
-import '../../../../data/repositories/template_repository.dart';
+import '../../../../domain/models/block_catalog.dart';
 
 const _kAddTypes = [
   ('title', 'TTL', 'Title card', 'Studio banner, film title, "a film by".'),
@@ -23,19 +23,9 @@ class AddBlockSheet extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    const repo = TemplateRepository();
     final controller = ref.read(projectControllerProvider.notifier);
 
-    CreditBlock make(String id) => switch (id) {
-          'title' => repo.mkTitle(),
-          'cast' => repo.mkCast(),
-          'dept' => repo.mkDept('DEPARTMENT', const ['Name']),
-          'song' => repo.mkSong(),
-          'thanks' => repo.mkThanks(),
-          'logos' => repo.mkLogos(),
-          'hold' => repo.mkHold(3, const ['HOLD CARD']),
-          _ => repo.mkSpacer(),
-        };
+    CreditBlock make(String wire) => newBlockOf(BlockKind.fromWire(wire) ?? BlockKind.spacer);
 
     return EcSheet(
       title: 'Add block',

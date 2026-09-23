@@ -1,6 +1,6 @@
 import '../../project/controllers/project_controller.dart';
+import '../../../domain/models/block_catalog.dart';
 import '../../../domain/models/credit_block.dart';
-import '../../../domain/engine/roll_engine.dart';
 
 class BlockSummary {
   final String title;
@@ -10,44 +10,8 @@ class BlockSummary {
 }
 
 BlockSummary summarizeBlock(CreditBlock b, ProjectState project) {
-  String title = '';
-  String meta = '';
-
-  switch (b) {
-    case TitleBlock v:
-      title = v.title;
-      meta = '${v.banner.isNotEmpty ? '${v.banner} · ' : ''}title at ${(v.titleScale * 100).round()}% scale';
-    case DeptBlock v:
-      title = v.header;
-      meta = v.names.join(' · ');
-    case CastBlock v:
-      final cg = computeCastGeometry(v, project.geometry);
-      final rowCount = v.rows.whereType<PairCastRow>().length;
-      final leader = switch (v.leader) {
-        LeaderStyle.dots => 'dotted leaders',
-        LeaderStyle.rule => 'hairline rule',
-        LeaderStyle.clean => 'clean gutter',
-      };
-      title = 'Cast';
-      meta = '$rowCount rows · $leader${cg.collapse ? ' · stacked' : ' · two-column'}';
-    case SongBlock v:
-      title = v.songTitle;
-      meta = v.artist;
-    case ThanksBlock v:
-      title = v.header;
-      meta = '${v.names.length} names';
-    case LogosBlock v:
-      title = 'Logo row';
-      meta = v.logos.join(' · ');
-    case HoldBlock v:
-      title = v.lines.isNotEmpty ? v.lines.first : 'Hold card';
-      meta = 'hold ${v.hold}s · fade ${v.fadeIn}/${v.fadeOut}s';
-    case SpacerBlock v:
-      title = 'Spacer';
-      meta = '${v.seconds} s';
-  }
-
-  return BlockSummary(title: title, meta: meta, duration: _blockDuration(b, project));
+  final description = describeBlock(b);
+  return BlockSummary(title: description.title, meta: description.detail, duration: _blockDuration(b, project));
 }
 
 String _blockDuration(CreditBlock b, ProjectState project) {

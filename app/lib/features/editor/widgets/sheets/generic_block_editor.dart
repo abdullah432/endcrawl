@@ -94,24 +94,42 @@ class GenericBlockEditor extends ConsumerWidget {
           textField('Byline', v.byline, (t) => controller.patchBlock(v.id, (b) => (b as TitleBlock).copyWith(byline: t))),
           numField('Title size (× credit size)', v.titleScale, .1, (n) => controller.patchBlock(v.id, (b) => (b as TitleBlock).copyWith(titleScale: n)), unit: '×'),
         ]);
-      case DeptBlock v:
+      case NameListBlock v:
         return Column(children: [
-          textField('Header', v.header, (t) => controller.patchBlock(v.id, (b) => (b as DeptBlock).copyWith(header: t))),
-          linesField('Names — one per line', v.names, (l) => controller.patchBlock(v.id, (b) => (b as DeptBlock).copyWith(names: l))),
+          textField('Header', v.header, (t) => controller.patchBlock(v.id, (b) => (b as NameListBlock).copyWith(header: t))),
+          linesField('Names — one per line', v.names, (l) => controller.patchBlock(v.id, (b) => (b as NameListBlock).copyWith(names: l))),
         ]);
+      case CardBlock v:
+        return Column(children: [
+          textField('Header', v.header, (t) => controller.patchBlock(v.id, (b) => (b as CardBlock).copyWith(header: t))),
+          linesField('Lines — one per line', v.lines, (l) => controller.patchBlock(v.id, (b) => (b as CardBlock).copyWith(lines: l))),
+          textField('Footer', v.footer, (t) => controller.patchBlock(v.id, (b) => (b as CardBlock).copyWith(footer: t))),
+        ]);
+      case MainCreditsBlock v:
+        return linesField(
+          'Cards — "Header: Name" per line',
+          [for (final c in v.cards) '${c.header}: ${c.names.join(', ')}'],
+          (l) => controller.patchBlock(v.id, (b) => (b as MainCreditsBlock).copyWith(cards: [
+                for (final line in l)
+                  if (line.contains(':'))
+                    CreditEntry(header: line.split(':').first.trim(), names: line.split(':').skip(1).join(':').split(',').map((n) => n.trim()).where((n) => n.isNotEmpty).toList())
+                  else
+                    CreditEntry(names: [line.trim()]),
+              ])),
+        );
+      case DividerBlock():
+        return const SizedBox.shrink();
       case SongBlock v:
         return Column(children: [
           textField('Song', v.songTitle, (t) => controller.patchBlock(v.id, (b) => (b as SongBlock).copyWith(songTitle: t))),
           textField('Artist', v.artist, (t) => controller.patchBlock(v.id, (b) => (b as SongBlock).copyWith(artist: t))),
           textField('Courtesy of', v.courtesy, (t) => controller.patchBlock(v.id, (b) => (b as SongBlock).copyWith(courtesy: t))),
         ]);
-      case ThanksBlock v:
+      case MarkBlock v:
         return Column(children: [
-          textField('Header', v.header, (t) => controller.patchBlock(v.id, (b) => (b as ThanksBlock).copyWith(header: t))),
-          linesField('Names — one per line', v.names, (l) => controller.patchBlock(v.id, (b) => (b as ThanksBlock).copyWith(names: l))),
+          linesField('Marks — one per line', v.marks, (l) => controller.patchBlock(v.id, (b) => (b as MarkBlock).copyWith(marks: l))),
+          linesField('Lines under the marks', v.lines, (l) => controller.patchBlock(v.id, (b) => (b as MarkBlock).copyWith(lines: l))),
         ]);
-      case LogosBlock v:
-        return linesField('Logos — one per line', v.logos, (l) => controller.patchBlock(v.id, (b) => (b as LogosBlock).copyWith(logos: l)));
       case HoldBlock v:
         return Column(children: [
           linesField('Card lines', v.lines, (l) => controller.patchBlock(v.id, (b) => (b as HoldBlock).copyWith(lines: l))),
@@ -121,7 +139,7 @@ class GenericBlockEditor extends ConsumerWidget {
         ]);
       case SpacerBlock v:
         return numField('Gap', v.seconds, .25, (n) => controller.patchBlock(v.id, (b) => (b as SpacerBlock).copyWith(seconds: n)));
-      case CastBlock():
+      case PairListBlock():
         return const SizedBox.shrink();
     }
   }

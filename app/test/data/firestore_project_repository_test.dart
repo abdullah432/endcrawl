@@ -22,7 +22,7 @@ void main() {
       title: title,
       blocks: const [
         TitleBlock(id: 'b1', title: 'THE LONG WAY DOWN'),
-        CastBlock(id: 'b2', rows: [PairCastRow(role: 'ELENA MARSH', actor: 'Priya Raghunathan')]),
+        PairListBlock(id: 'b2', rows: [PairCastRow(role: 'ELENA MARSH', actor: 'Priya Raghunathan')]),
       ],
     );
     return updatedAt == null ? project : project.copyWith(updatedAt: updatedAt);
@@ -89,7 +89,7 @@ void main() {
       expect(loaded.updatedAt, project.updatedAt);
       expect(loaded.blocks, hasLength(2));
       expect(loaded.blocks[0], isA<TitleBlock>());
-      final cast = loaded.blocks[1] as CastBlock;
+      final cast = loaded.blocks[1] as PairListBlock;
       expect((cast.rows.single as PairCastRow).actor, 'Priya Raghunathan');
     });
 

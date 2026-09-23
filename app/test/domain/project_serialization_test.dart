@@ -35,8 +35,8 @@ Project _fullProject() {
     ),
     blocks: const [
       TitleBlock(id: 'b1', banner: 'OYELARAN PICTURES', title: 'THE LONG WAY DOWN', byline: 'A FILM BY', titleScale: 2.8),
-      DeptBlock(id: 'b2', header: 'DIRECTED BY', names: ['Mara Oyelaran']),
-      CastBlock(
+      NameListBlock(id: 'b2', header: 'DIRECTED BY', names: ['Mara Oyelaran']),
+      PairListBlock(
         id: 'b3',
         header: 'CAST',
         leader: LeaderStyle.rule,
@@ -49,8 +49,8 @@ Project _fullProject() {
         ],
       ),
       SongBlock(id: 'b4', songTitle: '"HOLLOW GROUND"', artist: 'THE PALE RIVER', courtesy: 'Courtesy of Norlight'),
-      LogosBlock(id: 'b5', logos: ['SCREEN AUSTRALIA', 'NORLIGHT']),
-      ThanksBlock(id: 'b6', header: 'SPECIAL THANKS', names: ['Annika Sørensen', 'Devlin O’Rourke']),
+      MarkBlock(id: 'b5', marks: ['SCREEN AUSTRALIA', 'NORLIGHT']),
+      NameListBlock(id: 'b6', kind: BlockKind.thanks, header: 'SPECIAL THANKS', names: ['Annika Sørensen', 'Devlin O’Rourke']),
       HoldBlock(id: 'b7', lines: ['IN LOVING MEMORY'], hold: 4, fadeIn: 1.25, fadeOut: 0.75, muted: true),
       SpacerBlock(id: 'b8', seconds: 2.25),
     ],
@@ -110,11 +110,11 @@ void main() {
       expect(title.byline, 'A FILM BY');
       expect(title.titleScale, 2.8);
 
-      final dept = restored.blocks[1] as DeptBlock;
+      final dept = restored.blocks[1] as NameListBlock;
       expect(dept.header, 'DIRECTED BY');
       expect(dept.names, ['Mara Oyelaran']);
 
-      final cast = restored.blocks[2] as CastBlock;
+      final cast = restored.blocks[2] as PairListBlock;
       expect(cast.leader, LeaderStyle.rule);
       expect(cast.gutter, 0.09);
       expect(cast.collapse, CastCollapseMode.always);
@@ -128,8 +128,8 @@ void main() {
       expect(song.songTitle, '"HOLLOW GROUND"');
       expect(song.courtesy, 'Courtesy of Norlight');
 
-      expect((restored.blocks[4] as LogosBlock).logos, ['SCREEN AUSTRALIA', 'NORLIGHT']);
-      expect((restored.blocks[5] as ThanksBlock).names, ['Annika Sørensen', 'Devlin O’Rourke']);
+      expect((restored.blocks[4] as MarkBlock).marks, ['SCREEN AUSTRALIA', 'NORLIGHT']);
+      expect((restored.blocks[5] as NameListBlock).names, ['Annika Sørensen', 'Devlin O’Rourke']);
 
       final hold = restored.blocks[6] as HoldBlock;
       expect(hold.lines, ['IN LOVING MEMORY']);
@@ -271,7 +271,7 @@ void main() {
     test('the library preview is the first card with names', () {
       final project = Project.create(blocks: const [
         TitleBlock(id: 't', title: 'THE LONG WAY DOWN'),
-        DeptBlock(id: 'd', header: 'Directed by', names: ['Maya Okonkwo']),
+        NameListBlock(id: 'd', header: 'Directed by', names: ['Maya Okonkwo']),
       ]);
 
       expect(project.summary.preview.header, 'Directed by');

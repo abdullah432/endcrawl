@@ -307,30 +307,19 @@ class ProjectController extends Notifier<ProjectState> {
   void addDepartmentSet() {
     _push([
       ...state.blocks,
-      for (final h in TemplateRepository.standardDepartmentOrder) _templates.mkDept(h, const ['Name']),
+      for (final h in TemplateRepository.standardDepartmentOrder)
+        NameListBlock(id: newBlockId(), header: h, names: const ['Name']),
     ]);
   }
 
   void duplicateBlock(String id) {
     final idx = state.blocks.indexWhere((b) => b.id == id);
     if (idx < 0) return;
-    final copy = _cloneWithNewId(state.blocks[idx]);
+    final copy = state.blocks[idx].withId(newBlockId());
     _push([...state.blocks]..insert(idx + 1, copy));
   }
 
-  CreditBlock _cloneWithNewId(CreditBlock b) {
-    final id = newBlockId();
-    return switch (b) {
-      TitleBlock v => TitleBlock(id: id, banner: v.banner, title: v.title, byline: v.byline, titleScale: v.titleScale),
-      DeptBlock v => DeptBlock(id: id, header: v.header, names: v.names),
-      CastBlock v => CastBlock(id: id, header: v.header, leader: v.leader, gutter: v.gutter, collapse: v.collapse, rows: v.rows),
-      SongBlock v => SongBlock(id: id, songTitle: v.songTitle, artist: v.artist, courtesy: v.courtesy),
-      LogosBlock v => LogosBlock(id: id, logos: v.logos),
-      ThanksBlock v => ThanksBlock(id: id, header: v.header, names: v.names),
-      HoldBlock v => HoldBlock(id: id, lines: v.lines, hold: v.hold, fadeIn: v.fadeIn, fadeOut: v.fadeOut),
-      SpacerBlock v => SpacerBlock(id: id, seconds: v.seconds),
-    };
-  }
+
 
   void toggleMute(String id) => patchBlock(id, (b) => b.withMuted(!b.muted));
 
@@ -347,7 +336,7 @@ class ProjectController extends Notifier<ProjectState> {
   void bulkToggleCastLeader(Set<String> ids) {
     _push([
       for (final b in state.blocks)
-        if (ids.contains(b.id) && b is CastBlock)
+        if (ids.contains(b.id) && b is PairListBlock)
           b.copyWith(leader: b.leader == LeaderStyle.dots ? LeaderStyle.clean : LeaderStyle.dots)
         else
           b,
@@ -365,43 +354,43 @@ class ProjectController extends Notifier<ProjectState> {
   // ---------- cast block editing ----------
 
   void setCastLeader(String blockId, LeaderStyle leader) =>
-      patchBlock(blockId, (b) => (b as CastBlock).copyWith(leader: leader));
+      patchBlock(blockId, (b) => (b as PairListBlock).copyWith(leader: leader));
 
   void setCastGutter(String blockId, double gutter) =>
-      patchBlock(blockId, (b) => (b as CastBlock).copyWith(gutter: gutter));
+      patchBlock(blockId, (b) => (b as PairListBlock).copyWith(gutter: gutter));
 
   void setCastCollapse(String blockId, CastCollapseMode mode) =>
-      patchBlock(blockId, (b) => (b as CastBlock).copyWith(collapse: mode));
+      patchBlock(blockId, (b) => (b as PairListBlock).copyWith(collapse: mode));
 
   void setCastRows(String blockId, List<CastRow> rows) =>
-      patchBlock(blockId, (b) => (b as CastBlock).copyWith(rows: rows));
+      patchBlock(blockId, (b) => (b as PairListBlock).copyWith(rows: rows));
 
   void addCastRow(String blockId) =>
-      patchBlock(blockId, (b) => (b as CastBlock).copyWith(rows: [...b.rows, const PairCastRow()]));
+      patchBlock(blockId, (b) => (b as PairListBlock).copyWith(rows: [...b.rows, const PairCastRow()]));
 
   void addCastBillingRow(String blockId) =>
-      patchBlock(blockId, (b) => (b as CastBlock).copyWith(rows: [...b.rows, const SpanCastRow()]));
+      patchBlock(blockId, (b) => (b as PairListBlock).copyWith(rows: [...b.rows, const SpanCastRow()]));
 
   void addCastGapRow(String blockId) =>
-      patchBlock(blockId, (b) => (b as CastBlock).copyWith(rows: [...b.rows, const GapCastRow()]));
+      patchBlock(blockId, (b) => (b as PairListBlock).copyWith(rows: [...b.rows, const GapCastRow()]));
 
   void updateCastRow(String blockId, int index, CastRow Function(CastRow) fn) {
     patchBlock(blockId, (b) {
-      final cast = b as CastBlock;
+      final cast = b as PairListBlock;
       return cast.copyWith(rows: [for (var i = 0; i < cast.rows.length; i++) i == index ? fn(cast.rows[i]) : cast.rows[i]]);
     });
   }
 
   void removeCastRow(String blockId, int index) {
     patchBlock(blockId, (b) {
-      final cast = b as CastBlock;
+      final cast = b as PairListBlock;
       return cast.copyWith(rows: [for (var i = 0; i < cast.rows.length; i++) if (i != index) cast.rows[i]]);
     });
   }
 
   void appendCastEntry(String blockId, String role, String actor) {
     if (role.isEmpty && actor.isEmpty) return;
-    patchBlock(blockId, (b) => (b as CastBlock).copyWith(rows: [...b.rows, PairCastRow(role: role, actor: actor)]));
+    patchBlock(blockId, (b) => (b as PairListBlock).copyWith(rows: [...b.rows, PairCastRow(role: role, actor: actor)]));
   }
 
   // ---------- measurement ----------

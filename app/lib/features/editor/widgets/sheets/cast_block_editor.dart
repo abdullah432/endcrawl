@@ -51,7 +51,7 @@ class _CastBlockEditorState extends ConsumerState<CastBlockEditor> {
   Widget build(BuildContext context) {
     final project = ref.watch(projectControllerProvider);
     final controller = ref.read(projectControllerProvider.notifier);
-    final block = project.blocks.firstWhere((b) => b.id == widget.blockId) as CastBlock;
+    final block = project.blocks.firstWhere((b) => b.id == widget.blockId) as PairListBlock;
     final cg = computeCastGeometry(block, project.geometry);
 
     return Column(
@@ -190,11 +190,11 @@ class _CastBlockEditorState extends ConsumerState<CastBlockEditor> {
     FocusScope.of(context).requestFocus(FocusNode());
   }
 
-  bool _hasLetter(CastBlock block, String ch) {
+  bool _hasLetter(PairListBlock block, String ch) {
     return block.rows.any((r) => r is PairCastRow && r.role.toUpperCase().startsWith(ch));
   }
 
-  void _jumpTo(CastBlock block, String ch) {
+  void _jumpTo(PairListBlock block, String ch) {
     final i = block.rows.indexWhere((r) => r is PairCastRow && r.role.toUpperCase().startsWith(ch));
     if (i < 0) return;
     _scrollController.animateTo((i * _rowHeight).clamp(0, _scrollController.position.maxScrollExtent), duration: const Duration(milliseconds: 200), curve: Curves.easeOut);
@@ -211,7 +211,7 @@ class _CastBlockEditorState extends ConsumerState<CastBlockEditor> {
     );
   }
 
-  Widget _rowEditor(CastBlock block, CastGeometry cg, int i, ProjectController controller) {
+  Widget _rowEditor(PairListBlock block, CastGeometry cg, int i, ProjectController controller) {
     final r = block.rows[i];
     final overLength = r is PairCastRow && r.role.length > cg.maxChars - 1 && cg.collapse;
 

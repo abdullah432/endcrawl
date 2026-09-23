@@ -26,7 +26,7 @@ class BlockCard extends ConsumerWidget {
     final controller = ref.read(projectControllerProvider.notifier);
     final summary = summarizeBlock(block, project);
     final selected = ui.selectedIds.contains(block.id);
-    final isCast = block is CastBlock;
+    final isCast = block is PairListBlock;
 
     return Slidable(
       key: ValueKey('slidable-${block.id}'),
@@ -87,7 +87,7 @@ class BlockCard extends ConsumerWidget {
                     ),
                     alignment: Alignment.center,
                     child: Text(
-                      block.glyph,
+                      block.kind.code,
                       style: TextStyle(fontFamily: EcFonts.mono, fontSize: 9, color: isCast ? EcColors.accentPrimary : EcColors.textSecondary),
                     ),
                   ),
