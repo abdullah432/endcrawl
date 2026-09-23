@@ -25,7 +25,7 @@ prototype exported by Claude Design (see [`design/`](design/)).
 ## Status
 
 The app follows the v2 design in [`design/app-light/`](design/app-light/)
-(light, "Aurora Noir"): onboarding with Apple, Google and email; a library
+(light, "Aurora Noir"): onboarding with Google and email (Apple is built but switched off); a library
 of numbered reels with a three-project free plan; templates with editable
 contents; the editor with its readability warnings, multi-select and swipe
 actions; 27 block types with paste-and-split and a fast cast editor; timing,
@@ -44,8 +44,8 @@ a placeholder.
 The app code is wired up, but the generated Firebase config is
 machine-specific and not in the repo. One person has to run the steps in
 [`app/README.md`](app/README.md#firebase-setup) once against the
-`endcrawl-620c2` project — `flutterfire configure`, enabling the Apple, Google
-and email providers, and `firebase deploy --only firestore` (redeploy after
+`endcrawl-620c2` project — `flutterfire configure`, enabling the Google and email
+providers, and `firebase deploy --only firestore` (redeploy after
 this update: the rules changed) — before the app will build.
 
 **Next:** a real export pipeline, a store for Pro, and an ad SDK. Guest mode (Firebase Anonymous Auth,

@@ -149,8 +149,10 @@ than from `initState`/`dispose`.
 ## Onboarding and accounts
 
 Onboarding is one screen (0.1). A credit roll plays in a black monitor frame
-and **Continue with Apple**, **Continue with Google** and **Sign up with
-email** are the only decision on offer. There is deliberately no feature carousel: the
+and **Continue with Google** and **Sign up with email** are the only
+decision on offer. Sign in with Apple is built but switched off
+(`Features.appleSignIn` in `lib/core/config/features.dart`); turning it on
+brings back the Apple buttons on 0.1/0.2 and the Apple row on 7.2. There is deliberately no feature carousel: the
 product's promise is a broadcast-clean roll in under a minute, and three
 cards to swipe through before you can start would undercut exactly that. The
 roll is the explanation.
@@ -333,9 +335,10 @@ drops the platform config files in place, and adds the `google-services`
 Gradle plugin to the Android build.
 
 **2. Enable the sign-in providers** in the Firebase console → Authentication →
-Sign-in method: **Email/Password**, **Google** and **Apple**.
+Sign-in method: **Email/Password** and **Google**.
 
-For Apple: in Xcode, add the **Sign in with Apple** capability to the Runner
+Apple is optional while `Features.appleSignIn` is off. To turn it on: enable
+the **Apple** provider, and in Xcode add the **Sign in with Apple** capability to the Runner
 target (Signing & Capabilities). For Apple sign-in on Android, also create a
 Services ID and key in the Apple Developer account and enter them on the
 Apple provider in the Firebase console; iOS needs only the capability.

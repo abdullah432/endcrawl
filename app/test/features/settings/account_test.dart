@@ -54,19 +54,29 @@ void main() {
       expect(app.auth.currentUser?.methods, {SignInMethod.google});
     });
 
-    testWidgets('connects Apple, then Google can be disconnected', (tester) async {
+    testWidgets('Apple is not offered while it is switched off', (tester) async {
       await openSettings(tester);
       await tapText(tester, 'Mara Oyelaran');
 
-      await tapText(tester, 'Apple');
-      expect(app.auth.currentUser?.methods, {SignInMethod.google, SignInMethod.apple});
+      expect(find.text('Apple'), findsNothing);
+      expect(find.text('Sign in without Google'), findsOneWidget);
+    });
+
+    testWidgets('adding email & password lets Google be disconnected', (tester) async {
+      await openSettings(tester);
+      await tapText(tester, 'Mara Oyelaran');
+
+      await tapText(tester, 'Email & password');
+      await tester.enterText(find.byType(TextField).last, 'longpass1');
+      await tester.pumpAndSettle();
+      await tapText(tester, 'Connect');
       expect(find.text('CONNECTED'), findsNWidgets(2));
 
       await tapText(tester, 'Google');
       expect(find.text('Disconnect Google?'), findsOneWidget);
       await tapText(tester, 'Disconnect');
 
-      expect(app.auth.currentUser?.methods, {SignInMethod.apple});
+      expect(app.auth.currentUser?.methods, {SignInMethod.password});
     });
 
     testWidgets('sets up email & password for a Google account', (tester) async {
@@ -140,7 +150,7 @@ void main() {
       expect(app.profile.deleted, isTrue);
       expect(app.auth.deleted, isTrue);
       expect(find.text('Account deleted'), findsOneWidget);
-      expect(find.text('Continue with Apple'), findsOneWidget);
+      expect(find.text('Continue with Google'), findsOneWidget);
     });
 
     testWidgets('if re-authentication fails, nothing is deleted', (tester) async {

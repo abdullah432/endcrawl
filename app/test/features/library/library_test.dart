@@ -245,7 +245,7 @@ void main() {
 
       await tapText(tester, 'Sign out');
 
-      expect(find.text('Continue with Apple'), findsOneWidget);
+      expect(find.text('Continue with Google'), findsOneWidget);
     });
 
     testWidgets('a preference switch is saved to the account', (tester) async {

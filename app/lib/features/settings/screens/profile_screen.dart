@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../bootstrap.dart';
+import '../../../core/config/features.dart';
 import '../../../core/result.dart';
 import '../../../core/theme/theme_context.dart';
 import '../../../core/theme/tokens.dart';
@@ -116,7 +117,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           ],
           const SizedBox(height: 22),
           EcGroup(label: 'Sign-in methods', children: [
-            for (final method in SignInMethod.values) _MethodRow(user: user, method: method),
+            for (final method in SignInMethod.values)
+              if (method != SignInMethod.apple || Features.appleSignIn || user.methods.contains(method))
+                _MethodRow(user: user, method: method),
           ]),
           const SizedBox(height: 10),
           Padding(
@@ -189,7 +192,7 @@ class _MethodRow extends ConsumerWidget {
     }
 
     final subtitle = switch (method) {
-      SignInMethod.password when !connected => 'Sign in on devices without Apple',
+      SignInMethod.password when !connected => 'Sign in without Google',
       _ when connected && method != SignInMethod.password => user.email,
       _ => null,
     };

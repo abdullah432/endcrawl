@@ -29,23 +29,13 @@ void main() {
   }
 
   group('0.1 Welcome', () {
-    testWidgets('offers Apple, Google and email, with the credits rolling', (tester) async {
+    testWidgets('offers Google and email, with the credits rolling; Apple is off', (tester) async {
       await AppHarness.signedOut().pump(tester);
 
-      expect(find.text('Continue with Apple'), findsOneWidget);
+      expect(find.text('Continue with Apple'), findsNothing);
       expect(find.text('Continue with Google'), findsOneWidget);
       expect(find.text('Sign up with email'), findsOneWidget);
       expect(find.byType(RollHero), findsOneWidget);
-    });
-
-    testWidgets('Apple signs in straight from the first screen', (tester) async {
-      final app = AppHarness.signedOut();
-      await app.pump(tester);
-
-      await tapText(tester, 'Continue with Apple');
-
-      expect(app.auth.signInWithAppleCalls, 1);
-      expect(_library, findsOneWidget);
     });
 
     testWidgets('Google signs in straight from the first screen', (tester) async {
@@ -62,10 +52,10 @@ void main() {
       final app = AppHarness(auth: FakeAuthRepository()..failWith = cancelledByUser);
       await app.pump(tester);
 
-      await tapText(tester, 'Continue with Apple');
+      await tapText(tester, 'Continue with Google');
 
       expect(find.text('Sign-in cancelled.'), findsNothing);
-      expect(find.text('Continue with Apple'), findsOneWidget);
+      expect(find.text('Continue with Google'), findsOneWidget);
     });
 
     testWidgets('a provider outage is shown above the buttons', (tester) async {
@@ -98,7 +88,7 @@ void main() {
 
     testWidgets('lays out in landscape without overflowing', (tester) async {
       await AppHarness.signedOut().pump(tester, size: const Size(844, 390));
-      expect(find.text('Continue with Apple'), findsOneWidget);
+      expect(find.text('Continue with Google'), findsOneWidget);
     });
 
     testWidgets('the terms open in the app', (tester) async {
@@ -166,9 +156,9 @@ void main() {
       expect(app.auth.signInWithEmailCalls, 0);
     });
 
-    testWidgets('keeps Apple and Google available', (tester) async {
+    testWidgets('keeps Google available', (tester) async {
       await openSignIn(tester);
-      expect(find.text('Apple'), findsOneWidget);
+      expect(find.text('Apple'), findsNothing);
       expect(find.text('Google'), findsOneWidget);
     });
 
@@ -326,7 +316,7 @@ void main() {
       await tapText(tester, 'Use a different email');
 
       expect(app.auth.deleted, isTrue);
-      expect(find.text('Continue with Apple'), findsOneWidget);
+      expect(find.text('Continue with Google'), findsOneWidget);
     });
   });
 
@@ -337,6 +327,6 @@ void main() {
     await app.auth.signOut();
     await tester.pumpAndSettle();
 
-    expect(find.text('Continue with Apple'), findsOneWidget);
+    expect(find.text('Continue with Google'), findsOneWidget);
   });
 }

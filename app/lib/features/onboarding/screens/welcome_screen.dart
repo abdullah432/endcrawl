@@ -18,8 +18,8 @@ import '../widgets/roll_hero.dart';
 /// 0.1 — the first screen, and the whole of onboarding.
 ///
 /// No feature carousel: the credits rolling in the monitor are the
-/// explanation. One tap on Apple or Google creates the account or signs in;
-/// email is there for everyone else.
+/// explanation. One tap on Google (and Apple, when [Features.appleSignIn]
+/// is on) creates the account or signs in; email is there for everyone else.
 class WelcomeScreen extends ConsumerWidget {
   const WelcomeScreen({super.key});
 

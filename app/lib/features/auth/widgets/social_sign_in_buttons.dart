@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/config/features.dart';
 import '../../../core/widgets/ec_button.dart';
 import '../controllers/auth_controller.dart';
 import 'google_mark.dart';
@@ -9,7 +10,8 @@ import 'google_mark.dart';
 ///
 /// [compact] is the side-by-side pair under "or" on 0.2 ("Apple", "Google");
 /// otherwise they stack full-width, as on the welcome screen. Apple is
-/// black and Google white, per each company's button guidelines.
+/// black and Google white, per each company's button guidelines. Apple
+/// shows only when [Features.appleSignIn] is on; Google then stands alone.
 class SocialSignInButtons extends ConsumerWidget {
   final bool compact;
 
@@ -39,6 +41,7 @@ class SocialSignInButtons extends ConsumerWidget {
       onPressed: idle ? controller.signInWithGoogle : null,
     );
 
+    if (!Features.appleSignIn) return google;
     if (compact) {
       return Row(children: [Expanded(child: apple), const SizedBox(width: 10), Expanded(child: google)]);
     }
