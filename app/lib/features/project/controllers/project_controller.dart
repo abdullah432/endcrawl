@@ -13,6 +13,7 @@ import '../../../domain/models/credit_block.dart';
 import '../../../domain/models/credit_face.dart';
 import '../../../domain/models/project.dart';
 import '../../../domain/models/project_settings.dart';
+import '../../../domain/models/render_summary.dart';
 
 enum SaveState { idle, saving, saved, failed }
 
@@ -195,6 +196,16 @@ class ProjectController extends Notifier<ProjectState> {
     _debounce?.cancel();
     await _save(state.project);
     await _session.setLeftOpen(null);
+  }
+
+  /// Stores the outcome of a render (6.3/6.4) straight away, so the library
+  /// can show it. Not an edit, so it leaves `updatedAt` — and the library's
+  /// order — alone.
+  Future<void> recordRender(RenderSummary summary) async {
+    state = state.copyWith(project: state.project.copyWith(lastRender: summary));
+    if (_draft) return;
+    _debounce?.cancel();
+    await _save(state.project);
   }
 
   void renameProject(String title) {

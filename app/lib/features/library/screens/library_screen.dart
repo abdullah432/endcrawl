@@ -14,6 +14,7 @@ import '../../new_project/new_project_flow.dart';
 import '../../new_project/screens/new_project_sheet.dart';
 import '../../new_project/widgets/template_list.dart';
 import '../../plan/plan_navigation.dart';
+import '../../export/controllers/export_controller.dart';
 import '../../plan/screens/pro_sheet.dart';
 import '../../project/project_navigation.dart';
 import '../../settings/screens/settings_screen.dart';
@@ -197,6 +198,7 @@ class _ProjectList extends ConsumerWidget {
             onMore: () => actions.more(item),
             onRename: () => actions.rename(item),
             onDelete: ui.freeingSlot ? () => actions.delete(item) : null,
+            renderProgress: ref.watch(renderProgressProvider(item.summary.id)),
           ),
           const SizedBox(height: 14),
         ],

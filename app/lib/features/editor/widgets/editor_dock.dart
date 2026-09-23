@@ -6,15 +6,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/theme_context.dart';
 import '../../../core/utils/formatting.dart';
 import '../../../core/widgets/ec_option_sheet.dart';
-import '../../../core/widgets/ec_sheet.dart';
 import '../../../core/widgets/ec_toast.dart';
 import '../../../domain/models/credit_block.dart';
 import '../../blocks/screens/add_block_sheet.dart';
+import '../../export/screens/export_sheet.dart';
 import '../../paste/screens/paste_sheet.dart';
 import '../../timing/screens/timing_sheet.dart';
 import '../../project/controllers/project_controller.dart';
 import '../controllers/editor_ui_controller.dart';
-import 'sheets/export_sheet.dart';
 import 'status_line.dart';
 
 /// The four actions, floating over the list as one glass dock (3.1):
@@ -61,7 +60,7 @@ class EditorDock extends ConsumerWidget {
                   child: Ink(
                     decoration: BoxDecoration(gradient: p.primary, boxShadow: p.primaryShadow),
                     child: InkWell(
-                      onTap: () => showEcSheet<void>(context, builder: (_) => const ExportSheet()),
+                      onTap: () => ExportSheet.show(context),
                       child: Center(child: Text('Export', style: context.type.button.copyWith(fontSize: 14, color: p.onInk))),
                     ),
                   ),
