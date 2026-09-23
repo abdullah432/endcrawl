@@ -24,6 +24,9 @@ enum EcButtonVariant {
 
   /// No fill, accent label — "Forgot password?", "Use a different email".
   text,
+
+  /// No fill, ink label — "Sign up with email" under the brand buttons.
+  plain,
 }
 
 enum EcButtonSize {
@@ -102,6 +105,7 @@ class EcButton extends StatelessWidget {
       EcButtonVariant.black => (p.onInk, const Color(0xFF000000), null, null, null),
       EcButtonVariant.ink => (p.onInk, p.inkSurface, null, null, null),
       EcButtonVariant.text => (p.accent, null, null, null, null),
+      EcButtonVariant.plain => (p.ink, null, null, null, null),
     };
     final labelStyle = (size == EcButtonSize.large ? t.button : t.buttonSmall).copyWith(
       color: fg,

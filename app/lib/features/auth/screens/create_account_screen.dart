@@ -1,16 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../core/theme/tokens.dart';
+import '../../../core/theme/theme_context.dart';
+import '../../../core/widgets/ec_button.dart';
+import '../../../core/widgets/ec_fields.dart';
+import '../../../core/widgets/ec_headline.dart';
+import '../../../core/widgets/ec_scaffold.dart';
+import '../../../data/repositories/auth_repository.dart';
+import '../../../domain/models/password_policy.dart';
 import '../controllers/auth_controller.dart';
-import '../widgets/auth_scaffold.dart';
+import '../widgets/auth_error_banner.dart';
+import '../widgets/auth_navigation.dart';
+import '../widgets/legal_consent.dart';
+import 'sign_in_screen.dart';
 
-/// Creating an account with an email address.
+/// 0.3 — creating an account with email.
 ///
-/// A separate screen from signing in, not a mode flag on one: the button
-/// says what it does, the autofill hint is `newPassword` without anything
-/// having to check state, and nobody ever lands on "Sign in" while intending
-/// the opposite.
+/// Three fields. The password rules tick off as you type, from the same
+/// [PasswordPolicy] the controller enforces, and the marketing opt-in is off
+/// by default and marked optional.
 class CreateAccountScreen extends ConsumerStatefulWidget {
   const CreateAccountScreen({super.key});
 
@@ -19,82 +27,111 @@ class CreateAccountScreen extends ConsumerStatefulWidget {
 }
 
 class _CreateAccountScreenState extends ConsumerState<CreateAccountScreen> {
+  final _name = TextEditingController();
   final _email = TextEditingController();
   final _password = TextEditingController();
+  bool _optIn = false;
 
   @override
   void initState() {
     super.initState();
-    // Drives the live length hint under the field.
-    _password.addListener(_onPasswordChanged);
+    _password.addListener(_rebuild);
   }
 
-  void _onPasswordChanged() => setState(() {});
+  void _rebuild() => setState(() {});
 
   @override
   void dispose() {
-    _password.removeListener(_onPasswordChanged);
+    _password.removeListener(_rebuild);
+    _name.dispose();
     _email.dispose();
     _password.dispose();
     super.dispose();
   }
 
+  void _submit() => ref.read(authControllerProvider.notifier).createAccount(
+        name: _name.text,
+        email: _email.text,
+        password: _password.text,
+        marketingOptIn: _optIn,
+      );
+
   @override
   Widget build(BuildContext context) {
     final form = ref.watch(authControllerProvider);
-    final typed = _password.text.length;
-    final longEnough = typed >= minimumPasswordLength;
+    final t = context.type;
 
-    return AuthScaffold(
-      title: 'Create account',
-      subtitle: 'Keeps your projects together across every device you sign in on.',
-      children: [
-        AuthField(
-          controller: _email,
-          label: 'EMAIL',
-          hint: 'you@studio.com',
-          keyboardType: TextInputType.emailAddress,
-          autofillHints: const [AutofillHints.email],
-          autofocus: true,
-        ),
-        const SizedBox(height: EcSpace.s4),
-        AuthPasswordField(
-          controller: _password,
-          isNewPassword: true,
-          hint: 'At least $minimumPasswordLength characters',
-          onSubmitted: (_) => _submit(),
-        ),
-        const SizedBox(height: EcSpace.s2),
-        // Said before submitting rather than after being rejected: the rule
-        // is trivial and there is no reason to make a round trip teach it.
-        Row(
+    return EcScaffold(
+      topBar: const EcTopBar(),
+      body: AutofillGroup(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Icon(
-              longEnough ? Icons.check_circle : Icons.circle_outlined,
-              size: 14,
-              color: longEnough ? EcColors.accentPrimary : EcColors.textDisabled,
+            const EcHeadline('Create your', emphasis: 'account.'),
+            const SizedBox(height: 20),
+            EcTextField(
+              controller: _name,
+              label: 'Name',
+              hint: 'As it should appear on your profile',
+              textCapitalization: TextCapitalization.words,
+              autofillHints: const [AutofillHints.name],
+              error: form.errorFor(AuthField.name),
             ),
-            const SizedBox(width: EcSpace.s2),
-            Text(
-              'At least $minimumPasswordLength characters',
-              style: TextStyle(
-                fontSize: 12,
-                color: longEnough ? EcColors.accentPrimary : EcColors.textTertiary,
+            const SizedBox(height: 12),
+            EcTextField(
+              controller: _email,
+              label: 'Email',
+              hint: 'you@studio.com',
+              keyboardType: TextInputType.emailAddress,
+              autofillHints: const [AutofillHints.email],
+              error: form.errorFor(AuthField.email),
+            ),
+            const SizedBox(height: 12),
+            EcPasswordField(
+              controller: _password,
+              isNewPassword: true,
+              error: form.errorFor(AuthField.password),
+              onSubmitted: (_) => _submit(),
+            ),
+            const SizedBox(height: 14),
+            for (final rule in PasswordPolicy.rules)
+              Padding(
+                padding: const EdgeInsets.only(left: 2, bottom: 6),
+                child: EcCheckItem(label: rule.label, met: rule.test(_password.text)),
               ),
+            const SizedBox(height: 6),
+            EcCheckbox(
+              value: _optIn,
+              onChanged: (v) => setState(() => _optIn = v),
+              label: Text.rich(
+                TextSpan(
+                  style: t.bodyS,
+                  children: [
+                    const TextSpan(text: 'Email me about new features '),
+                    TextSpan(text: '· optional', style: TextStyle(color: context.palette.muted)),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            AuthErrorBanner(form.formError),
+            EcButton(
+              label: 'Create account',
+              busy: form.isRunning(AuthAction.email),
+              onPressed: form.busy ? null : _submit,
+            ),
+            const SizedBox(height: 14),
+            const LegalConsent(lead: 'By creating an account you agree to the'),
+            const Spacer(),
+            const SizedBox(height: 16),
+            EcInlineLink(
+              lead: 'Already have an account?',
+              action: 'Sign in',
+              onTap: form.busy ? null : () => replaceAuthScreen(context, ref, const SignInScreen()),
             ),
           ],
         ),
-        AuthBanner.forFailure(form.failure),
-        const SizedBox(height: EcSpace.s5),
-        AuthPrimaryButton(label: 'Create account', busy: form.busy, onPressed: _submit),
-      ],
+      ),
     );
-  }
-
-  void _submit() {
-    ref.read(authControllerProvider.notifier).createAccount(
-          email: _email.text,
-          password: _password.text,
-        );
   }
 }

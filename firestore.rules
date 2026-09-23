@@ -16,6 +16,16 @@ rules_version = '2';
 //   - createdAt: timestamp     (required, immutable after create)
 //   - updatedAt: timestamp     (required)
 //
+// Document: users/{uid}   (the account's profile — schema v1)
+// Fields:
+//   - schemaVersion: int       (required, == 1)
+//   - marketingOptIn: bool     (required)
+//   - preferences: map         (required — project defaults, app switches,
+//                               privacy choices; see UserProfile in Dart)
+//   - updatedAt: timestamp     (required, server time)
+// Deliberately no plan/entitlement field: anything the client can write,
+// the client can grant itself.
+//
 // Every project is private to one account. There is no sharing, no
 // collaboration and no public read in this version; when sharing arrives it
 // gets its own explicitly-reviewed rules rather than a loosened rule here.
@@ -73,6 +83,16 @@ service cloud.firestore {
         && incoming().updatedAt is timestamp;
     }
 
+    function isValidProfile() {
+      return incoming().keys().hasOnly(['schemaVersion', 'marketingOptIn', 'preferences', 'updatedAt'])
+        && incoming().keys().hasAll(['schemaVersion', 'marketingOptIn', 'preferences', 'updatedAt'])
+        && incoming().schemaVersion == 1
+        && incoming().marketingOptIn is bool
+        && incoming().preferences is map
+        && incoming().preferences.size() <= 32
+        && incoming().updatedAt == request.time;
+    }
+
     // Fields a client must never be able to rewrite after creation.
     function immutableFieldsUnchanged() {
       return incoming().id == resource.data.id
@@ -83,6 +103,11 @@ service cloud.firestore {
     // ===============================================================
     // Rules
     // ===============================================================
+
+    match /users/{uid} {
+      allow read, delete: if isOwner(uid);
+      allow create, update: if isOwner(uid) && isValidProfile();
+    }
 
     match /users/{uid}/projects/{projectId} {
       allow read: if isOwner(uid);
@@ -99,8 +124,7 @@ service cloud.firestore {
       allow delete: if isOwner(uid);
     }
 
-    // Default deny: anything not matched above, including the parent
-    // users/{uid} document, is unreachable.
+    // Default deny: anything not matched above is unreachable.
     match /{document=**} {
       allow read, write: if false;
     }

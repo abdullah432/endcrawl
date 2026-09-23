@@ -5,7 +5,7 @@ import '../../core/result.dart';
 import '../../domain/models/app_user.dart';
 import 'auth_repository.dart';
 
-/// Firebase Authentication implementation: email/password plus Google.
+/// Firebase Authentication implementation: email/password, Google and Apple.
 ///
 /// Every `FirebaseAuthException` is translated into an [AppFailure] carrying
 /// a message written for the person reading it, so error codes never reach
@@ -22,8 +22,11 @@ class FirebaseAuthRepository implements AuthRepository {
       : _auth = auth ?? FirebaseAuth.instance,
         _google = google ?? GoogleSignIn.instance;
 
+  // userChanges(), not authStateChanges(): the latter only fires on
+  // sign-in/out, so a verified email or a new display name would never
+  // reach the UI.
   @override
-  Stream<AppUser?> authStateChanges() => _auth.authStateChanges().map(_toAppUser);
+  Stream<AppUser?> userChanges() => _auth.userChanges().map(_toAppUser);
 
   @override
   AppUser? get currentUser => _toAppUser(_auth.currentUser);
@@ -40,13 +43,25 @@ class FirebaseAuthRepository implements AuthRepository {
   }
 
   @override
-  Future<Result<AppUser>> registerWithEmail({required String email, required String password}) {
+  Future<Result<AppUser>> registerWithEmail({
+    required String name,
+    required String email,
+    required String password,
+  }) {
     return _guard(() async {
       final credential = await _auth.createUserWithEmailAndPassword(
         email: email.trim(),
         password: password,
       );
-      return _requireUser(credential.user);
+      final user = credential.user!;
+      await user.updateDisplayName(name.trim());
+      // Best effort: the account exists either way, and the verify screen
+      // offers "Resend link" if this one never arrives.
+      try {
+        await user.sendEmailVerification();
+      } on FirebaseAuthException catch (_) {}
+      await user.reload();
+      return _requireUser(_auth.currentUser);
     });
   }
 
@@ -70,6 +85,45 @@ class FirebaseAuthRepository implements AuthRepository {
       final result = await _auth.signInWithCredential(credential);
       return _requireUser(result.user);
     });
+  }
+
+  @override
+  Future<Result<AppUser>> signInWithApple() {
+    return _guard(() async {
+      // Firebase drives Sign in with Apple natively on iOS and through a
+      // web flow elsewhere; no extra package is needed.
+      final provider = AppleAuthProvider()
+        ..addScope('email')
+        ..addScope('name');
+      final result = await _auth.signInWithProvider(provider);
+      return _requireUser(result.user);
+    });
+  }
+
+  @override
+  Future<Result<void>> sendEmailVerification() {
+    return _guard(() async => _auth.currentUser?.sendEmailVerification());
+  }
+
+  @override
+  Future<Result<AppUser>> reloadUser() {
+    return _guard(() async {
+      await _auth.currentUser?.reload();
+      return _requireUser(_auth.currentUser);
+    });
+  }
+
+  @override
+  Future<Result<void>> updateDisplayName(String name) {
+    return _guard(() async {
+      await _auth.currentUser?.updateDisplayName(name.trim());
+      await _auth.currentUser?.reload();
+    });
+  }
+
+  @override
+  Future<Result<void>> deleteCurrentUser() {
+    return _guard(() async => _auth.currentUser?.delete());
   }
 
   @override
@@ -105,7 +159,20 @@ class FirebaseAuthRepository implements AuthRepository {
       displayName: user.displayName,
       photoUrl: user.photoURL,
       isEmailVerified: user.emailVerified,
+      methods: {
+        for (final info in user.providerData)
+          if (_methodFor(info.providerId) case final method?) method,
+      },
     );
+  }
+
+  static SignInMethod? _methodFor(String providerId) {
+    return switch (providerId) {
+      'apple.com' => SignInMethod.apple,
+      'google.com' => SignInMethod.google,
+      'password' => SignInMethod.password,
+      _ => null,
+    };
   }
 
   Future<Result<T>> _guard<T>(Future<T> Function() body) async {
@@ -131,7 +198,23 @@ class FirebaseAuthRepository implements AuthRepository {
     }
   }
 
+  /// Codes Firebase uses when the person closed the Apple or web sheet.
+  static const _cancelCodes = {
+    'canceled',
+    'cancelled',
+    'web-context-canceled',
+    'web-context-cancelled',
+    'popup-closed-by-user',
+    'user-cancelled',
+  };
+
   AppFailure _mapAuthException(FirebaseAuthException e, StackTrace s) {
+    if (_cancelCodes.contains(e.code)) return cancelledByUser;
+    final field = switch (e.code) {
+      'invalid-email' || 'email-already-in-use' => AuthField.email,
+      'invalid-credential' || 'wrong-password' || 'user-not-found' || 'weak-password' => AuthField.password,
+      _ => null,
+    };
     final (kind, message) = switch (e.code) {
       'invalid-email' => (FailureKind.unknown, 'That email address is not valid.'),
       'user-disabled' => (FailureKind.permission, 'This account has been disabled.'),
@@ -141,9 +224,10 @@ class FirebaseAuthRepository implements AuthRepository {
       'invalid-credential' ||
       'wrong-password' ||
       'user-not-found' =>
-        (FailureKind.permission, 'That email or password is not right.'),
+        (FailureKind.permission, 'That password doesn’t match this email. Try again or reset it.'),
       'email-already-in-use' => (FailureKind.unknown, 'An account already exists for that email.'),
-      'weak-password' => (FailureKind.unknown, 'Pick a password of at least 6 characters.'),
+      'weak-password' => (FailureKind.unknown, 'Pick a longer password: at least 8 characters with a number.'),
+      'requires-recent-login' => (FailureKind.permission, 'For your security, sign in again to do that.'),
       'operation-not-allowed' => (
           FailureKind.permission,
           'That sign-in method is not enabled for this project.',
@@ -156,6 +240,6 @@ class FirebaseAuthRepository implements AuthRepository {
         ),
       _ => (FailureKind.unknown, 'Could not sign you in. Try again.'),
     };
-    return AppFailure(kind, message, cause: e, stackTrace: s);
+    return AppFailure(kind, message, cause: e, stackTrace: s, field: field);
   }
 }

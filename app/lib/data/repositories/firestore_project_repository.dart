@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../core/result.dart';
 import '../../domain/models/credit_block.dart';
 import '../../domain/models/project.dart';
+import '../sources/firestore_failures.dart';
 import 'project_repository.dart';
 
 /// Cloud Firestore implementation, scoped to one signed-in account.
@@ -117,26 +118,10 @@ class FirestoreProjectRepository implements ProjectRepository {
         stackTrace: s,
       ));
     } on FirebaseException catch (e, s) {
-      return Err(_mapFirestoreException(e, s));
+      return Err(firestoreFailure(e, s));
     } on Object catch (e, s) {
       return Err(AppFailure(FailureKind.unknown, 'Something went wrong. Try again.', cause: e, stackTrace: s));
     }
-  }
-
-  AppFailure _mapFirestoreException(FirebaseException e, StackTrace s) {
-    final (kind, message) = switch (e.code) {
-      'permission-denied' => (FailureKind.permission, 'You do not have access to that project.'),
-      'not-found' => (FailureKind.notFound, 'That project no longer exists.'),
-      // `unavailable` normally means offline. Reads are served from cache and
-      // writes are queued, so seeing this at all means something the cache
-      // could not answer.
-      'unavailable' => (FailureKind.network, 'You are offline — this will sync when you reconnect.'),
-      'deadline-exceeded' => (FailureKind.network, 'The network is slow right now. Try again.'),
-      'resource-exhausted' => (FailureKind.storage, 'This project is too large to save.'),
-      'unauthenticated' => (FailureKind.permission, 'Your session expired. Sign in again.'),
-      _ => (FailureKind.unknown, 'Could not reach your projects. Try again.'),
-    };
-    return AppFailure(kind, message, cause: e, stackTrace: s);
   }
 }
 

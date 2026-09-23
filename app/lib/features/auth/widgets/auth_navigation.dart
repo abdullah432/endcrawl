@@ -7,7 +7,7 @@ import '../controllers/auth_controller.dart';
 /// Pushes one auth screen onto another, clearing whatever the previous
 /// screen was saying first.
 ///
-/// All four screens share `authControllerProvider`, so without this a
+/// All the auth screens share `authControllerProvider`, so without this a
 /// failure raised while creating an account would still be on display after
 /// navigating back to sign-in. It happens here, at the navigation action,
 /// rather than in the destination's `initState` because Riverpod forbids
@@ -15,6 +15,13 @@ import '../controllers/auth_controller.dart';
 Future<void> pushAuthScreen(BuildContext context, WidgetRef ref, Widget screen) {
   ref.read(authControllerProvider.notifier).clearMessages();
   return Navigator.of(context).push<void>(_authRoute(screen));
+}
+
+/// Swaps the current auth screen for another — the "Create account" ↔
+/// "Sign in" cross-links, which would otherwise stack forever.
+Future<void> replaceAuthScreen(BuildContext context, WidgetRef ref, Widget screen) {
+  ref.read(authControllerProvider.notifier).clearMessages();
+  return Navigator.of(context).pushReplacement<void, void>(_authRoute(screen));
 }
 
 /// Pops back, clearing messages for the same reason.

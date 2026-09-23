@@ -57,7 +57,12 @@ class AppFailure {
   final Object? cause;
   final StackTrace? stackTrace;
 
-  const AppFailure(this.kind, this.message, {this.cause, this.stackTrace});
+  /// The form input this failure is about ("email", "password"), when there
+  /// is one — so a screen can put the message under the field it concerns
+  /// instead of in a banner. Null for failures about the whole action.
+  final String? field;
+
+  const AppFailure(this.kind, this.message, {this.cause, this.stackTrace, this.field});
 
   const AppFailure.notFound(String message) : this(FailureKind.notFound, message);
 

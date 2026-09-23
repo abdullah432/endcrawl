@@ -4,7 +4,13 @@ import 'package:endcrawl/core/result.dart';
 import 'package:endcrawl/data/repositories/auth_repository.dart';
 import 'package:endcrawl/domain/models/app_user.dart';
 
-const testUser = AppUser(uid: 'test-uid', email: 'mara@example.com', displayName: 'Mara Oyelaran');
+const testUser = AppUser(
+  uid: 'test-uid',
+  email: 'mara@example.com',
+  displayName: 'Mara Oyelaran',
+  isEmailVerified: true,
+  methods: {SignInMethod.google},
+);
 
 /// In-memory [AuthRepository] for widget tests — the same contract, no
 /// platform channels.
@@ -18,19 +24,24 @@ class FakeAuthRepository implements AuthRepository {
 
   int signInWithEmailCalls = 0;
   int signInWithGoogleCalls = 0;
+  int signInWithAppleCalls = 0;
   int registerCalls = 0;
+  int verificationEmailsSent = 0;
+  int reloadCalls = 0;
+  bool deleted = false;
   String? passwordResetSentTo;
+  String? registeredName;
+
+  /// What [reloadUser] should find — flip to simulate the link being
+  /// clicked in Mail.
+  bool verifyOnReload = false;
 
   FakeAuthRepository({AppUser? initialUser}) : _user = initialUser;
-
-  /// Emits the restored session the way Firebase does on startup. Tests that
-  /// want the pre-restore state simply don't call it.
-  void emitInitial() => _controller.add(_user);
 
   void dispose() => _controller.close();
 
   @override
-  Stream<AppUser?> authStateChanges() async* {
+  Stream<AppUser?> userChanges() async* {
     yield _user;
     yield* _controller.stream;
   }
@@ -38,7 +49,7 @@ class FakeAuthRepository implements AuthRepository {
   @override
   AppUser? get currentUser => _user;
 
-  void _signIn(AppUser user) {
+  void _emit(AppUser? user) {
     _user = user;
     _controller.add(user);
   }
@@ -47,17 +58,23 @@ class FakeAuthRepository implements AuthRepository {
   Future<Result<AppUser>> signInWithEmail({required String email, required String password}) async {
     signInWithEmailCalls++;
     if (failWith case final failure?) return Err(failure);
-    final user = AppUser(uid: 'test-uid', email: email);
-    _signIn(user);
+    final user = AppUser(uid: 'test-uid', email: email, isEmailVerified: true, methods: const {SignInMethod.password});
+    _emit(user);
     return Ok(user);
   }
 
   @override
-  Future<Result<AppUser>> registerWithEmail({required String email, required String password}) async {
+  Future<Result<AppUser>> registerWithEmail({
+    required String name,
+    required String email,
+    required String password,
+  }) async {
     registerCalls++;
+    registeredName = name;
     if (failWith case final failure?) return Err(failure);
-    final user = AppUser(uid: 'test-uid', email: email);
-    _signIn(user);
+    verificationEmailsSent++;
+    final user = AppUser(uid: 'test-uid', email: email, displayName: name, methods: const {SignInMethod.password});
+    _emit(user);
     return Ok(user);
   }
 
@@ -65,8 +82,17 @@ class FakeAuthRepository implements AuthRepository {
   Future<Result<AppUser>> signInWithGoogle() async {
     signInWithGoogleCalls++;
     if (failWith case final failure?) return Err(failure);
-    _signIn(testUser);
+    _emit(testUser);
     return const Ok(testUser);
+  }
+
+  @override
+  Future<Result<AppUser>> signInWithApple() async {
+    signInWithAppleCalls++;
+    if (failWith case final failure?) return Err(failure);
+    const user = AppUser(uid: 'test-uid', email: 'm@privaterelay.appleid.com', isEmailVerified: true, methods: {SignInMethod.apple});
+    _emit(user);
+    return const Ok(user);
   }
 
   @override
@@ -77,10 +103,51 @@ class FakeAuthRepository implements AuthRepository {
   }
 
   @override
+  Future<Result<void>> sendEmailVerification() async {
+    if (failWith case final failure?) return Err(failure);
+    verificationEmailsSent++;
+    return const Ok(null);
+  }
+
+  @override
+  Future<Result<AppUser>> reloadUser() async {
+    reloadCalls++;
+    final user = _user;
+    if (user == null) return const Err(AppFailure(FailureKind.permission, 'Signed out.'));
+    if (verifyOnReload && !user.isEmailVerified) {
+      final verified = AppUser(
+        uid: user.uid,
+        email: user.email,
+        displayName: user.displayName,
+        isEmailVerified: true,
+        methods: user.methods,
+      );
+      _emit(verified);
+      return Ok(verified);
+    }
+    return Ok(user);
+  }
+
+  @override
+  Future<Result<void>> updateDisplayName(String name) async {
+    final user = _user;
+    if (user == null) return const Err(AppFailure(FailureKind.permission, 'Signed out.'));
+    _emit(AppUser(uid: user.uid, email: user.email, displayName: name, isEmailVerified: user.isEmailVerified, methods: user.methods));
+    return const Ok(null);
+  }
+
+  @override
+  Future<Result<void>> deleteCurrentUser() async {
+    if (failWith case final failure?) return Err(failure);
+    deleted = true;
+    _emit(null);
+    return const Ok(null);
+  }
+
+  @override
   Future<Result<void>> signOut() async {
     if (failWith case final failure?) return Err(failure);
-    _user = null;
-    _controller.add(null);
+    _emit(null);
     return const Ok(null);
   }
 }

@@ -1,53 +1,48 @@
 import 'package:flutter/material.dart';
 
-import '../../../core/theme/app_theme.dart';
-import '../../../core/theme/tokens.dart';
-import '../../../domain/models/credit_face.dart';
+import '../../../core/theme/theme_context.dart';
+import '../../../core/widgets/ec_credit_frame.dart';
 
-/// A credit roll, scrolling behind the welcome screen.
+/// The welcome screen's monitor: a credit roll scrolling in a black frame.
 ///
-/// This is the product demonstrating itself: no copy explains a rolling
-/// credit sequence as well as a rolling credit sequence does, and it costs
-/// the user nothing to watch — they can sign in straight over the top of it.
-///
-/// It is a purpose-built loop rather than the real monitor. The monitor is
-/// driven by `ProjectController` and needs measured block geometry and a
-/// playback clock; wiring the welcome screen to all of that would couple the
-/// first screen in the app to the editor's entire state graph in exchange
-/// for a backdrop nobody reads. The typography comes from the same
-/// [CreditFace] the real roll uses, so it still looks like the product.
+/// The product demonstrating itself — nothing explains a rolling credit
+/// sequence as well as one rolling. A purpose-built loop rather than the real
+/// monitor, which is driven by `ProjectController` and measured block
+/// geometry; wiring the first screen to the editor's state for a backdrop
+/// would be a bad trade. It uses the same credit typography, so it still
+/// looks exactly like the product.
 class RollHero extends StatefulWidget {
-  const RollHero({super.key});
+  final double height;
+
+  const RollHero({super.key, this.height = 250});
 
   @override
   State<RollHero> createState() => _RollHeroState();
 }
 
 class _RollHeroState extends State<RollHero> with SingleTickerProviderStateMixin {
-  static const _cycle = Duration(seconds: 42);
+  /// One pass of the sequence. At the frame's size this is roughly the
+  /// "4 px/frame at 24 fps" the footnote claims.
+  static const _cycle = Duration(seconds: 18);
 
   late final AnimationController _controller = AnimationController(vsync: this, duration: _cycle);
 
-  /// Whether the roll is currently allowed to move. Kept in sync with the
-  /// platform's reduce-motion setting in [didChangeDependencies].
   bool _animating = false;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-
-    // Honour the system reduce-motion setting: a large, continuously moving
-    // field is exactly what that preference exists to suppress. With motion
-    // off the roll still renders — it simply holds a frame.
+    // Reduce-motion: a continuously moving field is what that setting
+    // exists to suppress. With it on, the roll holds a frame.
     final allowed = !MediaQuery.disableAnimationsOf(context);
     if (allowed == _animating) return;
-
     _animating = allowed;
     if (allowed) {
       _controller.repeat();
     } else {
-      _controller.stop();
-      _controller.value = 0.18;
+      _controller
+        ..stop()
+        ..value = 0.05;
     }
   }
 
@@ -59,109 +54,99 @@ class _RollHeroState extends State<RollHero> with SingleTickerProviderStateMixin
 
   @override
   Widget build(BuildContext context) {
-    return ClipRect(
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final height = constraints.maxHeight;
-          return Stack(
-            fit: StackFit.expand,
-            children: [
-              AnimatedBuilder(
-                animation: _controller,
-                builder: (context, child) {
-                  // Two copies chase each other so the loop never shows a
-                  // seam: as the first scrolls off the top, the second is
-                  // already a full height behind it.
-                  final offset = -_controller.value * height * 2;
-                  return Stack(
-                    children: [
-                      Positioned(top: offset + height, left: 0, right: 0, child: child!),
-                      Positioned(top: offset + height * 3, left: 0, right: 0, child: child),
-                    ],
-                  );
-                },
-                child: const _HeroCredits(),
-              ),
-              // Legibility over spectacle: the roll is a texture, and the
-              // sign-in controls on top of it have to stay readable.
-              const DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      EcColors.surfaceCanvas,
-                      Color(0x990B0D10),
-                      Color(0xCC0B0D10),
-                      EcColors.surfaceCanvas,
-                    ],
-                    stops: [0, 0.22, 0.62, 1],
+    final p = context.palette;
+    return Container(
+      height: widget.height,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(22),
+        boxShadow: const [BoxShadow(color: Color(0xB30C6EC8), offset: Offset(0, 30), blurRadius: 60, spreadRadius: -30)],
+      ),
+      child: EcCreditFrame(
+        radius: 22,
+        footnote: '24 fps · 4 px/frame',
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final h = constraints.maxHeight;
+            return Stack(
+              fit: StackFit.expand,
+              children: [
+                ClipRect(
+                  child: AnimatedBuilder(
+                    animation: _controller,
+                    builder: (context, child) {
+                      // Two copies a sequence-length apart, so the loop has
+                      // no seam: one leaves the top as the other arrives.
+                      final travel = _sequenceHeight;
+                      final y = h - _controller.value * travel;
+                      return Stack(
+                        clipBehavior: Clip.none,
+                        children: [
+                          Positioned(top: y, left: 0, right: 0, child: child!),
+                          Positioned(top: y - travel, left: 0, right: 0, child: child),
+                        ],
+                      );
+                    },
+                    child: const _HeroCredits(),
                   ),
                 ),
-              ),
-            ],
-          );
-        },
+                // Black fades top and bottom, as a real monitor's roll enters
+                // and leaves the frame.
+                IgnorePointer(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [p.monitor, p.monitor.withValues(alpha: 0), p.monitor.withValues(alpha: 0), p.monitor],
+                        stops: const [0, 0.26, 0.72, 1],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            );
+          },
+        ),
       ),
     );
   }
+
+  /// The loop length — the sequence's laid-out height plus its trailing gap.
+  static const double _sequenceHeight = 420;
 }
 
-/// The roll's content: a short, real-looking credit sequence.
 class _HeroCredits extends StatelessWidget {
   const _HeroCredits();
 
-  static const _sequence = <(String, List<String>)>[
-    ('DIRECTED BY', ['Mara Oyelaran']),
-    ('WRITTEN BY', ['Mara Oyelaran', 'Tobias Renn']),
-    ('PRODUCED BY', ['Ines Kovač', 'Daniel Whitfield']),
-    ('DIRECTOR OF PHOTOGRAPHY', ['Aurélie Banks']),
-    ('EDITED BY', ['Sam Oduya']),
-    ('PRODUCTION DESIGNER', ['Noor Haddad']),
-    ('MUSIC BY', ['Felix Arinze']),
-    ('CASTING BY', ['Priya Raghunathan']),
+  static const _cards = <(String, String)>[
+    ('Director of photography', 'Yusuf Karadeniz'),
+    ('Editor', 'Bruno Takahashi'),
+    ('Original music', 'Hana Bexley'),
+  ];
+
+  static const _cast = <(String, String)>[
+    ('Renny', 'Sofia Alvarez'),
+    ('Marcus', 'Idris Oyelaran'),
+    ('Dr. Vance', 'Helen Tsai'),
   ];
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(
-          'THE LONG WAY DOWN',
-          textAlign: TextAlign.center,
-          style: CreditFace.condensed.textStyle(
-            size: 34,
-            weight: FontWeight.w600,
-            color: Colors.white.withValues(alpha: .9),
-            letterSpacing: 1,
-          ),
-        ),
-        const SizedBox(height: EcSpace.s7),
-        for (final (header, names) in _sequence) ...[
-          Text(
-            header,
-            textAlign: TextAlign.center,
-            style: CreditFace.condensed.textStyle(
-              size: 10,
-              color: Colors.white.withValues(alpha: .45),
-              letterSpacing: 2.4,
-            ),
-          ),
-          const SizedBox(height: EcSpace.s1),
-          for (final name in names)
-            Text(
-              name,
-              textAlign: TextAlign.center,
-              style: CreditFace.condensed.textStyle(
-                size: 15,
-                weight: FontWeight.w500,
-                color: Colors.white.withValues(alpha: .72),
-              ),
-            ),
-          const SizedBox(height: EcSpace.s6),
+    return SizedBox(
+      height: _RollHeroState._sequenceHeight,
+      child: Column(
+        children: [
+          for (final (header, name) in _cards) ...[
+            CreditCard(header: header, names: [name], nameSize: 14),
+            const SizedBox(height: 20),
+          ],
+          CreditCard(header: 'Cast', names: const [], nameSize: 14),
+          for (final (role, name) in _cast) ...[
+            CreditPair(role: role, name: name),
+            const SizedBox(height: 6),
+          ],
         ],
-      ],
+      ),
     );
   }
 }
