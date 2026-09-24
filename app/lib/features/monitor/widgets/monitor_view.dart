@@ -4,118 +4,70 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../project/controllers/project_controller.dart';
-import '../../../domain/models/credit_block.dart';
-import '../../../domain/models/project_settings.dart';
-import '../../../domain/engine/roll_engine.dart';
 import '../controllers/playback_controller.dart';
-import 'hold_overlay.dart';
-import 'monitor_background.dart';
-import 'roll_content.dart';
+import 'roll_frame.dart';
 import 'safe_guides.dart';
 
 /// The monitor: real-time playback at project frame rate — what plays is
-/// what renders (§8 of the brief). Renders the roll at full canvas
-/// resolution then scales the whole thing down to fit the available box,
-/// exactly like the prototype's `canvasScale` transform.
-///
-/// Two [OverflowBox]es do the work CSS does for free: the outer one lets a
-/// box declared at full render resolution (`g.w × g.h`) lay out inside a
-/// much smaller display box (it's then visually shrunk by [Transform.scale]
-/// to exactly fit); the inner one lets the *roll content* grow taller than
-/// the canvas — it's the scrollable part, clipped by the [ClipRect] around
-/// it and positioned by [Transform.translate] — without either box being
-/// crushed down to its tight ambient constraints.
-class MonitorView extends ConsumerWidget {
+/// what renders (§8 of the brief). The frame is laid out at full canvas
+/// resolution by [RollFrame] (the same widget the exporter renders) and
+/// scaled down to fit, like the prototype's `canvasScale` transform; the
+/// safe-area guides are drawn over it at display size.
+class MonitorView extends ConsumerStatefulWidget {
   const MonitorView({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<MonitorView> createState() => _MonitorViewState();
+}
+
+class _MonitorViewState extends ConsumerState<MonitorView> {
+  late final _frame = ValueNotifier<double>(ref.read(playbackControllerProvider).frame);
+
+  @override
+  void dispose() {
+    _frame.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    ref.listen(playbackControllerProvider.select((s) => s.frame), (_, f) => _frame.value = f);
     final project = ref.watch(projectControllerProvider);
-    final settings = project.settings;
     final g = project.geometry;
-    final content = RollContent(blocks: project.activeBlocks, geometry: g);
-    final holds = project.activeBlocks.whereType<HoldBlock>().toList();
+    final frame = RollFrame(
+      settings: project.settings,
+      blocks: project.activeBlocks,
+      geometry: g,
+      engine: project.engine,
+      frame: _frame,
+      onMeasured: ref.read(projectControllerProvider.notifier).updateMeasurements,
+    );
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final availW = constraints.maxWidth;
-        final availH = constraints.maxHeight;
-        final scale = math.min(availW / g.w, availH / g.h);
-        final dW = g.w * scale;
-        final dH = g.h * scale;
+        final scale = math.min(constraints.maxWidth / g.w, constraints.maxHeight / g.h);
         final guideWidth = math.max(1.0, g.w / 900);
-
-        Widget atFullRes(Widget child) {
-          return OverflowBox(
-            alignment: Alignment.topLeft,
-            minWidth: g.w,
-            maxWidth: g.w,
-            minHeight: g.h,
-            maxHeight: g.h,
-            child: Transform.scale(alignment: Alignment.topLeft, scale: scale, child: child),
-          );
-        }
 
         return Center(
           child: SizedBox(
-            width: dW,
-            height: dH,
+            width: g.w * scale,
+            height: g.h * scale,
             child: ClipRect(
               child: Stack(
                 fit: StackFit.expand,
                 children: [
-                  MonitorBackgroundLayer(background: settings.background),
-                  atFullRes(
-                    SizedBox(
-                      width: g.w,
-                      height: g.h,
-                      child: _Ink(
-                        paper: settings.background == MonitorBackground.paper,
-                        child: ClipRect(
-                          child: Consumer(
-                            builder: (context, ref, _) {
-                              final frame = ref.watch(playbackControllerProvider).frame;
-                              final paint = paintAt(project.engine, frame);
-                              final translated = Transform.translate(
-                                offset: Offset(0, g.h - paint.offset),
-                                child: OverflowBox(
-                                  alignment: Alignment.topLeft,
-                                  minWidth: g.w,
-                                  maxWidth: g.w,
-                                  minHeight: 0,
-                                  maxHeight: double.infinity,
-                                  child: SizedBox(width: g.w, child: content),
-                                ),
-                              );
-                              if (settings.look != RollLook.crawl3d) return translated;
-                              final perspectivePx = g.h * (settings.vanishingDistance / 100) * 2;
-                              final m = Matrix4.identity()
-                                ..setEntry(3, 2, perspectivePx == 0 ? 0 : -1 / perspectivePx)
-                                ..rotateX(settings.tilt * math.pi / 180);
-                              return Transform(alignment: Alignment.bottomCenter, transform: m, child: translated);
-                            },
-                          ),
-                        ),
-                      ),
-                    ),
+                  // The OverflowBox lets the full-resolution frame lay out
+                  // inside the much smaller display box before it's scaled.
+                  OverflowBox(
+                    alignment: Alignment.topLeft,
+                    minWidth: g.w,
+                    maxWidth: g.w,
+                    minHeight: g.h,
+                    maxHeight: g.h,
+                    child: Transform.scale(alignment: Alignment.topLeft, scale: scale, child: frame),
                   ),
-                  Consumer(
-                    builder: (context, ref, _) {
-                      final frame = ref.watch(playbackControllerProvider).frame;
-                      final paint = paintAt(project.engine, frame);
-                      return atFullRes(
-                        SizedBox(
-                          width: g.w,
-                          height: g.h,
-                          child: _Ink(
-                            paper: settings.background == MonitorBackground.paper,
-                            child: HoldOverlay(holds: holds, geometry: g, paint: paint),
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                  if (settings.safeGuides) SafeGuides(guideWidth: (guideWidth * scale).clamp(1.0, double.infinity)),
+                  if (project.settings.safeGuides)
+                    SafeGuides(guideWidth: (guideWidth * scale).clamp(1.0, double.infinity)),
                 ],
               ),
             ),
@@ -124,14 +76,4 @@ class MonitorView extends ConsumerWidget {
       },
     );
   }
-}
-
-/// Credits are drawn white; on paper they are inverted to ink.
-class _Ink extends StatelessWidget {
-  final bool paper;
-  final Widget child;
-  const _Ink({required this.paper, required this.child});
-
-  @override
-  Widget build(BuildContext context) => paper ? ColorFiltered(colorFilter: kPaperInvert, child: child) : child;
 }

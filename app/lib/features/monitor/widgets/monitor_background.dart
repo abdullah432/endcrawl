@@ -6,7 +6,11 @@ import '../../../domain/models/project_settings.dart';
 class MonitorBackgroundLayer extends StatelessWidget {
   final MonitorBackground background;
 
-  const MonitorBackgroundLayer({super.key, required this.background});
+  /// Drawing a rendered frame: transparency is left transparent, and the
+  /// reference clip (a preview aid) is not burned in.
+  final bool forRender;
+
+  const MonitorBackgroundLayer({super.key, required this.background, this.forRender = false});
 
   /// Paper for print proofs.
   static const paper = Color(0xFFF3F1EC);
@@ -14,8 +18,16 @@ class MonitorBackgroundLayer extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return switch (background) {
+      MonitorBackground.alpha when forRender => const SizedBox.expand(),
+      MonitorBackground.reference when forRender => const ColoredBox(color: Colors.black),
       MonitorBackground.black => const ColoredBox(color: Colors.black),
-      MonitorBackground.alpha => const CustomPaint(painter: CheckerboardPainter(), size: Size.infinite),
+      // Squares scale with the canvas, so they read the same at any size.
+      MonitorBackground.alpha => LayoutBuilder(
+          builder: (context, c) => CustomPaint(
+            painter: CheckerboardPainter(tile: c.maxWidth.isFinite ? (c.maxWidth / 40).clamp(12.0, 96.0) : 12),
+            size: Size.infinite,
+          ),
+        ),
       MonitorBackground.paper => const ColoredBox(color: paper),
       MonitorBackground.reference => const DecoratedBox(
           decoration: BoxDecoration(
