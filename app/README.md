@@ -260,17 +260,20 @@ tool, codec and resolution is on both, with no watermark and no end card.
   real on-screen height (for hold-card sequencing, markers, and per-block
   duration estimates) — the same problem the prototype solved by reading
   `offsetTop` off the DOM after layout. `features/monitor/widgets/roll_content.dart`
-  does the Flutter equivalent: it renders the roll at full render resolution
-  with a `GlobalKey` per block, then measures each block's offset via
-  `RenderBox.localToGlobal` in a post-frame callback and reports it back to
-  `ProjectController`.
-- **Rendering a canvas-resolution roll inside a small preview box**: the
-  monitor renders the credit roll at the project's real export resolution
-  (e.g. 2048×858) and then visually scales it down to fit the on-screen
-  preview, exactly like the prototype's CSS `transform: scale()`. In Flutter
-  this needs `OverflowBox` at two levels (see `monitor_view.dart`) so the
-  full-resolution content isn't crushed down to the small preview's tight
-  layout constraints before it gets scaled.
+  does the Flutter equivalent: it lays the roll out at full render
+  resolution and reads each block's offset straight off the column's
+  children (not global keys, which only resolve in the app's own tree — the
+  exporter's offscreen tree needs this too).
+- **One frame widget for playback and export**: `RollFrame` draws one frame
+  of the canvas at full resolution — background, roll, 3D tilt, hold cards.
+  The monitor scales it down to fit (an `OverflowBox` lets it lay out at
+  full size first, like the prototype's CSS `transform: scale()`); the
+  exporter renders it offscreen. What plays is what renders.
+- **Hold cards stop on a clear frame.** A hold is a frame-tall gap in the
+  roll, and the engine stops the roll when that gap exactly fills the frame,
+  so the card never sits over names. A hold that closes the roll ends it
+  (no blank scroll after), one that opens it starts in frame. Templates only
+  use a hold as the closing card.
 - **Drag-to-reorder and swipe actions** use Flutter's own `ReorderableListView`
   (drag handle or long-press, auto-scroll at the edges) and
   `flutter_slidable` (Duplicate/Delete with an undo toast), rather than
@@ -292,17 +295,62 @@ tool, codec and resolution is on both, with no watermark and no end card.
   number decodes as `int` when it has no fractional part, so every `double`
   field must go through `num`.
 
-## Scope note
+## Export
 
-Per product decision, **export is simulated**: there is no on-device video
-encoder. Everything around it is real — the locked settings, size and time
-estimates, progress shown live on the library card, the free-plan ad, and
-the outcome saved as the project's last render. A 4K render stops once at
-62% so the failure screen (6.3) and its Resume path are exercised.
+Export is real and on-device (`features/export/`):
+
+```
+FrameRenderer (render/)      RollFrame in a detached BuildOwner/PipelineOwner/
+                             RenderView, laid out at the exact output size; one
+                             ui.Image per frame, timed from its own layout.
+VideoEncoder (data/)         capabilities() · start(spec) → EncodeSession
+                             { append(image, index) · finish() → file · cancel() }
+  NativeVideoEncoder         method channel 'endcrawl/encoder'
+    iOS   ios/Runner/VideoEncoderPlugin.swift       AVAssetWriter: H.264, HEVC
+                                                    (.mp4), ProRes 422 HQ / 4444
+                                                    (.mov, alpha kept)
+    Android …/VideoEncoderPlugin.kt                 MediaCodec + MediaMuxer:
+                                                    H.264, HEVC (.mp4)
+  PngSequenceEncoder         Dart: a PNG per frame, stored in one .zip
+ExportDestinations (data/)   Photos (gal) · Files / share sheet (share_plus)
+ExportController             render → append loop, measured time left, pause
+                             while hidden, cancel, real failure causes
+```
+
+- **Only what the device can make is offered.** iOS asks VideoToolbox for
+  its encoders and AVAssetWriter for the sizes; Android asks
+  `MediaCodecList`. ProRes appears only on iPhones and iPads that encode it;
+  Android never offers it. A transparent background falls back from ProRes
+  4444 to PNG where needed.
+- **Sizes on 6.1 are estimates (≈).** H.264 and HEVC are encoded at the bit
+  rate the estimate uses, so they land close; ProRes and PNG depend on the
+  picture. 6.4 shows the finished file's real size.
+- **Timing is exact.** Each frame is stamped `index × den / num` seconds,
+  with NTSC rates as fractions (23.976 = 24000/1001). Rendering pauses when
+  the app is hidden (no GPU in the background) and carries on when it's back,
+  with nothing skipped or doubled.
+- **Failures are real.** Free space is checked before the first frame, and a
+  full disk mid-render is recognised on both platforms; 6.3 shows the size
+  needed and offers Try again or Lower resolution. Any other encoder error
+  is shown as the encoder reported it. The partial file is always removed.
+- Frames cross the channel as premultiplied RGBA and are swizzled natively
+  (vImage on iOS; BT.709 limited-range YUV 4:2:0 on Android, chroma averaged
+  per 2×2 so white type keeps clean edges).
+- Files go to the cache (`renders/`), named after the project, and are
+  handed on to Photos, Files or another app. Frame.io is "Soon".
+
+The Dart side is covered by tests (a fake encoder for the loop, the real
+offscreen renderer, the PNG zip, and the channel contract). The Kotlin
+encoder has been compiled against the Android 14 API; the Swift encoder
+could not be compiled in the environment it was written in. **Both need a
+first run on real devices** — render a short project in each codec and
+open the file.
+
+## Scope note
 
 Placeholders that say so in the UI rather than pretending: profile photos,
 "Download my data", reference-clip backgrounds, file import in bulk entry,
-image logos (marks are text), export destinations, and purchases (until a
+image logos (marks are text), Frame.io delivery, and purchases (until a
 store is connected). The legal documents are placeholder copy for legal to
 replace, and `core/config/app_links.dart` holds placeholder addresses.
 
