@@ -291,9 +291,12 @@ class _LibraryActions {
     final result = await library.delete(item.summary.id);
     if (!context.mounted) return;
     switch (result) {
-      case Ok(value: final deleted):
+      case Ok(value: final deleted?):
         ref.read(libraryUiProvider.notifier).setFreeingSlot(false);
         showEcToast(context, 'Deleted “${deleted.title}”', actionLabel: 'Undo', onAction: () => library.restore(deleted));
+      case Ok():
+        ref.read(libraryUiProvider.notifier).setFreeingSlot(false);
+        showEcToast(context, 'Deleted “${item.summary.title}”');
       case Err(:final failure):
         showEcToast(context, failure.message);
     }

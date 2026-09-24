@@ -19,7 +19,63 @@ RollEngineResult _engine(ProjectSettings s) => computeEngine(
       geometry: computeGeometry(formatW: 1920, formatH: 1080, face: CreditFace.grotesque),
     );
 
+final _hd = computeGeometry(formatW: 1920, formatH: 1080, face: CreditFace.grotesque);
+
+RollEngineResult _roll(List<CreditBlock> blocks, RollMeasurements m) => computeEngine(
+      project: const ProjectSettings(fps: 24, mode: TimingMode.speed, ppf: 4),
+      activeBlocks: blocks,
+      measurements: m,
+      geometry: _hd,
+    );
+
+HoldSegment _holdSeg(RollEngineResult e) => e.segments.whereType<HoldSegment>().single;
+
 void main() {
+  group('hold cards', () {
+    const dir = NameListBlock(id: 'dir', header: 'Directed by', names: ['Maya Okonkwo']);
+    const thx = NameListBlock(id: 'thx', kind: BlockKind.thanks, header: 'Thanks', names: ['A']);
+    const hold = HoldBlock(id: 'hld', lines: ['THE END'], hold: 3, fadeIn: .5, fadeOut: .5);
+
+    test('the roll stops with the hold’s clear frame exactly in view, nothing else', () {
+      final h = _hd.h;
+      final m = RollMeasurements(travel: 1000 + h + 800 + h, blockY: {'dir': 0, 'hld': 1000, 'thx': 1000 + h});
+      final e = _roll(const [dir, hold, thx], m);
+      final seg = _holdSeg(e);
+
+      final mid = paintAt(e, seg.f0 + seg.lengthFrames / 2);
+      expect(mid.holdId, 'hld');
+      expect(mid.holdOpacity, 1);
+      // The visible band [offset - h, offset] is the gap and only the gap.
+      expect(mid.offset - h, 1000);
+      expect(mid.offset, m.blockY['thx']);
+      expect(frameForY(e, 1000 + h), seg.f0);
+    });
+
+    test('a closing hold ends the roll — no blank scroll after the card', () {
+      final h = _hd.h;
+      final m = RollMeasurements(travel: 1000 + h + h, blockY: {'dir': 0, 'hld': 1000});
+      final e = _roll(const [dir, hold], m);
+      final seg = _holdSeg(e);
+
+      expect(e.travel, 1000 + h);
+      final tail = e.segments.whereType<ScrollSegment>().last;
+      expect(tail.f1 - tail.f0, 0);
+      expect(paintAt(e, e.totalFrames - 1).offset, seg.y0);
+      expect(e.totalFrames, seg.f1 + e.tailFrames);
+    });
+
+    test('an opening hold starts in frame — no blank scroll-in before the card', () {
+      final h = _hd.h;
+      final m = RollMeasurements(travel: h + 800 + h, blockY: {'hld': 0, 'dir': h});
+      final e = _roll(const [hold, dir], m);
+      final seg = _holdSeg(e);
+
+      expect(seg.f0, e.headFrames);
+      expect(paintAt(e, 0).offset, h);
+      expect(e.scrollFrames, (800 + h) / 4);
+    });
+  });
+
   group('blockSeconds', () {
     test('a scrolling block is its height at the current rate; holds are their stated time', () {
       final e = _engine(const ProjectSettings(fps: 24, mode: TimingMode.speed, ppf: 4));

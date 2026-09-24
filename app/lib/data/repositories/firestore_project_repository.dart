@@ -88,7 +88,15 @@ class FirestoreProjectRepository implements ProjectRepository {
   }
 
   @override
-  Future<Result<void>> delete(String id) => _guard(() => _projects.doc(id).delete());
+  Future<Result<void>> delete(String id) => _guard(() => _queued(_projects.doc(id).delete()));
+
+  /// A write's future only completes when the server acknowledges it, which
+  /// on a slow or absent network is never. The write is already applied to
+  /// the local cache — the live list has dropped the card — and Firestore
+  /// syncs it later, so wait briefly for a quick rejection, then move on.
+  static Future<void> _queued(Future<void> write) => write.timeout(_ackWait, onTimeout: () {});
+
+  static const _ackWait = Duration(seconds: 1);
 
   /// One batch per 500 documents (Firestore's limit), not one round trip
   /// per project.

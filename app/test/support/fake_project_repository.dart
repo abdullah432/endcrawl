@@ -14,6 +14,9 @@ class FakeProjectRepository implements ProjectRepository {
   /// Set to make the next call fail, for exercising error states.
   AppFailure? failWith;
 
+  /// Ids that exist but can't be read — a damaged or newer-format document.
+  final Set<String> unreadable = {};
+
   int saveCount = 0;
 
   final _changes = StreamController<void>.broadcast();
@@ -40,6 +43,7 @@ class FakeProjectRepository implements ProjectRepository {
     if (failWith case final failure?) return Err(failure);
     final project = projects[id];
     if (project == null) return const Err(AppFailure.notFound('No such project.'));
+    if (unreadable.contains(id)) return const Err(AppFailure(FailureKind.serialization, 'Unreadable.'));
     return Ok(project);
   }
 

@@ -105,6 +105,9 @@ class TemplateRepository {
   ];
 
   // ---- templates --------------------------------------------------------
+  //
+  // A hold card only ever closes a template: the roll stops on its own
+  // clear frame, so mid-roll it reads as the credits ending early.
 
   /// Department order, billing block, two-column cast.
   static final _feature = <TemplateSection>[
@@ -230,7 +233,8 @@ class TemplateRepository {
     TemplateSection(
       id: 'end-card',
       kind: BlockKind.hold,
-      label: 'End card hold',
+      label: 'End card',
+      includedByDefault: false,
       build: () => [HoldBlock(id: newBlockId(), lines: const ['THE LONG WAY DOWN'], hold: 4)],
     ),
   ];

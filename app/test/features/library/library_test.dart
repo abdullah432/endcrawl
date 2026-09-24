@@ -51,7 +51,7 @@ void main() {
 
     testWidgets('template meta is derived from what the template creates', (tester) async {
       await AppHarness().pump(tester);
-      expect(find.textContaining('24 fps · 2.39:1 · 28 blocks'), findsOneWidget);
+      expect(find.textContaining('24 fps · 2.39:1 · 27 blocks'), findsOneWidget);
       expect(find.textContaining('30 fps · 9:16 · 6 blocks'), findsOneWidget);
     });
 
@@ -212,6 +212,19 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(app.projects.projects.values.single.id, original.id);
+    });
+
+    testWidgets('a project that can’t be read still deletes, just without undo', (tester) async {
+      final app = await openActions(tester);
+      final original = app.projects.projects.values.single;
+      app.projects.unreadable.add(original.id);
+      await tapText(tester, 'Delete project');
+      await tester.tap(find.widgetWithText(InkWell, 'Delete project').last);
+      await tester.pumpAndSettle();
+
+      expect(app.projects.projects, isEmpty);
+      expect(find.text('Deleted “The Long Way Down”'), findsOneWidget);
+      expect(find.text('Undo'), findsNothing);
     });
 
     testWidgets('duplicate highlights the copy with Open and Rename, and can be undone', (tester) async {

@@ -97,11 +97,12 @@ class LibraryController {
   const LibraryController(this._ref);
 
   /// Deletes a project and returns it, so the ten-second undo can put it
-  /// back exactly as it was.
-  Future<Result<Project>> delete(String id) async {
+  /// back exactly as it was — or null when it couldn't be read first (a
+  /// damaged or newer-format document). That only costs the undo: the
+  /// delete goes ahead, so a card can never get stuck on the list.
+  Future<Result<Project?>> delete(String id) async {
     final repository = _ref.read(projectRepositoryProvider);
-    final loaded = await repository.load(id);
-    if (loaded case Err(:final failure)) return Err(failure);
+    final loaded = (await repository.load(id)).valueOrNull;
 
     final result = await repository.delete(id);
     if (result case Err(:final failure)) return Err(failure);
@@ -111,7 +112,7 @@ class LibraryController {
     if (state.lastOpenedProjectId == id) await session.setLastOpened(null);
     if (state.leftOpenProjectId == id) await session.setLeftOpen(null);
     _refresh();
-    return loaded;
+    return Ok(loaded);
   }
 
   /// Undo for [delete]: writes the project back unchanged, same id and
