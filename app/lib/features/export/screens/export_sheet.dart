@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:path/path.dart' show basename;
 
 import '../../../bootstrap.dart';
 import '../../../core/theme/ec_type.dart';
 import '../../../core/theme/theme_context.dart';
 import '../../../core/theme/tokens.dart';
+import '../../../core/result.dart';
 import '../../../core/utils/formatting.dart';
 import '../../../core/widgets/ec_ad_slot.dart';
 import '../../../core/widgets/ec_button.dart';
@@ -70,8 +72,10 @@ class _Settings extends ConsumerWidget {
     final export = ref.watch(exportControllerProvider);
     final controller = ref.read(exportControllerProvider.notifier);
     final e = project.engine;
-    final codec = export.codecFor(project.settings);
-    final resolution = export.resolutionFor(project.formatW);
+    final device = ref.watch(encoderCapabilitiesProvider).value;
+    final codec = export.codecFor(project.settings, device);
+    final resolutions = export.resolutionsFor(codec, device);
+    final resolution = export.resolutionFor(project.formatW, project.formatH, codec, device);
     final (w, h) = resolution.sizeFor(project.formatW, project.formatH);
     final seconds = e.totalFrames / e.fps;
     final transparent = project.settings.background == MonitorBackground.alpha;
@@ -160,13 +164,18 @@ class _Settings extends ConsumerWidget {
           const SizedBox(height: 14),
           const EcSectionLabel('Codec'),
           EcGroup(children: [
-            for (final c in Codec.values)
-              _CodecRow(
-                codec: c,
-                selected: c == codec,
-                size: formatBytes(estimateBytes(c, w, h, seconds)),
-                onTap: () => controller.setCodec(c),
-              ),
+            if (device == null)
+              const EcGroupRow(title: 'Checking what this device can encode…', chevron: false)
+            else
+              for (final c in device.codecs)
+                _CodecRow(
+                  codec: c,
+                  selected: c == codec,
+                  // H.264 and HEVC are encoded at this rate; the others
+                  // vary with the picture. Either way it's an estimate.
+                  size: '≈ ${formatBytes(estimateBytes(c, w, h, seconds))}',
+                  onTap: () => controller.setCodec(c),
+                ),
           ]),
           if (transparent && !codec.alpha) ...[
             const SizedBox(height: 10),
@@ -179,10 +188,14 @@ class _Settings extends ConsumerWidget {
           const SizedBox(height: 14),
           const EcSectionLabel('Resolution'),
           EcSegmented(
-            labels: [for (final r in ExportResolution.values) r.label],
-            selectedIndex: resolution.index,
-            onChanged: (i) => controller.setResolution(ExportResolution.values[i]),
+            labels: [for (final r in resolutions) r.label],
+            selectedIndex: resolutions.indexOf(resolution),
+            onChanged: (i) => controller.setResolution(resolutions[i]),
           ),
+          if ((w, h) != (project.formatW, project.formatH)) ...[
+            const SizedBox(height: 8),
+            Text('$w × $h', textAlign: TextAlign.center, style: t.mono.copyWith(fontSize: 11)),
+          ],
         ],
       ),
     );
@@ -258,7 +271,8 @@ class _Rendering extends ConsumerWidget {
     final p = context.palette;
     final t = context.type;
     final showsAds = ref.watch(entitlementProvider).value?.showsAds ?? true;
-    final pct = (run.progress * 100).round();
+    final controller = ref.read(exportControllerProvider.notifier);
+    final pct = (run.progress * 100).floor();
 
     return EcSheet(
       header: Padding(
@@ -277,9 +291,17 @@ class _Rendering extends ConsumerWidget {
       ),
       footer: Padding(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-        child: EcButton.secondary(
-          label: 'Keep working · renders in background',
-          onPressed: () => Navigator.of(context).maybePop(),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            EcButton.secondary(
+              label: 'Keep working · renders in background',
+              onPressed: () => Navigator.of(context).maybePop(),
+            ),
+            const SizedBox(height: 4),
+            EcButton.text(label: 'Cancel render', onPressed: controller.cancel),
+          ],
         ),
       ),
       child: Column(
@@ -339,7 +361,10 @@ class _Rendering extends ConsumerWidget {
                   ),
                 ),
                 const SizedBox(height: 12),
-                Text('${formatAbout(run.secondsLeft)} left', style: t.mono.copyWith(fontSize: 10.5)),
+                Text(
+                  run.frame == 0 ? 'Preparing…' : '${formatAbout(run.secondsLeft)} left',
+                  style: t.mono.copyWith(fontSize: 10.5),
+                ),
               ],
             ),
           ),
@@ -370,21 +395,44 @@ class _Failed extends ConsumerWidget {
     final p = context.palette;
     final t = context.type;
     final controller = ref.read(exportControllerProvider.notifier);
-    final pct = (run.progress * 100).round();
-    final canLower = run.width > ExportResolution.hd.width;
+    final pct = (run.progress * 100).floor();
+    final noSpace = run.failure == EncoderFailureKind.outOfSpace;
+    final canLower = run.width > ExportResolution.hd.edge || run.height > ExportResolution.hd.edge;
+
+    final (headline, emphasis, body) = noSpace
+        ? (
+            'Not enough ',
+            'free space.',
+            'The file needs about ${formatBytes(run.neededBytes ?? run.bytes)}. '
+                '${canLower ? 'Free up space or drop to 1920' : 'Free up space'}, then try again.',
+          )
+        : (
+            'The render ',
+            'stopped.',
+            '${run.failureMessage ?? 'The encoder stopped.'} Nothing was saved; try again, '
+                '${run.codec == Codec.h264 ? 'or' : 'or pick H.264,'} a lower resolution.',
+          );
 
     return EcSheet(
       showClose: false,
       padding: const EdgeInsets.fromLTRB(20, 10, 20, 16),
       footer: Padding(
         padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
-        child: Row(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Expanded(child: EcButton(label: 'Resume', onPressed: controller.resume)),
-            if (canLower) ...[
-              const SizedBox(width: 8),
-              Expanded(child: EcButton.secondary(label: 'Lower resolution', onPressed: controller.resumeAtLowerResolution)),
-            ],
+            Row(
+              children: [
+                Expanded(child: EcButton(label: 'Try again', onPressed: controller.retry)),
+                if (canLower) ...[
+                  const SizedBox(width: 8),
+                  Expanded(child: EcButton.secondary(label: 'Lower resolution', onPressed: controller.retryAtLowerResolution)),
+                ],
+              ],
+            ),
+            const SizedBox(height: 4),
+            EcButton.text(label: 'Back to settings', onPressed: controller.dismiss),
           ],
         ),
       ),
@@ -401,14 +449,9 @@ class _Failed extends ConsumerWidget {
           const SizedBox(height: 16),
           Text(caps('Stopped at $pct%'), style: t.eyebrow.copyWith(color: p.warn)),
           const SizedBox(height: 8),
-          EcHeadline('Not enough ', emphasis: 'free space.', style: t.displayM.copyWith(fontSize: 32)),
+          EcHeadline(headline, emphasis: emphasis, style: t.displayM.copyWith(fontSize: 32)),
           const SizedBox(height: 10),
-          Text(
-            'The file needs ${formatBytes(run.neededBytes ?? run.bytes)}. '
-            '${canLower ? 'Free up space or drop to 1080p' : 'Free up space'} — the first $pct% is cached, '
-            'so the retry picks up where it stopped.',
-            style: t.body.copyWith(fontSize: 13, color: p.ink2, height: 1.5),
-          ),
+          Text(body, style: t.body.copyWith(fontSize: 13, color: p.ink2, height: 1.5)),
         ],
       ),
     );
@@ -416,23 +459,39 @@ class _Failed extends ConsumerWidget {
 }
 
 /// 6.4 — destinations only. No upsell at the moment the file lands.
-class _Ready extends StatelessWidget {
+class _Ready extends ConsumerWidget {
   final ExportRun run;
   const _Ready({required this.run});
 
-  static const _destinations = ['Save to Files', 'Save to Photos', 'Send to Frame.io', 'Share sheet'];
-
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final p = context.palette;
     final t = context.type;
+    final destinations = ref.read(exportDestinationsProvider);
+    final path = run.outputPath!;
     final facts = [
       run.codec.label,
       '${run.width} × ${run.height}',
       formatFps(run.fps),
-      formatBytes(run.bytes),
+      formatBytes((run.fileBytes ?? 0).toDouble()),
       formatClock(run.seconds),
     ].join(' · ');
+
+    Future<void> deliver(Future<Result<void>> action, {String? done}) async {
+      final result = await action;
+      if (!context.mounted) return;
+      switch (result) {
+        case Ok():
+          if (done != null) showEcToast(context, done);
+        case Err(:final failure):
+          showEcToast(context, failure.message);
+      }
+    }
+
+    Rect? origin() {
+      final box = context.findRenderObject() as RenderBox?;
+      return box == null ? null : box.localToGlobal(Offset.zero) & box.size;
+    }
 
     return EcSheet(
       child: Column(
@@ -457,13 +516,24 @@ class _Ready extends StatelessWidget {
           Text(facts, textAlign: TextAlign.center, style: t.mono.copyWith(fontSize: 11)),
           const SizedBox(height: 20),
           EcGroup(children: [
-            for (final d in _destinations)
+            EcGroupRow(
+              title: 'Save to Files',
+              subtitle: basename(path),
+              onTap: () => deliver(destinations.share(path, origin: origin())),
+            ),
+            // Photos holds video; an image sequence goes to Files.
+            if (run.codec != Codec.png)
               EcGroupRow(
-                title: d,
-                // This build simulates the encode, so there is no file to
-                // hand over yet — say so rather than pretend.
-                onTap: () => showEcToast(context, 'This preview build doesn’t write a file yet'),
+                title: 'Save to Photos',
+                onTap: () => deliver(destinations.saveToPhotos(path), done: 'Saved to Photos'),
               ),
+            EcGroupRow(
+              title: 'Send to Frame.io',
+              chevron: false,
+              trailing: const EcStatusPill('Soon'),
+              onTap: () => showEcToast(context, 'Frame.io is coming soon — share the file for now'),
+            ),
+            EcGroupRow(title: 'Share sheet', onTap: () => deliver(destinations.share(path, origin: origin()))),
           ]),
         ],
       ),

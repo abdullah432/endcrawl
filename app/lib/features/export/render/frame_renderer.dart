@@ -10,6 +10,7 @@ import '../../../domain/models/credit_block.dart';
 import '../../../domain/models/project_settings.dart';
 import '../../monitor/widgets/roll_content.dart';
 import '../../monitor/widgets/roll_frame.dart';
+import 'frame_source.dart';
 
 /// Draws a project's frames offscreen at the output resolution, for the
 /// encoder. It hosts the same [RollFrame] the monitor shows in a detached
@@ -19,7 +20,7 @@ import '../../monitor/widgets/roll_frame.dart';
 ///
 /// Works from a snapshot of the project taken at [open]; editing while a
 /// render runs doesn't touch it. Call [dispose] when done.
-class FrameRenderer {
+class FrameRenderer implements FrameSource {
   final RollGeometry geometry;
   final int outputWidth;
   final int outputHeight;
@@ -44,6 +45,7 @@ class FrameRenderer {
   );
 
   /// Frames in the render, head to tail.
+  @override
   int get frameCount => engine.totalFrames.round();
 
   /// Lays the roll out, waits for its typefaces, and times it from its own
@@ -57,7 +59,10 @@ class FrameRenderer {
     required int outputHeight,
   }) async {
     final view = ui.PlatformDispatcher.instance.implicitView ?? ui.PlatformDispatcher.instance.views.first;
-    final size = Size(geometry.w, geometry.h);
+    // The tree is laid out at the exact output size, with the canvas-sized
+    // frame scaled into it, so every image comes back at exactly the size
+    // the encoder was opened with — pixel ratios would round the height.
+    final size = Size(outputWidth.toDouble(), outputHeight.toDouble());
     final boundary = RenderRepaintBoundary();
     final renderView = RenderView(
       view: view,
@@ -87,14 +92,20 @@ class FrameRenderer {
         data: const MediaQueryData(textScaler: TextScaler.noScaling),
         child: Directionality(
           textDirection: TextDirection.ltr,
-          child: RollFrame(
-            settings: settings,
-            blocks: blocks,
-            geometry: geometry,
-            engine: engine,
-            frame: frame,
-            measurer: measurer,
-            forRender: true,
+          child: SizedBox.fromSize(
+            size: size,
+            child: FittedBox(
+              fit: BoxFit.fill,
+              child: RollFrame(
+                settings: settings,
+                blocks: blocks,
+                geometry: geometry,
+                engine: engine,
+                frame: frame,
+                measurer: measurer,
+                forRender: true,
+              ),
+            ),
           ),
         ),
       );
@@ -132,6 +143,7 @@ class FrameRenderer {
   }
 
   /// Frame [index] as an image at the output size.
+  @override
   Future<ui.Image> render(int index) {
     _frame.value = index.toDouble();
     _buildOwner
@@ -141,7 +153,7 @@ class FrameRenderer {
       ..flushLayout()
       ..flushCompositingBits()
       ..flushPaint();
-    return _boundary.toImage(pixelRatio: outputWidth / geometry.w);
+    return _boundary.toImage();
   }
 
   /// Frame [index] as straight RGBA bytes, row by row, for the encoder.
@@ -156,6 +168,7 @@ class FrameRenderer {
   }
 
   /// Unmounts the tree, so its states and listeners are released.
+  @override
   void dispose() {
     RenderObjectToWidgetAdapter<RenderBox>(container: _boundary).attachToRenderTree(_buildOwner, _root);
     _buildOwner.finalizeTree();
