@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../domain/engine/roll_engine.dart';
+import '../../../domain/models/credit_block.dart';
 import '../../project/controllers/project_controller.dart';
 
 class PlaybackState {
@@ -80,11 +82,15 @@ class PlaybackController extends Notifier<PlaybackState> {
     state = state.copyWith(frame: t.clamp(0, 1) * e.totalFrames);
   }
 
-  void seekToBlockTop(double blockY) {
+  /// Jumps to where block [id] enters the frame — for a hold card, to the
+  /// card itself.
+  void seekToBlock(String id) {
+    final project = ref.read(projectControllerProvider);
+    final y = project.measurements.blockY[id];
+    if (y == null) return;
     pause();
-    final e = ref.read(projectControllerProvider).engine;
-    if (e.ppf == 0) return;
-    state = state.copyWith(frame: e.headFrames + blockY / e.ppf);
+    final hold = project.activeBlocks.any((b) => b.id == id && b is HoldBlock);
+    state = state.copyWith(frame: frameForY(project.engine, hold ? y + project.geometry.h : y));
   }
 
   /// Resets to the head — used when a template loads or the roll content

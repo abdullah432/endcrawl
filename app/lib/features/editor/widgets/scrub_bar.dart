@@ -55,7 +55,8 @@ class ScrubTrack extends ConsumerWidget {
         : [
             for (final b in project.activeBlocks)
               if (b is! SpacerBlock && project.measurements.blockY[b.id] != null)
-                ((e.headFrames + (e.ppf == 0 ? 0 : project.measurements.blockY[b.id]! / e.ppf)) / e.totalFrames)
+                (frameForY(e, project.measurements.blockY[b.id]! + (b is HoldBlock ? project.geometry.h : 0)) /
+                        e.totalFrames)
                     .clamp(0.0, 1.0),
           ];
 

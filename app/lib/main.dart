@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'bootstrap.dart';
 import 'core/config/orientations.dart';
 import 'core/theme/app_theme.dart';
+import 'core/widgets/ec_toast.dart';
 import 'features/auth/widgets/auth_gate.dart';
 
 Future<void> main() async {
@@ -41,6 +42,7 @@ class EndcrawlApp extends StatelessWidget {
         title: 'EndCrawl',
         debugShowCheckedModeBanner: false,
         theme: buildEndcrawlTheme(),
+        navigatorObservers: [EcToastObserver()],
         home: const AuthGate(),
       ),
     );

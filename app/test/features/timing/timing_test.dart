@@ -1,4 +1,5 @@
 import 'package:endcrawl/domain/models/project_settings.dart';
+import 'package:endcrawl/features/timing/screens/background_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -111,6 +112,20 @@ void main() {
   });
 
   group('5.3 background', () {
+    testWidgets('every option shows a preview of the roll on it', (tester) async {
+      await openEditor(tester);
+      await tapText(tester, 'Black');
+
+      final previews = find.byType(BackgroundPreview);
+      expect(previews, findsNWidgets(4));
+      for (final e in previews.evaluate()) {
+        final size = tester.getSize(find.byWidget(e.widget));
+        expect(size.width, greaterThan(100));
+        expect(size.height, greaterThan(40));
+      }
+      expect(find.text('MAYA OKONKWO'), findsNWidgets(4));
+    });
+
     testWidgets('Transparent is the alpha background', (tester) async {
       await openEditor(tester);
       await tapText(tester, 'Black');

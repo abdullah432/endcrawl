@@ -51,7 +51,7 @@ void main() {
 
     testWidgets('template meta is derived from what the template creates', (tester) async {
       await AppHarness().pump(tester);
-      expect(find.textContaining('24 fps · 2.39:1 · 28 blocks'), findsOneWidget);
+      expect(find.textContaining('24 fps · 2.39:1 · 27 blocks'), findsOneWidget);
       expect(find.textContaining('30 fps · 9:16 · 6 blocks'), findsOneWidget);
     });
 
@@ -214,6 +214,19 @@ void main() {
       expect(app.projects.projects.values.single.id, original.id);
     });
 
+    testWidgets('a project that can’t be read still deletes, just without undo', (tester) async {
+      final app = await openActions(tester);
+      final original = app.projects.projects.values.single;
+      app.projects.unreadable.add(original.id);
+      await tapText(tester, 'Delete project');
+      await tester.tap(find.widgetWithText(InkWell, 'Delete project').last);
+      await tester.pumpAndSettle();
+
+      expect(app.projects.projects, isEmpty);
+      expect(find.text('Deleted “The Long Way Down”'), findsOneWidget);
+      expect(find.text('Undo'), findsNothing);
+    });
+
     testWidgets('duplicate highlights the copy with Open and Rename, and can be undone', (tester) async {
       final app = await openActions(tester);
       await tapText(tester, 'Duplicate');
@@ -271,5 +284,20 @@ void main() {
       expect(app.plan.purchases, 1);
       expect(find.textContaining('Purchases aren’t available in this build yet'), findsOneWidget);
     });
+  });
+
+  testWidgets('the list follows the store live — no refresh needed', (tester) async {
+    final a = _project('Kept', day: 1);
+    final b = _project('Gone elsewhere', day: 2);
+    final app = withProjects([a, b]);
+    await app.pump(tester);
+    expect(find.text('Gone elsewhere'), findsOneWidget);
+
+    // Deleted outside the library — another device, or account deletion.
+    await app.projects.delete(b.id);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Gone elsewhere'), findsNothing);
+    expect(find.text('Kept'), findsOneWidget);
   });
 }

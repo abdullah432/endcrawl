@@ -1,11 +1,14 @@
 import 'package:endcrawl/domain/models/entitlement.dart';
 import 'package:endcrawl/domain/models/project_settings.dart';
 import 'package:endcrawl/domain/models/render_summary.dart';
+import 'package:endcrawl/features/export/data/video_encoder.dart';
 import 'package:endcrawl/features/export/models/export_models.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../../support/app_harness.dart';
 import '../../support/fake_entitlement_repository.dart';
+import '../../support/fake_export.dart';
 import '../../support/fake_project_repository.dart';
 import '../../support/fixtures.dart';
 
@@ -29,12 +32,11 @@ void main() {
     await tapText(tester, 'Export');
   }
 
-  /// The simulated encode runs on a timer; let it finish.
+  /// Each fake frame takes 20 ms; let the render run its course.
   Future<void> runRender(WidgetTester tester) async {
-    for (var i = 0; i < 60; i++) {
-      await tester.pump(const Duration(milliseconds: 110));
+    for (var i = 0; i < 80; i++) {
+      await tester.pump(const Duration(milliseconds: 20));
     }
-    await tester.pump(const Duration(seconds: 1));
     await tester.pumpAndSettle();
   }
 
@@ -53,7 +55,30 @@ void main() {
       }
       expect(find.text('1920 HD'), findsOneWidget);
       expect(find.text('Render H.264'), findsOneWidget);
-      expect(find.textContaining(' MB'), findsWidgets);
+      expect(find.text('≈ 242 MB'), findsNothing); // runtime differs from the design's 2:41
+      expect(find.textContaining(RegExp(r'^≈ \d+ (MB|GB|KB)$')), findsNWidgets(Codec.values.length));
+    });
+
+    testWidgets('only what this device can encode is offered', (tester) async {
+      app = AppHarness(projects: FakeProjectRepository(seed: [film()]), encoder: FakeVideoEncoder(caps: FakeVideoEncoder.android));
+      await openExport(tester);
+
+      expect(find.text('ProRes 422 HQ'), findsNothing);
+      expect(find.text('ProRes 4444'), findsNothing);
+      expect(find.text('4K UHD'), findsOneWidget);
+
+      await tapText(tester, 'HEVC');
+      expect(find.text('4K UHD'), findsNothing, reason: 'this HEVC encoder stops at 1920');
+    });
+
+    testWidgets('a transparent background falls back to PNG where ProRes can’t be made', (tester) async {
+      final base = film();
+      app = AppHarness(
+        projects: FakeProjectRepository(seed: [base.copyWith(settings: base.settings.copyWith(background: MonitorBackground.alpha))]),
+        encoder: FakeVideoEncoder(caps: FakeVideoEncoder.android),
+      );
+      await openExport(tester);
+      expect(find.text('Render PNG sequence'), findsOneWidget);
     });
 
     testWidgets('picking a codec renames the render button', (tester) async {
@@ -76,21 +101,55 @@ void main() {
   });
 
   group('6.2 – 6.4 rendering', () {
-    testWidgets('free renders show progress and the one ad, then land ready and recorded', (tester) async {
+    testWidgets('free renders show progress and the one ad, then land ready with the real size', (tester) async {
       await openExport(tester);
       await tapText(tester, 'Render H.264');
 
-      expect(find.textContaining(RegExp(r'^frame \d')), findsOneWidget);
+      expect(find.textContaining(RegExp(r'^frame \d+ / 48$')), findsOneWidget);
       expect(find.text('SPONSORED · WHILE YOU WAIT'), findsOneWidget);
       expect(find.text('Keep working · renders in background'), findsOneWidget);
 
       await runRender(tester);
 
-      expect(find.textContaining('H.264 · 1920 × 1080 · 24 fps'), findsOneWidget);
-      expect(find.text('Save to Files'), findsOneWidget);
+      final spec = app.encoder.started.single;
+      expect((spec.codec, spec.width, spec.height, spec.fps), (Codec.h264, 1920, 1080, 24.0));
+      expect(spec.bitsPerSecond, 12000000);
+      expect(spec.outputPath, '/renders/The Long Way Down.mp4');
+      expect(app.encoder.appended, 48);
+      expect(app.frames.opened.single, (1920, 1080));
+
+      // 48 frames × 1000 bytes from the fake encoder: the file's own size.
+      expect(find.textContaining('H.264 · 1920 × 1080 · 24 fps · 48 KB'), findsOneWidget);
       expect(find.text('SPONSORED · WHILE YOU WAIT'), findsNothing);
       expect(lastRender()?.outcome, RenderOutcome.rendered);
       expect(lastRender()?.codec, 'H.264');
+    });
+
+    testWidgets('the finished file goes to Photos and the share sheet', (tester) async {
+      await openExport(tester);
+      await tapText(tester, 'Render H.264');
+      await runRender(tester);
+
+      await tapText(tester, 'Save to Photos');
+      expect(app.destinations.savedToPhotos, ['/renders/The Long Way Down.mp4']);
+      expect(find.text('Saved to Photos'), findsOneWidget);
+      await tester.pump(const Duration(seconds: 5)); // the toast leaves
+      await tester.pumpAndSettle();
+
+      await tapText(tester, 'Share sheet');
+      await tapText(tester, 'Save to Files');
+      expect(app.destinations.shared, hasLength(2));
+    });
+
+    testWidgets('an image sequence isn’t offered to Photos', (tester) async {
+      await openExport(tester);
+      await tapText(tester, 'PNG sequence');
+      await tapText(tester, 'Render PNG sequence');
+      await runRender(tester);
+
+      expect(app.encoder.started.single.outputPath, endsWith('.zip'));
+      expect(find.text('Save to Photos'), findsNothing);
+      expect(find.text('Save to Files'), findsOneWidget);
     });
 
     testWidgets('Pro renders show no ad', (tester) async {
@@ -106,17 +165,23 @@ void main() {
       await runRender(tester);
     });
 
-    testWidgets('a failure names the cause and resumes from where it stopped', (tester) async {
+    testWidgets('out of space names the cause and the size, and tries again', (tester) async {
+      app = AppHarness(
+        projects: FakeProjectRepository(seed: [film()]),
+        encoder: FakeVideoEncoder(failWith: const EncoderException.outOfSpace(), failAtFrame: 30),
+      );
       await openExport(tester);
       await tapText(tester, '4K UHD');
       await tapText(tester, 'Render H.264');
       await runRender(tester);
 
       expect(find.text('STOPPED AT 62%'), findsOneWidget);
-      expect(find.textContaining('the first 62% is cached'), findsOneWidget);
+      expect(find.textContaining('Not enough '), findsOneWidget);
+      expect(find.textContaining('Free up space or drop to 1920'), findsOneWidget);
+      expect(app.encoder.cancelled, 1, reason: 'the partial file is removed');
       expect(lastRender()?.outcome, RenderOutcome.failed);
 
-      await tapText(tester, 'Resume');
+      await tapText(tester, 'Try again');
       expect(find.textContaining(RegExp(r'^frame \d')), findsOneWidget);
       await runRender(tester);
 
@@ -124,7 +189,11 @@ void main() {
       expect(lastRender()?.outcome, RenderOutcome.rendered);
     });
 
-    testWidgets('lower resolution carries on at 1920', (tester) async {
+    testWidgets('lower resolution starts again at 1920', (tester) async {
+      app = AppHarness(
+        projects: FakeProjectRepository(seed: [film()]),
+        encoder: FakeVideoEncoder(failWith: const EncoderException.outOfSpace(), failAtFrame: 10),
+      );
       await openExport(tester);
       await tapText(tester, '4K UHD');
       await tapText(tester, 'Render H.264');
@@ -133,10 +202,72 @@ void main() {
       await tapText(tester, 'Lower resolution');
       await runRender(tester);
 
+      expect(app.frames.opened, [(3840, 2160), (1920, 1080)]);
       expect(find.textContaining('H.264 · 1920 × 1080'), findsOneWidget);
     });
 
-    testWidgets('a render keeps going in the background and the library shows it', (tester) async {
+    testWidgets('a device that reports too little space stops before the first frame', (tester) async {
+      app = AppHarness(
+        projects: FakeProjectRepository(seed: [film()]),
+        encoder: FakeVideoEncoder(caps: EncoderCapabilities(FakeVideoEncoder.everything.maxEdge, freeBytes: 1000)),
+      );
+      await openExport(tester);
+      await tapText(tester, 'Render H.264');
+      await runRender(tester);
+
+      expect(find.text('STOPPED AT 0%'), findsOneWidget);
+      expect(app.encoder.started, isEmpty);
+    });
+
+    testWidgets('any other encoder failure says what the encoder said', (tester) async {
+      app = AppHarness(
+        projects: FakeProjectRepository(seed: [film()]),
+        encoder: FakeVideoEncoder(failWith: const EncoderException(EncoderFailureKind.failed, 'The encoder ran out of memory.')),
+      );
+      await openExport(tester);
+      await tapText(tester, 'Render H.264');
+      await runRender(tester);
+
+      expect(find.textContaining('stopped.'), findsOneWidget);
+      expect(find.textContaining('The encoder ran out of memory.'), findsOneWidget);
+      expect(find.text('Lower resolution'), findsNothing);
+    });
+
+    testWidgets('cancel stops the render and removes the partial file', (tester) async {
+      await openExport(tester);
+      await tapText(tester, 'Render H.264');
+      await tester.pump(const Duration(milliseconds: 200));
+
+      await tester.tap(find.text('Cancel render'));
+      await runRender(tester);
+
+      expect(app.encoder.cancelled, 1);
+      expect(app.encoder.appended, lessThan(48));
+      expect(find.text('Render H.264'), findsOneWidget);
+      expect(lastRender(), isNull);
+    });
+
+    testWidgets('the render pauses while the app is in the background', (tester) async {
+      await openExport(tester);
+      await tapText(tester, 'Render H.264');
+      await tester.pump(const Duration(milliseconds: 200));
+
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
+      await tester.pump(const Duration(milliseconds: 100));
+      final before = app.encoder.appended;
+      await tester.pump(const Duration(seconds: 2));
+      expect(app.encoder.appended, before);
+
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+      await runRender(tester);
+      expect(app.encoder.appended, 48);
+      expect(find.text('Save to Files'), findsOneWidget);
+    });
+
+    testWidgets('a render keeps going with the sheet closed and the library shows it', (tester) async {
+      app = AppHarness(projects: FakeProjectRepository(seed: [film()]), frames: FakeFrames(frames: 200));
       await openExport(tester);
       await tester.tap(find.text('Render H.264'));
       await tester.pump(const Duration(milliseconds: 300));
@@ -147,7 +278,9 @@ void main() {
       await tester.pump(const Duration(milliseconds: 400));
       expect(find.textContaining('RENDERING '), findsOneWidget);
 
-      await runRender(tester);
+      for (var i = 0; i < 4; i++) {
+        await runRender(tester);
+      }
       expect(find.textContaining('RENDERED'), findsOneWidget);
     });
   });
@@ -159,10 +292,30 @@ void main() {
       expect(formatAbout(estimateRenderSeconds(1920, 1080, 161)), 'about 3 min');
     });
 
-    test('resolution keeps the canvas aspect, in even pixels', () {
+    test('H.264 and HEVC are encoded at the rate the estimate assumes', () {
+      expect(bitsPerSecond(Codec.h264, 1920, 1080), 12000000);
+      expect(bitsPerSecond(Codec.hevc, 3840, 2160), 36000000);
+    });
+
+    test('resolution is the long edge, keeps the canvas aspect, in even pixels', () {
       expect(ExportResolution.hd.sizeFor(2048, 858), (1920, 804));
       expect(ExportResolution.uhd.sizeFor(1920, 1080), (3840, 2160));
-      expect(ExportResolution.nearest(1998), ExportResolution.hd);
+      expect(ExportResolution.hd.sizeFor(1080, 1920), (1080, 1920));
+      expect(ExportResolution.nearest(1998, 1080), ExportResolution.hd);
+      expect(ExportResolution.nearest(1080, 1920), ExportResolution.hd);
+    });
+
+    test('NTSC rates stay exact fractions', () {
+      expect(frameRateFraction(24), (24, 1));
+      expect(frameRateFraction(23.976), (24000, 1001));
+      expect(frameRateFraction(29.97), (30000, 1001));
+      expect(frameRateFraction(59.94), (60000, 1001));
+    });
+
+    test('file names keep the title, minus what filesystems refuse', () {
+      expect(exportFileName('The Long Way Down', Codec.hevc), 'The Long Way Down.mp4');
+      expect(exportFileName('A/B: "C"?', Codec.prores422), 'AB C.mov');
+      expect(exportFileName('  ', Codec.png), 'EndCrawl render.zip');
     });
   });
 }

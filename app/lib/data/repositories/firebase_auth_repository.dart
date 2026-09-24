@@ -194,7 +194,15 @@ class FirebaseAuthRepository implements AuthRepository {
 
   @override
   Future<Result<void>> deleteCurrentUser() {
-    return _guard(() async => _auth.currentUser?.delete());
+    return _guard(() async {
+      await _auth.currentUser?.delete();
+      // A deleted user doesn't reliably reach userChanges() as null on
+      // device, which would leave the app showing the account it just
+      // deleted. Signing out makes the change certain, and clears the
+      // cached Google session with it.
+      if (_googleInitialization != null) await _google.signOut();
+      await _auth.signOut();
+    });
   }
 
   @override

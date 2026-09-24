@@ -56,8 +56,7 @@ class BlockRow extends ConsumerWidget {
         return;
       }
       ui.focus(block.id);
-      final y = ref.read(projectControllerProvider).measurements.blockY[block.id];
-      if (y != null) ref.read(playbackControllerProvider.notifier).seekToBlockTop(y);
+      ref.read(playbackControllerProvider.notifier).seekToBlock(block.id);
       BlockEditorSheet.show(context, block.id);
     }
 

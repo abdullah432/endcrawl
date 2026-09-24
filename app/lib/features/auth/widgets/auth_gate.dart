@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/widgets/ec_toast.dart';
 import '../../../bootstrap.dart';
 import '../../../core/theme/theme_context.dart';
 import '../../../core/widgets/ec_logo.dart';
@@ -88,7 +89,7 @@ class _AuthFlowState extends ConsumerState<_AuthFlow> {
       onPopWithResult: (_) => _navigator.currentState?.maybePop(),
       child: Navigator(
         key: _navigator,
-        observers: [_clearOnPop],
+        observers: [_clearOnPop, EcToastObserver()],
         onGenerateRoute: (settings) => MaterialPageRoute<void>(
           settings: settings,
           builder: (_) => const WelcomeScreen(),

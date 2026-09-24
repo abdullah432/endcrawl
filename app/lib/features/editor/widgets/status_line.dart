@@ -33,7 +33,9 @@ String rollStatusText(ProjectState project, {bool withTotal = true}) {
 }
 
 /// The status line above the scrubber (3.1): a coloured dot and the roll's
-/// facts. [onBlack] is the landscape monitor's frosted pill (3.4).
+/// facts — or, while the last save was refused, why, so a project can't
+/// quietly fail to reach the account. [onBlack] is the landscape monitor's
+/// frosted pill (3.4).
 class StatusLine extends StatelessWidget {
   final ProjectState project;
   final bool onBlack;
@@ -44,7 +46,8 @@ class StatusLine extends StatelessWidget {
   Widget build(BuildContext context) {
     final p = context.palette;
     final t = context.type;
-    final ok = rollHealth(project) == RollHealth.clean;
+    final unsaved = project.saveState == SaveState.failed;
+    final ok = !unsaved && rollHealth(project) == RollHealth.clean;
     final dot = ok ? (onBlack ? p.okOnBlack : p.ok) : (onBlack ? p.warnOnBlack : p.warnFill);
     final ink = onBlack ? Colors.white : (ok ? p.ink2 : p.warn);
 
@@ -57,7 +60,9 @@ class StatusLine extends StatelessWidget {
           const SizedBox(width: 8),
           Flexible(
             child: Text(
-              rollStatusText(project, withTotal: !onBlack),
+              unsaved
+                  ? 'Not saved · ${project.saveFailure?.message ?? 'try again'}'
+                  : rollStatusText(project, withTotal: !onBlack),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: t.mono.copyWith(fontSize: 10, color: ink),

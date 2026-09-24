@@ -1,5 +1,6 @@
 import 'package:endcrawl/bootstrap.dart';
 import 'package:endcrawl/data/sources/session_store.dart';
+import 'package:endcrawl/features/export/controllers/export_controller.dart';
 import 'package:endcrawl/main.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -7,6 +8,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'fake_auth_repository.dart';
 import 'fake_entitlement_repository.dart';
+import 'fake_export.dart';
 import 'fake_external_links.dart';
 import 'fake_project_repository.dart';
 import 'fake_user_profile_repository.dart';
@@ -23,6 +25,9 @@ class AppHarness {
   FakeUserProfileRepository profile;
   FakeExternalLinks links;
   FakeEntitlementRepository plan;
+  FakeVideoEncoder encoder;
+  FakeFrames frames;
+  FakeExportDestinations destinations;
   DateTime now;
 
   AppHarness({
@@ -32,6 +37,8 @@ class AppHarness {
     FakeUserProfileRepository? profile,
     FakeExternalLinks? links,
     FakeEntitlementRepository? plan,
+    FakeVideoEncoder? encoder,
+    FakeFrames? frames,
     DateTime? now,
   })  : auth = auth ?? FakeAuthRepository(initialUser: testUser),
         projects = projects ?? FakeProjectRepository(),
@@ -39,6 +46,9 @@ class AppHarness {
         profile = profile ?? FakeUserProfileRepository(),
         links = links ?? FakeExternalLinks(),
         plan = plan ?? FakeEntitlementRepository(),
+        encoder = encoder ?? FakeVideoEncoder(),
+        frames = frames ?? FakeFrames(),
+        destinations = FakeExportDestinations(),
         now = now ?? DateTime.utc(2026, 9, 23, 12);
 
   /// A signed-out start.
@@ -73,6 +83,10 @@ class AppHarness {
           externalLinksProvider.overrideWithValue(links),
           entitlementRepositoryProvider.overrideWithValue(plan),
           clockProvider.overrideWithValue(() => now),
+          videoEncoderProvider.overrideWithValue(encoder),
+          frameSourceFactoryProvider.overrideWithValue(frames.open),
+          exportDestinationsProvider.overrideWithValue(destinations),
+          exportDirectoryProvider.overrideWithValue(() async => '/renders'),
         ],
         child: const EndcrawlApp(),
       ),

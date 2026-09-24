@@ -6,17 +6,15 @@ import '../../../data/sources/session_store.dart';
 import '../../../domain/models/entitlement.dart';
 import '../../../domain/models/project.dart';
 
-/// Every stored project, newest first. Throws the [AppFailure] into the
-/// async error state so the screen can show what actually went wrong.
+/// Every stored project, newest first, kept live: a create, rename or
+/// delete anywhere — this screen, the editor, account deletion, another
+/// device — shows without anyone refreshing. Failures arrive as the
+/// [AppFailure] in the error state.
 ///
-/// Reads are served from Firestore's local cache when the device is offline,
-/// so this does not need an offline branch of its own.
-final projectSummariesProvider = FutureProvider<List<ProjectSummary>>((ref) async {
-  final result = await ref.watch(projectRepositoryProvider).listSummaries();
-  return switch (result) {
-    Ok(:final value) => value,
-    Err(:final failure) => throw failure,
-  };
+/// Firestore serves it from the local cache when offline, so this needs no
+/// offline branch of its own.
+final projectSummariesProvider = StreamProvider<List<ProjectSummary>>((ref) {
+  return ref.watch(projectRepositoryProvider).watchSummaries();
 });
 
 /// This device's session: which project it had open, and whether it was
@@ -99,11 +97,12 @@ class LibraryController {
   const LibraryController(this._ref);
 
   /// Deletes a project and returns it, so the ten-second undo can put it
-  /// back exactly as it was.
-  Future<Result<Project>> delete(String id) async {
+  /// back exactly as it was — or null when it couldn't be read first (a
+  /// damaged or newer-format document). That only costs the undo: the
+  /// delete goes ahead, so a card can never get stuck on the list.
+  Future<Result<Project?>> delete(String id) async {
     final repository = _ref.read(projectRepositoryProvider);
-    final loaded = await repository.load(id);
-    if (loaded case Err(:final failure)) return Err(failure);
+    final loaded = (await repository.load(id)).valueOrNull;
 
     final result = await repository.delete(id);
     if (result case Err(:final failure)) return Err(failure);
@@ -113,7 +112,7 @@ class LibraryController {
     if (state.lastOpenedProjectId == id) await session.setLastOpened(null);
     if (state.leftOpenProjectId == id) await session.setLeftOpen(null);
     _refresh();
-    return loaded;
+    return Ok(loaded);
   }
 
   /// Undo for [delete]: writes the project back unchanged, same id and

@@ -29,8 +29,10 @@ Widget buildRollBlockContent(CreditBlock block, RollGeometry g) {
     case SpacerBlock v:
       return SizedBox(height: base * 2.2 * (v.seconds / 1.5));
 
+    // A clear frame in the roll; the card itself is drawn by HoldOverlay
+    // while the roll stops on it.
     case HoldBlock():
-      return const SizedBox.shrink();
+      return SizedBox(height: g.h);
 
     case TitleBlock v:
       return column([

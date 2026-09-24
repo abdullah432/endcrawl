@@ -39,18 +39,33 @@ class FirestoreProjectRepository implements ProjectRepository {
       // fields get denormalised into a sibling collection rather than paying
       // for every block on every library render.
       final snapshot = await _projects.orderBy('updatedAt', descending: true).get();
-      final summaries = <ProjectSummary>[];
-      for (final doc in snapshot.docs) {
-        try {
-          summaries.add(_fromFirestore(doc.data(), doc.id).summary);
-        } on Object {
-          // A document this build can't read is skipped so it can't take the
-          // whole library down; opening it directly still surfaces the error.
-          continue;
-        }
-      }
-      return summaries;
+      return _summariesOf(snapshot.docs);
     });
+  }
+
+  List<ProjectSummary> _summariesOf(List<QueryDocumentSnapshot<Map<String, dynamic>>> docs) {
+    final summaries = <ProjectSummary>[];
+    for (final doc in docs) {
+      try {
+        summaries.add(_fromFirestore(doc.data(), doc.id).summary);
+      } on Object {
+        // A document this build can't read is skipped so it can't take the
+        // whole library down; opening it directly still surfaces the error.
+        continue;
+      }
+    }
+    return summaries;
+  }
+
+  @override
+  Stream<List<ProjectSummary>> watchSummaries() {
+    // Snapshots include this device's pending writes, so a create, rename
+    // or delete shows in the library the moment it's made — offline too.
+    return _projects
+        .orderBy('updatedAt', descending: true)
+        .snapshots()
+        .map((snapshot) => _summariesOf(snapshot.docs))
+        .handleError((Object e, StackTrace s) => throw (e is FirebaseException ? firestoreFailure(e, s) : e));
   }
 
   @override
@@ -73,7 +88,31 @@ class FirestoreProjectRepository implements ProjectRepository {
   }
 
   @override
-  Future<Result<void>> delete(String id) => _guard(() => _projects.doc(id).delete());
+  Future<Result<void>> delete(String id) => _guard(() => _queued(_projects.doc(id).delete()));
+
+  /// A write's future only completes when the server acknowledges it, which
+  /// on a slow or absent network is never. The write is already applied to
+  /// the local cache — the live list has dropped the card — and Firestore
+  /// syncs it later, so wait briefly for a quick rejection, then move on.
+  static Future<void> _queued(Future<void> write) => write.timeout(_ackWait, onTimeout: () {});
+
+  static const _ackWait = Duration(seconds: 1);
+
+  /// One batch per 500 documents (Firestore's limit), not one round trip
+  /// per project.
+  @override
+  Future<Result<void>> deleteAll() {
+    return _guard(() async {
+      final docs = (await _projects.get()).docs;
+      for (var i = 0; i < docs.length; i += 500) {
+        final batch = _firestore.batch();
+        for (final doc in docs.skip(i).take(500)) {
+          batch.delete(doc.reference);
+        }
+        await batch.commit();
+      }
+    });
+  }
 
   Map<String, Object?> _toFirestore(Project project) {
     final json = project.toJson();
@@ -150,4 +189,10 @@ class SignedOutProjectRepository implements ProjectRepository {
 
   @override
   Future<Result<void>> delete(String id) async => const Err(_failure);
+
+  @override
+  Stream<List<ProjectSummary>> watchSummaries() => Stream.error(_failure);
+
+  @override
+  Future<Result<void>> deleteAll() async => const Err(_failure);
 }

@@ -170,6 +170,14 @@ class RollEngineResult {
   });
 }
 
+/// Lays the roll out in time: a head freeze, scrolling interrupted by
+/// each hold card, then a tail freeze.
+///
+/// A hold is a frame-tall gap in the roll, and the roll stops when that gap
+/// exactly fills the frame — the card is shown on clean black, never over
+/// the names around it. A hold that opens the roll starts already in frame
+/// (no blank scroll-in), and one that closes it ends the roll (no blank
+/// scroll-out after the card).
 RollEngineResult computeEngine({
   required ProjectSettings project,
   required List<CreditBlock> activeBlocks,
@@ -177,7 +185,7 @@ RollEngineResult computeEngine({
   required RollGeometry geometry,
 }) {
   final fps = project.fps;
-  final travel = max(1.0, measurements.travel);
+  final frameH = geometry.h;
   final headF = (project.headSeconds * fps).round().toDouble();
   final tailF = (project.tailSeconds * fps).round().toDouble();
   final holds = activeBlocks.whereType<HoldBlock>().toList();
@@ -185,26 +193,36 @@ RollEngineResult computeEngine({
       0, (a, b) => a + ((b.fadeIn + b.hold + b.fadeOut) * fps).round());
   final fixed = headF + tailF + holdF;
 
+  // Where the roll starts and ends, trimmed around leading/trailing holds.
+  final first = activeBlocks.firstOrNull;
+  final last = activeBlocks.lastOrNull;
+  final firstY = first is HoldBlock ? measurements.blockY[first.id] : null;
+  final lastY = last is HoldBlock ? measurements.blockY[last.id] : null;
+  var travel = max(1.0, measurements.travel);
+  if (lastY != null) travel = max(1.0, min(travel, lastY + frameH));
+  final start = firstY != null && firstY <= 0.5 ? min(frameH, travel) : 0.0;
+  final distance = max(1.0, travel - start);
+
   double ppf;
   double scrollF;
   if (project.mode == TimingMode.duration) {
     final tot = max(fixed + fps * 2, project.durationFrames.toDouble());
     scrollF = tot - fixed;
-    ppf = travel / scrollF;
+    ppf = distance / scrollF;
   } else {
     ppf = max(1.0, project.ppf);
-    scrollF = (travel / ppf).ceilToDouble();
+    scrollF = (distance / ppf).ceilToDouble();
   }
-  final travelUsed = project.mode == TimingMode.speed ? ppf * scrollF : travel;
+  final travelUsed = project.mode == TimingMode.speed ? start + ppf * scrollF : travel;
   final clean = (ppf - ppf.roundToDouble()).abs() < 0.0008;
   final pps = ppf * fps;
-  final dwell = pps == 0 ? 0.0 : geometry.h / pps;
+  final dwell = pps == 0 ? 0.0 : frameH / pps;
   final readable = dwell >= 3;
 
   final segs = <RollSegment>[];
-  double y = 0;
+  double y = start;
   double f = 0;
-  segs.add(FreezeSegment(y0: 0, f0: 0, f1: headF));
+  segs.add(FreezeSegment(y0: start, f0: 0, f1: headF));
   f = headF;
 
   final sortedHolds = holds
@@ -214,8 +232,8 @@ RollEngineResult computeEngine({
 
   for (final entry in sortedHolds) {
     final b = entry.key;
-    final hy = entry.value;
-    final ty = max(y, min(travelUsed, hy));
+    // The gap fills the frame when its bottom reaches the frame's bottom.
+    final ty = max(y, min(travelUsed, entry.value + frameH));
     final dy = ty - y;
     final df = ppf == 0 ? 0.0 : dy / ppf;
     segs.add(ScrollSegment(y0: y, f0: f, f1: f + df));
@@ -236,10 +254,10 @@ RollEngineResult computeEngine({
     f += len;
   }
 
-  final tailScrollDf = ppf == 0 ? 0.0 : (travelUsed - y) / ppf;
+  final tailScrollDf = ppf == 0 ? 0.0 : max(0.0, travelUsed - y) / ppf;
   segs.add(ScrollSegment(y0: y, f0: f, f1: f + tailScrollDf));
   f += tailScrollDf;
-  segs.add(FreezeSegment(y0: travelUsed, f0: f, f1: f + tailF));
+  segs.add(FreezeSegment(y0: max(y, travelUsed), f0: f, f1: f + tailF));
   f += tailF;
 
   return RollEngineResult(
@@ -294,6 +312,23 @@ RollPaint paintAt(RollEngineResult e, double frame) {
   }
   off = off.roundToDouble();
   return RollPaint(offset: off, holdId: holdId, holdOpacity: holdOp);
+}
+
+/// The first frame at which content [y] reaches the bottom of the frame —
+/// where a block starts to scroll in, holds included. Seeking and the
+/// scrubber's block ticks read this, so both agree with playback.
+double frameForY(RollEngineResult e, double y) {
+  for (final s in e.segments) {
+    switch (s) {
+      case ScrollSegment() when e.ppf > 0:
+        final y1 = s.y0 + (s.f1 - s.f0) * e.ppf;
+        if (y >= s.y0 && y <= y1) return s.f0 + (y - s.y0) / e.ppf;
+      case HoldSegment() when (y - s.y0).abs() < 0.5:
+        return s.f0;
+      default:
+    }
+  }
+  return y <= e.segments.first.y0 ? 0 : e.totalFrames;
 }
 
 /// `HH:MM:SS:FF` timecode, frame-accurate at the given frame rate.
