@@ -11,6 +11,7 @@ import '../../../core/widgets/ec_fields.dart';
 import '../../../core/widgets/ec_headline.dart';
 import '../../../core/widgets/ec_scaffold.dart';
 import '../../../core/widgets/ec_surfaces.dart';
+import '../../../core/widgets/ec_toast.dart';
 import '../../../core/theme/ec_type.dart';
 import '../../../data/repositories/auth_repository.dart';
 import '../../../domain/models/app_user.dart';
@@ -50,15 +51,15 @@ class _DeleteAccountScreenState extends ConsumerState<DeleteAccountScreen> {
       _busy = true;
       _error = null;
     });
-    // Held before the account goes: the gate swaps the whole tree to the
-    // welcome screen, and the toast has to outlive this screen.
-    final messenger = ScaffoldMessenger.of(context);
+    // The toast sits in the root overlay, so it outlives this screen when
+    // the gate swaps the whole tree back to the welcome screen.
+    final overlay = Overlay.of(context, rootOverlay: true);
     final result = await ref
         .read(accountControllerProvider)
         .deleteAccount(password: needsPassword ? _password.text : null);
     switch (result) {
       case Ok():
-        messenger.showSnackBar(const SnackBar(content: Text('Account deleted')));
+        if (overlay.mounted) showEcToastOn(overlay, 'Account deleted');
       case Err(:final failure):
         if (!mounted) return;
         setState(() {

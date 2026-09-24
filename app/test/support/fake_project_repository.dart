@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:endcrawl/core/result.dart';
 import 'package:endcrawl/data/repositories/project_repository.dart';
 import 'package:endcrawl/domain/models/project.dart';
@@ -13,6 +15,11 @@ class FakeProjectRepository implements ProjectRepository {
   AppFailure? failWith;
 
   int saveCount = 0;
+
+  final _changes = StreamController<void>.broadcast();
+
+  @override
+  Stream<List<ProjectSummary>> watchSummaries() => relistOnChange(listSummaries, _changes.stream);
 
   FakeProjectRepository({List<Project> seed = const []}) {
     for (final project in seed) {
@@ -41,6 +48,7 @@ class FakeProjectRepository implements ProjectRepository {
     if (failWith case final failure?) return Err(failure);
     saveCount++;
     projects[project.id] = project;
+    _changes.add(null);
     return Ok(project);
   }
 
@@ -48,6 +56,15 @@ class FakeProjectRepository implements ProjectRepository {
   Future<Result<void>> delete(String id) async {
     if (failWith case final failure?) return Err(failure);
     projects.remove(id);
+    _changes.add(null);
+    return const Ok(null);
+  }
+
+  @override
+  Future<Result<void>> deleteAll() async {
+    if (failWith case final failure?) return Err(failure);
+    projects.clear();
+    _changes.add(null);
     return const Ok(null);
   }
 

@@ -272,4 +272,19 @@ void main() {
       expect(find.textContaining('Purchases aren’t available in this build yet'), findsOneWidget);
     });
   });
+
+  testWidgets('the list follows the store live — no refresh needed', (tester) async {
+    final a = _project('Kept', day: 1);
+    final b = _project('Gone elsewhere', day: 2);
+    final app = withProjects([a, b]);
+    await app.pump(tester);
+    expect(find.text('Gone elsewhere'), findsOneWidget);
+
+    // Deleted outside the library — another device, or account deletion.
+    await app.projects.delete(b.id);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Gone elsewhere'), findsNothing);
+    expect(find.text('Kept'), findsOneWidget);
+  });
 }

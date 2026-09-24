@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import '../../core/result.dart';
 import '../../domain/models/credit_block.dart';
 import '../../domain/models/project.dart';
@@ -15,6 +17,11 @@ class LocalProjectRepository implements ProjectRepository {
   final ProjectLocalStore store;
 
   LocalProjectRepository(this.store);
+
+  final _changes = StreamController<void>.broadcast();
+
+  @override
+  Stream<List<ProjectSummary>> watchSummaries() => relistOnChange(listSummaries, _changes.stream);
 
   @override
   Future<Result<List<ProjectSummary>>> listSummaries() async {
@@ -49,12 +56,25 @@ class LocalProjectRepository implements ProjectRepository {
   Future<Result<Project>> save(Project project) async {
     return _guard(() async {
       await store.write(project.id, project.toJson());
+      _changes.add(null);
       return project;
     });
   }
 
   @override
-  Future<Result<void>> delete(String id) => _guard(() => store.delete(id));
+  Future<Result<void>> delete(String id) => _guard(() async {
+        await store.delete(id);
+        _changes.add(null);
+      });
+
+  @override
+  Future<Result<void>> deleteAll() => _guard(() async {
+        for (final json in await store.readAll()) {
+          final id = json['id'];
+          if (id is String) await store.delete(id);
+        }
+        _changes.add(null);
+      });
 
   Future<Result<T>> _guard<T>(Future<T> Function() body) async {
     try {

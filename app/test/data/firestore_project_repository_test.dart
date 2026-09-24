@@ -199,4 +199,39 @@ void main() {
       expect((await signedOut.delete('x')).failureOrNull?.kind, FailureKind.permission);
     });
   });
+
+  group('live summaries and bulk delete', () {
+    test('watchSummaries emits again after a save and a delete', () async {
+      final first = sample(title: 'FIRST', updatedAt: DateTime.utc(2026, 1, 1));
+      final second = sample(title: 'SECOND', updatedAt: DateTime.utc(2026, 1, 2));
+      await repository.save(first);
+
+      final emitted = <String>[];
+      final sub = repository.watchSummaries().listen((list) => emitted.add(list.map((s) => s.title).join(',')));
+      await pumpEventQueue();
+
+      await repository.save(second);
+      await pumpEventQueue();
+      await repository.delete(first.id);
+      await pumpEventQueue();
+      await sub.cancel();
+
+      expect(emitted.first, 'FIRST');
+      expect(emitted, contains('SECOND,FIRST'));
+      expect(emitted.last, 'SECOND');
+    });
+
+    test('deleteAll removes every project of this account only', () async {
+      for (var i = 0; i < 3; i++) {
+        await repository.save(sample(title: 'P\$i'));
+      }
+      final other = FirestoreProjectRepository(firestore, uid: 'someone-else');
+      await other.save(sample(title: 'THEIRS'));
+
+      expect(await repository.deleteAll(), isA<Ok<void>>());
+
+      expect((await projectsOf(uid).get()).docs, isEmpty);
+      expect((await projectsOf('someone-else').get()).docs, hasLength(1));
+    });
+  });
 }

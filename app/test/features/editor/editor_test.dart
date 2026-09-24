@@ -216,6 +216,35 @@ void main() {
       expect(blockIds(), ['ttl', 'dir', 'cst', 'sng', 'thx']);
     });
 
+    testWidgets('the undo toast leaves by itself after ten seconds', (tester) async {
+      await openEditor(tester);
+
+      await tester.drag(find.text('Music cue'), const Offset(-300, 0));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Delete'));
+      await tester.pumpAndSettle();
+      expect(find.text('Undo'), findsOneWidget);
+
+      await tester.pump(const Duration(seconds: 11));
+      await tester.pumpAndSettle();
+      expect(find.text('Undo'), findsNothing);
+      expect(blockIds(), ['ttl', 'dir', 'cst', 'thx'], reason: 'the removal stands');
+    });
+
+    testWidgets('a new toast replaces the one on screen', (tester) async {
+      await openEditor(tester);
+
+      for (final title in ['Music cue', 'Directed by']) {
+        await tester.drag(find.text(title).last, const Offset(-300, 0));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Delete'));
+        await tester.pumpAndSettle();
+      }
+
+      expect(find.textContaining('Removed “Music cue”'), findsNothing);
+      expect(find.textContaining('Removed “Directed by”'), findsOneWidget);
+    });
+
     testWidgets('Duplicate puts a copy right after it', (tester) async {
       await openEditor(tester);
 

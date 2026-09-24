@@ -39,14 +39,7 @@ class AccountController {
 
     if (await auth.reauthenticate(password: password) case Err(:final failure)) return Err(failure);
 
-    switch (await projects.listSummaries()) {
-      case Err(:final failure):
-        return Err(failure);
-      case Ok(:final value):
-        for (final summary in value) {
-          if (await projects.delete(summary.id) case Err(:final failure)) return Err(failure);
-        }
-    }
+    if (await projects.deleteAll() case Err(:final failure)) return Err(failure);
     if (await _ref.read(userProfileRepositoryProvider).delete() case Err(:final failure)) return Err(failure);
 
     final session = _ref.read(sessionStoreProvider);
