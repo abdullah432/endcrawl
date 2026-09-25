@@ -24,11 +24,16 @@ abstract interface class SessionStore {
   Future<SessionState> read();
   Future<void> setLastOpened(String? projectId);
   Future<void> setLeftOpen(String? projectId);
+
+  /// Counts one more launch of the app on this device and returns the
+  /// total, this one included.
+  Future<int> recordLaunch();
 }
 
 class PreferencesSessionStore implements SessionStore {
   static const _lastOpenedKey = 'session.lastOpenedProjectId';
   static const _leftOpenKey = 'session.leftOpenProjectId';
+  static const _launchesKey = 'session.launches';
 
   final SharedPreferences _prefs;
 
@@ -48,6 +53,13 @@ class PreferencesSessionStore implements SessionStore {
   @override
   Future<void> setLeftOpen(String? projectId) => _write(_leftOpenKey, projectId);
 
+  @override
+  Future<int> recordLaunch() async {
+    final launches = (_prefs.getInt(_launchesKey) ?? 0) + 1;
+    await _prefs.setInt(_launchesKey, launches);
+    return launches;
+  }
+
   Future<void> _write(String key, String? value) async {
     if (value == null) {
       await _prefs.remove(key);
@@ -61,8 +73,12 @@ class PreferencesSessionStore implements SessionStore {
 /// storage.
 class InMemorySessionStore implements SessionStore {
   SessionState _state;
+  int launches;
 
-  InMemorySessionStore([this._state = const SessionState()]);
+  InMemorySessionStore([this._state = const SessionState(), this.launches = 0]);
+
+  @override
+  Future<int> recordLaunch() async => ++launches;
 
   @override
   Future<SessionState> read() async => _state;

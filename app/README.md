@@ -235,19 +235,47 @@ and then updated into an invalid or mis-owned state), and hold `id`,
 
 ## Plan and monetisation
 
-Free keeps three projects and shows ads in two places — the bottom of the
-library and while a render encodes; Pro removes the cap and the ads. Every
-tool, codec and resolution is on both, with no watermark and no end card.
+Free keeps three projects and renders H.264 and HEVC up to 1080p, with
+every block, timing and look tool and no watermark. Pro lifts the cap,
+renders ProRes 422 HQ, ProRes 4444, PNG and 4K every time, and removes ads.
 
 - **`EntitlementRepository` is the seam.** `FreeEntitlementRepository`
   ships until a store (StoreKit / Play Billing, or RevenueCat) is wired in;
   purchase and restore already go through it, and nothing above it changes
   when the real one lands. The plan is never written by the client.
-- **The cap is enforced in controllers, not widgets** — creating,
-  duplicating and starting the new-project flow all check it, and a full
-  reel routes to 1.6 before any work is put in.
-- **`EcAdSlot` is a placeholder creative** shown only when the entitlement
-  says ads are on; an ad SDK's native view replaces its contents later.
+- **Caps and gates are enforced in controllers, not widgets.** Creating,
+  duplicating and starting the new-project flow check the project cap.
+  `ExportController.start()` refuses Pro settings on Free without a pass.
+- **One rewarded ad, one Pro render (6.1a).** On Free, Pro options stay
+  selectable with a PRO pill. Picking one offers "Watch ad · render once"
+  or "Go Pro". A watched-through ad grants a `ProRenderPass` for that
+  project and codec, at that size or smaller. It's spent only when a render
+  using it succeeds, so a failed render's Try again and Lower resolution
+  never cost a second ad.
+
+### Ads (AdMob, `features/ads/`)
+
+Screens talk to `AdService` only; `AdMobAdService` implements it with
+`google_mobile_ads`. Tests use a fake.
+
+| Placement | Format | Where |
+|---|---|---|
+| Library bottom (1.1, 1.2) | native | `SponsoredSlot(AdPlacement.library)` |
+| While rendering (6.2) | native | `SponsoredSlot(AdPlacement.rendering)` |
+| Export complete (6.4) | native, below the destinations, after the file saved | `SponsoredSlot(AdPlacement.exportComplete)` |
+| Pro render (6.1a) | rewarded interstitial, opt-in only | `RewardedAdScreen` |
+| Returning to the app | app open | `ResumeAds` |
+
+Rules:
+- **No ads in these places:** the editor, the monitor, the template picker, a failed render, or the exported file.
+- **Pro:** the SDK is never started.
+- **App-open ad:** only when the app comes back from at least 30 s in the background. Never on a cold start, never in a device's first three launches, and never over a render. The frequency cap is set per unit in the AdMob console. This placement was added at the product owner's request, beyond the design handoff (whose CHANGES.md lists no full-screen ads besides 6.1a).
+- **Consent:** Google's consent flow (UMP) runs before the first request. It shows the form only where required (EEA, UK), and 7.4 then gets an "Ad privacy choices" row. Requests are non-personalised unless the user turns "Personalised ads" on in 7.4.
+
+**IDs** (`lib/core/config/ad_config.dart`):
+- Debug and profile builds, the simulator included, always use Google's test units. Only `--release` uses the real ones.
+- The iOS app is `ca-app-pub-6644211975790806~5643195524`, set as `GADApplicationIdentifier` in Info.plist.
+- **Android has no AdMob app yet.** The manifest carries Google's sample app ID, and Android release builds show no ads until the real app ID and units are filled in.
 
 ## Notable implementation choices
 

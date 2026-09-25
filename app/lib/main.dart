@@ -6,6 +6,7 @@ import 'bootstrap.dart';
 import 'core/config/orientations.dart';
 import 'core/theme/app_theme.dart';
 import 'core/widgets/ec_toast.dart';
+import 'features/ads/widgets/resume_ads.dart';
 import 'features/auth/widgets/auth_gate.dart';
 
 Future<void> main() async {
@@ -43,6 +44,7 @@ class LastReelApp extends StatelessWidget {
         debugShowCheckedModeBanner: false,
         theme: buildLastReelTheme(),
         navigatorObservers: [EcToastObserver()],
+        builder: (context, child) => ResumeAds(child: child!),
         home: const AuthGate(),
       ),
     );

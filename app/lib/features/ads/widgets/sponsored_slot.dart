@@ -23,14 +23,17 @@ class SponsoredSlot extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final showsAds = ref.watch(entitlementProvider).value?.showsAds ?? true;
     if (!showsAds) return const SizedBox.shrink();
-    return Padding(
-      padding: EdgeInsets.only(top: gap),
-      child: EcAdSlot(
-        label: label,
-        hideLabel: hideLabel,
-        onHideAds: () => ProSheet.show(context),
-        creative: ref.read(adServiceProvider).nativeAd(placement),
-      ),
-    );
+    return ref.read(adServiceProvider).nativeAd(
+          placement,
+          framed: (creative) => Padding(
+            padding: EdgeInsets.only(top: gap),
+            child: EcAdSlot(
+              label: label,
+              hideLabel: hideLabel,
+              onHideAds: () => ProSheet.show(context),
+              creative: creative,
+            ),
+          ),
+        );
   }
 }

@@ -142,8 +142,14 @@ class FakeAdService implements AdService {
 
   FakeAdService({this.nextReward = RewardOutcome.earned, this.privacyRequired = false});
 
+  int appOpenShown = 0;
+
   @override
-  Widget nativeAd(AdPlacement placement) => const PlaceholderAdService().nativeAd(placement);
+  Widget nativeAd(AdPlacement placement, {required Widget Function(Widget creative) framed}) =>
+      const PlaceholderAdService().nativeAd(placement, framed: framed);
+
+  @override
+  Future<void> showAppOpen() async => appOpenShown++;
 
   @override
   Future<RewardOutcome> showRewarded() async {

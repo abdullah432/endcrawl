@@ -17,6 +17,7 @@ dependencies:
   flutter_slidable: ^4.0.3
   gal: ^2.3.3
   google_fonts: ^8.2.1
+  google_mobile_ads: ^9.1.0
   google_sign_in: ^7.2.0
   in_app_review: ^2.0.12
   package_info_plus: ^10.2.1

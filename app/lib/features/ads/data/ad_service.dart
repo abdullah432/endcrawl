@@ -38,13 +38,18 @@ enum RewardOutcome {
 ///
 /// Only ever called on the free plan; callers check the entitlement first.
 abstract interface class AdService {
-  /// A native ad for [placement]. Collapses to nothing when there's no ad,
-  /// so a slot never shows an empty frame.
-  Widget nativeAd(AdPlacement placement);
+  /// A native ad for [placement], wrapped by [framed] (the "Sponsored"
+  /// label and the way out to Pro). Nothing at all — frame included —
+  /// while there's no ad, so a slot never shows an empty frame.
+  Widget nativeAd(AdPlacement placement, {required Widget Function(Widget creative) framed});
 
   /// Shows a rewarded ad full screen — only ever because the user asked
   /// for it. Completes when it's dismissed.
   Future<RewardOutcome> showRewarded();
+
+  /// Shows the app-open ad if one is loaded, and loads the next. Called
+  /// only when the app returns from the background (see AppOpenPolicy).
+  Future<void> showAppOpen();
 
   /// Whether the consent framework asks for an "Ad privacy choices" entry
   /// in settings, and showing it.
@@ -57,11 +62,14 @@ class PlaceholderAdService implements AdService {
   const PlaceholderAdService();
 
   @override
-  Widget nativeAd(AdPlacement placement) =>
-      EcAdPlaceholder(headline: placement.houseHeadline, body: placement.houseBody);
+  Widget nativeAd(AdPlacement placement, {required Widget Function(Widget creative) framed}) =>
+      framed(EcAdPlaceholder(headline: placement.houseHeadline, body: placement.houseBody));
 
   @override
   Future<RewardOutcome> showRewarded() async => RewardOutcome.unavailable;
+
+  @override
+  Future<void> showAppOpen() async {}
 
   @override
   Future<bool> privacyOptionsRequired() async => false;

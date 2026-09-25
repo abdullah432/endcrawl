@@ -9,6 +9,7 @@ import '../../../core/widgets/ec_scaffold.dart';
 import '../../../core/widgets/ec_settings.dart';
 import '../../../core/widgets/ec_toast.dart';
 import '../../../domain/models/user_profile.dart';
+import '../../ads/ads_providers.dart';
 import '../controllers/settings_controller.dart';
 import '../models/legal_document.dart';
 import 'delete_account_screen.dart';
@@ -68,6 +69,14 @@ class PrivacyScreen extends ConsumerWidget {
               value: prefs.personalisedAds,
               onChanged: (v) => update((p) => p.copyWith(personalisedAds: v)),
             ),
+            // Where the law asks for it (EEA, UK), the consent choices made
+            // on first ad can be revisited here.
+            if (ref.watch(adPrivacyOptionsRequiredProvider).value ?? false)
+              EcGroupRow(
+                title: 'Ad privacy choices',
+                subtitle: 'Review the consent you gave for ads',
+                onTap: () => ref.read(adServiceProvider).showPrivacyOptions(),
+              ),
           ]),
           const SizedBox(height: 22),
           EcGroup(children: [
