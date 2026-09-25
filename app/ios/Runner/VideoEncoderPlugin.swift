@@ -242,6 +242,9 @@ private final class EncodeSession {
     }
     input = AVAssetWriterInput(mediaType: .video, outputSettings: settings)
     input.expectsMediaDataInRealTime = false
+    // Keep NTSC frame durations exact instead of rounding to the default 600 ticks.
+    input.mediaTimeScale = self.fpsNum
+    writer.movieTimeScale = self.fpsNum
     adaptor = AVAssetWriterInputPixelBufferAdaptor(
       assetWriterInput: input,
       sourcePixelBufferAttributes: [

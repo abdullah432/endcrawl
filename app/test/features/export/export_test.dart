@@ -253,13 +253,16 @@ void main() {
       await tester.pump(const Duration(milliseconds: 200));
 
       tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
-      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
       await tester.pump(const Duration(milliseconds: 100));
       final before = app.encoder.appended;
       await tester.pump(const Duration(seconds: 2));
       expect(app.encoder.appended, before);
 
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
       tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+      await tester.pump(const Duration(seconds: 2));
+      expect(app.encoder.appended, before);
+
       tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
       await runRender(tester);
       expect(app.encoder.appended, 48);

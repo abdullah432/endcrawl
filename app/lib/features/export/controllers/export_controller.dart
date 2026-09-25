@@ -203,6 +203,17 @@ class ExportController extends Notifier<ExportState> {
 
         final image = await source.render(i);
         try {
+          // Rendering can yield across a lifecycle change. Keep this frame
+          // until the app is active before handing it to the native encoder.
+          if (job.paused) {
+            pace.stop();
+            await job.resumed;
+            pace.start();
+          }
+          if (job.cancelled) {
+            await session.cancel();
+            return;
+          }
           await session.append(image, i);
         } finally {
           image.dispose();
@@ -262,8 +273,8 @@ class ExportController extends Notifier<ExportState> {
 
   void _watchLifecycle() {
     _lifecycle ??= AppLifecycleListener(
-      onHide: () => _job?.pause(),
-      onShow: () => _job?.resume(),
+      onInactive: () => _job?.pause(),
+      onResume: () => _job?.resume(),
     );
   }
 
