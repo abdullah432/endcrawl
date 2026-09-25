@@ -23,3 +23,10 @@ The design medium is **HTML/CSS/JS** — these are prototypes, not production co
 - `README.md` — this file
 - `chats/` — conversation transcripts (read these!)
 - `project/` — the `EndCrawl design system` project files (HTML prototypes, assets, components)
+
+---
+
+**Current source of truth:** `app-light/LastReel App Light.dc.html` (open it
+with `support.js` beside it) and `app-light/CHANGES.md`, the LastReel handoff
+that renamed the app and made ProRes, PNG and 4K Pro-only. The files above
+are the original EndCrawl bundle, kept for history.
