@@ -1,9 +1,11 @@
 import 'dart:ui' as ui;
 
+import 'package:flutter/widgets.dart';
 import 'package:lastreel/core/result.dart';
 import 'package:lastreel/domain/engine/roll_engine.dart';
 import 'package:lastreel/domain/models/credit_block.dart';
 import 'package:lastreel/domain/models/project_settings.dart';
+import 'package:lastreel/features/ads/data/ad_service.dart';
 import 'package:lastreel/features/export/data/export_destinations.dart';
 import 'package:lastreel/features/export/data/video_encoder.dart';
 import 'package:lastreel/features/export/models/export_models.dart';
@@ -130,4 +132,28 @@ class FakeExportDestinations implements ExportDestinations {
     shared.add(path);
     return const Ok(null);
   }
+}
+
+/// An ad service whose rewarded ad ends however the test says.
+class FakeAdService implements AdService {
+  RewardOutcome nextReward;
+  int rewardedShown = 0;
+  bool privacyRequired;
+
+  FakeAdService({this.nextReward = RewardOutcome.earned, this.privacyRequired = false});
+
+  @override
+  Widget nativeAd(AdPlacement placement) => const PlaceholderAdService().nativeAd(placement);
+
+  @override
+  Future<RewardOutcome> showRewarded() async {
+    rewardedShown++;
+    return nextReward;
+  }
+
+  @override
+  Future<bool> privacyOptionsRequired() async => privacyRequired;
+
+  @override
+  Future<void> showPrivacyOptions() async {}
 }

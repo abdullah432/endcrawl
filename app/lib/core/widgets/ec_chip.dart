@@ -87,7 +87,16 @@ class EcSegmented extends StatelessWidget {
   final int selectedIndex;
   final ValueChanged<int> onChanged;
 
-  const EcSegmented({super.key, required this.labels, required this.selectedIndex, required this.onChanged});
+  /// A small widget after a segment's label — the "PRO" pill on 4K UHD.
+  final Map<int, Widget> trailing;
+
+  const EcSegmented({
+    super.key,
+    required this.labels,
+    required this.selectedIndex,
+    required this.onChanged,
+    this.trailing = const {},
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -118,13 +127,23 @@ class EcSegmented extends StatelessWidget {
                           ? const [BoxShadow(color: Color(0x1F1A1612), offset: Offset(0, 1), blurRadius: 3)]
                           : null,
                     ),
-                    child: Text(
-                      labels[i],
-                      style: t.bodyS.copyWith(
-                        fontSize: 13,
-                        color: i == selectedIndex ? p.ink : p.muted,
-                        fontWeight: i == selectedIndex ? FontWeight.w600 : FontWeight.w400,
-                      ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Flexible(
+                          child: Text(
+                            labels[i],
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: t.bodyS.copyWith(
+                              fontSize: 13,
+                              color: i == selectedIndex ? p.ink : p.muted,
+                              fontWeight: i == selectedIndex ? FontWeight.w600 : FontWeight.w400,
+                            ),
+                          ),
+                        ),
+                        if (trailing[i] case final extra?) ...[const SizedBox(width: 6), extra],
+                      ],
                     ),
                   ),
                 ),

@@ -1,12 +1,12 @@
 import 'dart:math';
 
-/// The codecs on 6.1. Every one is on the free plan; 6.1 lists the ones
-/// this device can make.
+/// The codecs on 6.1, the ones this device can make. H.264 and HEVC are
+/// free; the masters (ProRes, PNG) are Pro — or one render per rewarded ad.
 enum Codec {
   h264('H.264', 'Universal review copy', 12, 'mp4'),
   hevc('HEVC', 'Smaller file, same picture', 9, 'mp4'),
   prores422('ProRes 422 HQ', 'Edit-friendly master', 154, 'mov'),
-  prores4444('ProRes 4444', 'Transparent background', 220, 'mov', alpha: true),
+  prores4444('ProRes 4444', 'Master with transparency', 220, 'mov', alpha: true),
   png('PNG sequence', 'One image per frame', 139, 'zip', alpha: true);
 
   final String label;
@@ -20,6 +20,9 @@ enum Codec {
   final bool alpha;
 
   const Codec(this.label, this.description, this.mbpsAtHd, this.extension, {this.alpha = false});
+
+  /// Needs Pro, or a render unlocked by a rewarded ad (6.1a).
+  bool get isPro => this == prores422 || this == prores4444 || this == png;
 
   /// Whether the encoder is told this rate (rather than it being typical).
   bool get hasTargetRate => this == h264 || this == hevc;
@@ -38,6 +41,9 @@ enum ExportResolution {
   final String label;
   final int edge;
   const ExportResolution(this.label, this.edge);
+
+  /// Free renders go up to 1080p; 4K is Pro.
+  bool get isPro => this == uhd;
 
   /// The option nearest a canvas's own long edge, among [options].
   static ExportResolution nearest(int canvasW, int canvasH, [Iterable<ExportResolution> options = values]) {
@@ -98,6 +104,33 @@ String formatAbout(double seconds) {
   return 'about ${s ~/ 60}m ${(s % 60).toString().padLeft(2, '0')}s';
 }
 
+/// One Pro render earned by watching a rewarded ad (6.1a): this project,
+/// this codec, at up to this size. It lasts until a render using it
+/// succeeds, so a failed render retries free — at the same size or lower —
+/// and never costs a second ad.
+class ProRenderPass {
+  final String projectId;
+  final Codec codec;
+  final ExportResolution resolution;
+
+  const ProRenderPass({required this.projectId, required this.codec, required this.resolution});
+
+  bool covers(String projectId, Codec codec, ExportResolution resolution) =>
+      projectId == this.projectId && codec == this.codec && resolution.edge <= this.resolution.edge;
+}
+
+/// Whether a render with the chosen settings can start.
+enum ExportAccess {
+  /// Free settings, or a Pro plan.
+  included,
+
+  /// Pro settings covered by a pass from a rewarded ad.
+  unlocked,
+
+  /// Pro settings on the free plan: watch an ad or go Pro first.
+  locked,
+}
+
 enum ExportPhase { running, failed, done }
 
 /// Why an encode stopped.
@@ -135,6 +168,9 @@ class ExportRun {
   final String? outputPath;
   final int? fileBytes;
 
+  /// Rendered on a pass from a rewarded ad, spent when this succeeds.
+  final bool onPass;
+
   const ExportRun({
     required this.projectId,
     required this.projectTitle,
@@ -151,6 +187,7 @@ class ExportRun {
     this.neededBytes,
     this.outputPath,
     this.fileBytes,
+    this.onPass = false,
   });
 
   double get progress => totalFrames == 0 ? 0 : (frame / totalFrames).clamp(0.0, 1.0);
@@ -188,5 +225,6 @@ class ExportRun {
         neededBytes: neededBytes ?? this.neededBytes,
         outputPath: outputPath ?? this.outputPath,
         fileBytes: fileBytes ?? this.fileBytes,
+        onPass: onPass,
       );
 }

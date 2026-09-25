@@ -11,13 +11,12 @@ import '../../../core/widgets/ec_sheet.dart';
 import '../../../core/widgets/ec_surfaces.dart';
 import '../../../domain/models/entitlement.dart';
 import '../controllers/plan_controller.dart';
-import '../widgets/plan_meter.dart';
 
 /// 6.5 — LastReel Pro.
 ///
-/// The whole pitch in one line: more than three projects, and no ads. The
-/// comparison table shows nothing else is held back, and "where ads show"
-/// says exactly where they don't.
+/// Three reasons in one headline: more projects, pro formats, no ads. The
+/// table makes plain that editing is identical on both plans; only the
+/// project cap and the export formats differ.
 class ProSheet extends ConsumerWidget {
   const ProSheet({super.key});
 
@@ -27,7 +26,9 @@ class ProSheet extends ConsumerWidget {
     ('Projects', '${Entitlement.freeProjectLimit}', 'Unlimited'),
     ('Ads', 'Shown', 'None'),
     ('Blocks, timing, look', 'Everything', 'Everything'),
-    ('Codecs & 4K', 'Everything', 'Everything'),
+    ('Codecs', 'H.264, HEVC', '+ ProRes, PNG'),
+    ('Resolution', 'Up to 1080p', 'Up to 4K'),
+    ('Pro render on Free', '1 per rewarded ad', 'Every render'),
     ('Watermark', 'None', 'None'),
   ];
 
@@ -107,10 +108,11 @@ class ProSheet extends ConsumerWidget {
               children: [
                 EcEyebrow('LastReel Pro', color: p.accent),
                 const SizedBox(height: 10),
-                EcHeadline('Unlimited projects.\n', emphasis: 'No ads.', style: t.displayL.copyWith(fontSize: 44)),
+                EcHeadline('Unlimited projects.\n', emphasis: 'Pro formats. No ads.', style: t.displayL.copyWith(fontSize: 44)),
                 const SizedBox(height: 10),
                 Text(
-                  'The free plan has every tool, codec and resolution. Pro just lifts the three-project cap and removes ads.',
+                  'Free has every block, timing and look tool, with H.264 and HEVC up to 1080p. Pro lifts the '
+                  'three-project cap, unlocks ProRes, PNG and 4K on every render, and removes ads.',
                   style: t.body,
                 ),
               ],
@@ -123,21 +125,6 @@ class ProSheet extends ConsumerWidget {
           ],
           const SizedBox(height: 10),
           _ComparisonTable(rows: _comparison),
-          const SizedBox(height: 18),
-          EcGlassCard(
-            padding: const EdgeInsets.all(14),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const EcSectionLabel('Where ads show on Free'),
-                const PlanBenefit('Bottom of the project list'),
-                const SizedBox(height: 10),
-                const PlanBenefit('While a render encodes'),
-                const SizedBox(height: 10),
-                const PlanBenefit('Never in the editor, monitor or your exported file', included: false),
-              ],
-            ),
-          ),
         ],
       ),
     );
@@ -179,17 +166,7 @@ class _OfferTile extends StatelessWidget {
                 Row(
                   children: [
                     Text(offer.period == BillingPeriod.yearly ? 'Yearly' : 'Monthly', style: t.titleS),
-                    if (offer.badge != null) ...[
-                      const SizedBox(width: 6),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                        decoration: BoxDecoration(
-                          gradient: p.primary,
-                          borderRadius: BorderRadius.circular(EcRadius.pill),
-                        ),
-                        child: Text(offer.badge!.toUpperCase(), style: t.pill.copyWith(fontSize: 8.5, color: p.onInk)),
-                      ),
-                    ],
+                    if (offer.badge != null) ...[const SizedBox(width: 6), EcGradientPill(offer.badge!)],
                   ],
                 ),
                 const SizedBox(height: 2),

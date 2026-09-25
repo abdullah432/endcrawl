@@ -156,6 +156,23 @@ class EcCodeTile extends StatelessWidget {
 enum EcTone { ok, warn, accent, neutral }
 
 /// A small mono status pill — "RENDERED", "RENDER FAILED", "TOO FAST".
+/// A small upper-case label on the brand gradient: "PRO" on the Pro
+/// options of 6.1, "SAVE 50%" on the yearly plan.
+class EcGradientPill extends StatelessWidget {
+  final String label;
+  const EcGradientPill(this.label, {super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.palette;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+      decoration: BoxDecoration(gradient: p.primary, borderRadius: BorderRadius.circular(EcRadius.pill)),
+      child: Text(label.toUpperCase(), style: context.type.pill.copyWith(fontSize: 8.5, color: p.onInk, letterSpacing: .85)),
+    );
+  }
+}
+
 class EcStatusPill extends StatelessWidget {
   final String label;
   final EcTone tone;

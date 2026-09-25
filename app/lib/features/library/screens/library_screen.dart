@@ -4,7 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../bootstrap.dart';
 import '../../../core/result.dart';
 import '../../../core/theme/theme_context.dart';
-import '../../../core/widgets/ec_ad_slot.dart';
 import '../../../core/widgets/ec_button.dart';
 import '../../../core/widgets/ec_scaffold.dart';
 import '../../../core/widgets/ec_surfaces.dart';
@@ -15,6 +14,8 @@ import '../../new_project/screens/new_project_sheet.dart';
 import '../../new_project/widgets/template_list.dart';
 import '../../plan/plan_navigation.dart';
 import '../../export/controllers/export_controller.dart';
+import '../../ads/data/ad_service.dart';
+import '../../ads/widgets/sponsored_slot.dart';
 import '../../plan/screens/pro_sheet.dart';
 import '../../project/project_navigation.dart';
 import '../../settings/screens/settings_screen.dart';
@@ -143,10 +144,7 @@ class _EmptyLibrary extends ConsumerWidget {
           ),
         ),
         TemplateList(onPick: (template) => startNewProject(context, template)),
-        if (view.entitlement.showsAds) ...[
-          const SizedBox(height: 28),
-          EcAdSlot(onHideAds: () => ProSheet.show(context)),
-        ],
+        const SponsoredSlot(AdPlacement.library, gap: 28),
       ],
     );
   }
@@ -206,10 +204,7 @@ class _ProjectList extends ConsumerWidget {
           SlotCard(reel: view.nextReel, slotsLeft: slotsLeft, onUpgrade: () => ProSheet.show(context)),
           const SizedBox(height: 14),
         ],
-        if (view.entitlement.showsAds) ...[
-          const SizedBox(height: 14),
-          EcAdSlot(onHideAds: () => ProSheet.show(context)),
-        ],
+        const SponsoredSlot(AdPlacement.library, gap: 14),
       ],
     );
   }

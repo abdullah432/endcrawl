@@ -50,7 +50,10 @@ class ExportState {
   final ExportResolution? resolution;
   final ExportRun? run;
 
-  const ExportState({this.codec, this.resolution, this.run});
+  /// A Pro render earned by a rewarded ad, not yet spent.
+  final ProRenderPass? pass;
+
+  const ExportState({this.codec, this.resolution, this.run, this.pass});
 
   /// The codec a render would use: the one picked if this device has it,
   /// else the best fit for the background.
@@ -71,15 +74,32 @@ class ExportState {
     return options.isEmpty ? const [ExportResolution.small] : options;
   }
 
-  ExportResolution resolutionFor(int canvasW, int canvasH, Codec codec, EncoderCapabilities? caps) {
+  /// The size picked, or the one nearest the canvas — among the free sizes
+  /// on the free plan, so a 4K canvas doesn't open on a Pro option.
+  ExportResolution resolutionFor(int canvasW, int canvasH, Codec codec, EncoderCapabilities? caps, {bool isPro = true}) {
     final options = resolutionsFor(codec, caps);
     if (resolution case final r? when options.contains(r)) return r;
-    return ExportResolution.nearest(canvasW, canvasH, options);
+    final free = options.where((r) => !r.isPro);
+    return ExportResolution.nearest(canvasW, canvasH, isPro || free.isEmpty ? options : free);
+  }
+
+  /// Whether these settings can render now (6.1).
+  ExportAccess accessFor(String projectId, Codec codec, ExportResolution resolution, {required bool isPro}) {
+    if (isPro || (!codec.isPro && !resolution.isPro)) return ExportAccess.included;
+    return pass?.covers(projectId, codec, resolution) ?? false ? ExportAccess.unlocked : ExportAccess.locked;
   }
 
   bool get rendering => run?.phase == ExportPhase.running;
 
-  ExportState withRun(ExportRun? run) => ExportState(codec: codec, resolution: resolution, run: run);
+  ExportState copyWith({Codec? codec, ExportResolution? resolution, ProRenderPass? pass, bool clearPass = false}) =>
+      ExportState(
+        codec: codec ?? this.codec,
+        resolution: resolution ?? this.resolution,
+        run: run,
+        pass: clearPass ? null : pass ?? this.pass,
+      );
+
+  ExportState withRun(ExportRun? run) => ExportState(codec: codec, resolution: resolution, run: run, pass: pass);
 }
 
 /// Renders the open project (6.1–6.4) for real: each frame is drawn
@@ -102,16 +122,38 @@ class ExportController extends Notifier<ExportState> {
     return const ExportState();
   }
 
-  void setCodec(Codec c) => state = ExportState(codec: c, resolution: state.resolution, run: state.run);
-  void setResolution(ExportResolution r) => state = ExportState(codec: state.codec, resolution: r, run: state.run);
+  void setCodec(Codec c) => state = state.copyWith(codec: c);
+  void setResolution(ExportResolution r) => state = state.copyWith(resolution: r);
 
-  /// Starts rendering the open project with the chosen settings.
-  void start() {
-    if (state.rendering) return;
+  bool get _isPro => ref.read(entitlementProvider).value?.isPro ?? false;
+
+  /// The settings a render would use now: codec, size, and whether they
+  /// can start.
+  (Codec, ExportResolution, ExportAccess) selection() {
     final project = ref.read(projectControllerProvider);
     final caps = ref.read(encoderCapabilitiesProvider).value;
     final codec = state.codecFor(project.settings, caps);
-    final (w, h) = state.resolutionFor(project.formatW, project.formatH, codec, caps).sizeFor(project.formatW, project.formatH);
+    final resolution = state.resolutionFor(project.formatW, project.formatH, codec, caps, isPro: _isPro);
+    return (codec, resolution, state.accessFor(project.project.id, codec, resolution, isPro: _isPro));
+  }
+
+  /// Grants one Pro render with the current settings — the reward for
+  /// watching a rewarded ad to the end (6.1a).
+  void grantPass() {
+    final project = ref.read(projectControllerProvider);
+    final (codec, resolution, _) = selection();
+    state = state.copyWith(pass: ProRenderPass(projectId: project.project.id, codec: codec, resolution: resolution));
+  }
+
+  /// Starts rendering the open project with the chosen settings. Refuses
+  /// Pro settings on the free plan without a pass — the gate is here, not
+  /// just a hidden button.
+  bool start() {
+    if (state.rendering) return false;
+    final (codec, resolution, access) = selection();
+    if (access == ExportAccess.locked) return false;
+    final project = ref.read(projectControllerProvider);
+    final (w, h) = resolution.sizeFor(project.formatW, project.formatH);
     final run = ExportRun(
       projectId: project.project.id,
       projectTitle: project.name,
@@ -120,20 +162,24 @@ class ExportController extends Notifier<ExportState> {
       height: h,
       fps: project.engine.fps,
       totalFrames: project.engine.totalFrames.round(),
+      onPass: access == ExportAccess.unlocked,
     );
     final job = _job = _Job();
     state = state.withRun(run);
     _watchLifecycle();
     unawaited(_render(job, project, run));
+    return true;
   }
 
-  /// Starts a failed render again, from the top.
+  /// Starts a failed render again, from the top. A render unlocked by an
+  /// ad still has its pass, so the retry is free.
   void retry() {
     if (state.run?.phase != ExportPhase.failed) return;
     start();
   }
 
-  /// Starts a failed render again at 1920 — a quarter of 4K's size.
+  /// Starts a failed render again at 1920 — a quarter of 4K's size, and
+  /// still covered by the pass.
   void retryAtLowerResolution() {
     if (state.run?.phase != ExportPhase.failed) return;
     setResolution(ExportResolution.hd);
@@ -266,7 +312,8 @@ class ExportController extends Notifier<ExportState> {
   void _finish(_Job job, ExportRun run) {
     if (!identical(_job, job) || job.cancelled) return;
     _job = null;
-    state = state.withRun(run);
+    // A pass is spent by the render it unlocked succeeding, not by trying.
+    state = (run.onPass && run.phase == ExportPhase.done ? state.copyWith(clearPass: true) : state).withRun(run);
     _stopWatchingLifecycle();
     unawaited(_record(run));
   }

@@ -138,6 +138,12 @@ void main() {
       expect(find.text('3 OF 3 SLOTS USED'), findsOneWidget);
       expect(find.text('Upgrade to Pro'), findsOneWidget);
       expect(find.text('Free up a slot'), findsOneWidget);
+      final benefits = [
+        'Unlimited projects and render history',
+        'ProRes, PNG alpha and 4K exports',
+        'No ads anywhere in the app',
+      ].map((b) => tester.getTopLeft(find.text(b)).dy).toList();
+      expect(benefits, orderedEquals([...benefits]..sort()));
     });
 
     testWidgets('"Free up a slot" returns to the list with delete on each card', (tester) async {
@@ -157,6 +163,17 @@ void main() {
       await tapText(tester, 'Upgrade to Pro');
 
       expect(find.textContaining('Start Pro — \$29.99/yr'), findsOneWidget);
+      expect(find.text('LASTREEL PRO'), findsOneWidget);
+      for (final (row, free, pro) in const [
+        ('Codecs', 'H.264, HEVC', '+ ProRes, PNG'),
+        ('Resolution', 'Up to 1080p', 'Up to 4K'),
+        ('Pro render on Free', '1 per rewarded ad', 'Every render'),
+      ]) {
+        for (final cell in [row, free, pro]) {
+          expect(find.text(cell), findsOneWidget);
+        }
+      }
+      expect(find.textContaining('Where ads show'), findsNothing);
     });
 
     testWidgets('Pro has no cap', (tester) async {

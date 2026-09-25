@@ -63,6 +63,8 @@ class SlotsFullSheet extends StatelessWidget {
                 const SizedBox(height: 12),
                 const PlanBenefit('Unlimited projects and render history'),
                 const SizedBox(height: 8),
+                const PlanBenefit('ProRes, PNG alpha and 4K exports'),
+                const SizedBox(height: 8),
                 const PlanBenefit('No ads anywhere in the app'),
                 const SizedBox(height: 14),
                 EcButton(

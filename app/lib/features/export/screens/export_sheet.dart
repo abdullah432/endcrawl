@@ -8,7 +8,9 @@ import '../../../core/theme/theme_context.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../core/result.dart';
 import '../../../core/utils/formatting.dart';
-import '../../../core/widgets/ec_ad_slot.dart';
+import '../../ads/data/ad_service.dart';
+import '../../ads/screens/rewarded_ad_screen.dart';
+import '../../ads/widgets/sponsored_slot.dart';
 import '../../../core/widgets/ec_button.dart';
 import '../../../core/widgets/ec_chip.dart';
 import '../../../core/widgets/ec_headline.dart';
@@ -75,7 +77,9 @@ class _Settings extends ConsumerWidget {
     final device = ref.watch(encoderCapabilitiesProvider).value;
     final codec = export.codecFor(project.settings, device);
     final resolutions = export.resolutionsFor(codec, device);
-    final resolution = export.resolutionFor(project.formatW, project.formatH, codec, device);
+    final isPro = ref.watch(entitlementProvider).value?.isPro ?? false;
+    final resolution = export.resolutionFor(project.formatW, project.formatH, codec, device, isPro: isPro);
+    final access = export.accessFor(project.project.id, codec, resolution, isPro: isPro);
     final (w, h) = resolution.sizeFor(project.formatW, project.formatH);
     final seconds = e.totalFrames / e.fps;
     final transparent = project.settings.background == MonitorBackground.alpha;
@@ -96,6 +100,10 @@ class _Settings extends ConsumerWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            if (access == ExportAccess.locked) ...[
+              _ProPickCard(title: _proTitle(codec, resolution)),
+              const SizedBox(height: 10),
+            ],
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 4),
               child: Row(
@@ -110,7 +118,15 @@ class _Settings extends ConsumerWidget {
               Text('Rendering “$busyWith” — one render at a time.', textAlign: TextAlign.center, style: t.caption),
               const SizedBox(height: 8),
             ],
-            EcButton(label: 'Render ${codec.label}', onPressed: busyWith != null ? null : controller.start),
+            if (access == ExportAccess.locked) ...[
+              EcButton(
+                label: '▶  Watch ad · render once',
+                onPressed: busyWith != null ? null : () => _unlockWithAd(context, ref, _proLabel(codec, resolution)),
+              ),
+              const SizedBox(height: 8),
+              EcButton.secondary(label: 'Go Pro · every render, no ads', onPressed: () => ProSheet.show(context)),
+            ] else
+              EcButton(label: 'Render ${codec.label}', onPressed: busyWith != null ? null : controller.start),
           ],
         ),
       ),
@@ -188,6 +204,7 @@ class _Settings extends ConsumerWidget {
                 _CodecRow(
                   codec: c,
                   selected: c == codec,
+                  showPro: !isPro,
                   // H.264 and HEVC are encoded at this rate; the others
                   // vary with the picture. Either way it's an estimate.
                   size: '≈ ${formatBytes(estimateBytes(c, w, h, seconds))}',
@@ -208,6 +225,11 @@ class _Settings extends ConsumerWidget {
             labels: [for (final r in resolutions) r.label],
             selectedIndex: resolutions.indexOf(resolution),
             onChanged: (i) => controller.setResolution(resolutions[i]),
+            trailing: {
+              if (!isPro)
+                for (final (i, r) in resolutions.indexed)
+                  if (r.isPro) i: const EcGradientPill('Pro'),
+            },
           ),
           if ((w, h) != (project.formatW, project.formatH)) ...[
             const SizedBox(height: 8),
@@ -219,13 +241,96 @@ class _Settings extends ConsumerWidget {
   }
 }
 
+/// What a Pro pick unlocks, as the ad and the card name it.
+String _proLabel(Codec codec, ExportResolution resolution) => switch ((codec.isPro, resolution.isPro)) {
+      (true, true) => '${codec.label} in ${resolution.label}',
+      (true, false) => codec.label,
+      _ => resolution.label,
+    };
+
+String _proTitle(Codec codec, ExportResolution resolution) => switch ((codec.isPro, resolution.isPro)) {
+      (true, true) => '${codec.label} and ${resolution.label} are Pro',
+      (true, false) => '${codec.label} is a Pro codec',
+      _ => '${resolution.label} is a Pro resolution',
+    };
+
+/// Watches one rewarded ad (6.1a) and, if it's watched through, renders
+/// with the chosen Pro settings. Closing it early unlocks nothing.
+Future<void> _unlockWithAd(BuildContext context, WidgetRef ref, String unlocking) async {
+  final controller = ref.read(exportControllerProvider.notifier);
+  final outcome = await RewardedAdScreen.show(context, unlocking: unlocking);
+  if (!context.mounted) return;
+  switch (outcome) {
+    case RewardOutcome.earned:
+      controller.grantPass();
+      controller.start();
+    case RewardOutcome.closedEarly:
+      showEcToast(context, 'Ad closed early — nothing unlocked');
+    case RewardOutcome.unavailable:
+      showEcToast(context, 'No ad available right now — try again in a moment, or go Pro');
+  }
+}
+
+/// "ProRes 422 HQ is a Pro codec — watch a 30-second ad to use it for this
+/// render." Shown in place of the render button's context on the free plan.
+class _ProPickCard extends StatelessWidget {
+  final String title;
+  const _ProPickCard({required this.title});
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.palette;
+    final t = context.type;
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: p.accentWash,
+        border: Border.all(color: p.accentLine),
+        borderRadius: BorderRadius.circular(EcRadius.card),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 30,
+            height: 30,
+            decoration: BoxDecoration(gradient: p.primary, shape: BoxShape.circle),
+            child: Icon(Icons.play_arrow_rounded, size: 16, color: p.onInk),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: t.titleS.copyWith(fontSize: 13.5)),
+                const SizedBox(height: 3),
+                Text(
+                  'Watch a 30-second ad to use it for this render. Each ad unlocks one render.',
+                  style: t.bodyS.copyWith(fontSize: 12, color: p.ink2, height: 1.45),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _CodecRow extends StatelessWidget {
   final Codec codec;
   final bool selected;
+  final bool showPro;
   final String size;
   final VoidCallback onTap;
 
-  const _CodecRow({required this.codec, required this.selected, required this.size, required this.onTap});
+  const _CodecRow({
+    required this.codec,
+    required this.selected,
+    required this.showPro,
+    required this.size,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -260,6 +365,7 @@ class _CodecRow extends StatelessWidget {
                     Row(
                       children: [
                         Flexible(child: Text(codec.label, style: t.titleS.copyWith(fontSize: 13.5))),
+                        if (showPro && codec.isPro) ...[const SizedBox(width: 6), const EcGradientPill('Pro')],
                         if (codec.alpha) ...[const SizedBox(width: 6), const EcStatusPill('Alpha', tone: EcTone.accent)],
                       ],
                     ),
@@ -287,7 +393,6 @@ class _Rendering extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final p = context.palette;
     final t = context.type;
-    final showsAds = ref.watch(entitlementProvider).value?.showsAds ?? true;
     final controller = ref.read(exportControllerProvider.notifier);
     final pct = (run.progress * 100).floor();
 
@@ -385,16 +490,12 @@ class _Rendering extends ConsumerWidget {
               ],
             ),
           ),
-          if (showsAds) ...[
-            const SizedBox(height: 14),
-            EcAdSlot(
-              label: 'Sponsored · while you wait',
-              hideLabel: 'Remove ads',
-              headline: 'Artlist — royalty-free score',
-              body: 'Static, silent, gone when the render ends.',
-              onHideAds: () => ProSheet.show(context),
-            ),
-          ],
+          const SponsoredSlot(
+            AdPlacement.rendering,
+            label: 'Sponsored · while you wait',
+            hideLabel: 'Remove ads',
+            gap: 14,
+          ),
         ],
       ),
     );
@@ -552,6 +653,9 @@ class _Ready extends ConsumerWidget {
             ),
             EcGroupRow(title: 'Share sheet', onTap: () => deliver(destinations.share(path, origin: origin()))),
           ]),
+          // The file has saved by the time this shows; the ad sits below
+          // every destination and never stands between the user and them.
+          const SponsoredSlot(AdPlacement.exportComplete, hideLabel: 'Remove ads', gap: 20),
         ],
       ),
     );

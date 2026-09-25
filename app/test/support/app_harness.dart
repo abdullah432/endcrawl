@@ -1,5 +1,6 @@
 import 'package:lastreel/bootstrap.dart';
 import 'package:lastreel/data/sources/session_store.dart';
+import 'package:lastreel/features/ads/ads_providers.dart';
 import 'package:lastreel/features/export/controllers/export_controller.dart';
 import 'package:lastreel/main.dart';
 import 'package:flutter/material.dart';
@@ -28,6 +29,7 @@ class AppHarness {
   FakeVideoEncoder encoder;
   FakeFrames frames;
   FakeExportDestinations destinations;
+  FakeAdService ads;
   DateTime now;
 
   AppHarness({
@@ -49,6 +51,7 @@ class AppHarness {
         encoder = encoder ?? FakeVideoEncoder(),
         frames = frames ?? FakeFrames(),
         destinations = FakeExportDestinations(),
+        ads = FakeAdService(),
         now = now ?? DateTime.utc(2026, 9, 23, 12);
 
   /// A signed-out start.
@@ -87,6 +90,7 @@ class AppHarness {
           frameSourceFactoryProvider.overrideWithValue(frames.open),
           exportDestinationsProvider.overrideWithValue(destinations),
           exportDirectoryProvider.overrideWithValue(() async => '/renders'),
+          adServiceProvider.overrideWithValue(ads),
         ],
         child: const LastReelApp(),
       ),

@@ -3,8 +3,9 @@ import '../../core/result.dart';
 /// What the signed-in account is allowed, by plan.
 ///
 /// The whole difference between Free and Pro, in one place: Pro lifts the
-/// three-project cap and removes ads. Every tool, codec and resolution is on
-/// both plans, so nothing else in the app ever asks which plan it's on.
+/// three-project cap, removes ads, and renders the master formats (ProRes,
+/// PNG, 4K) every time — on Free each one takes a rewarded ad. Every block,
+/// timing and look tool is on both plans.
 enum Plan { free, pro }
 
 enum BillingPeriod { monthly, yearly }

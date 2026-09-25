@@ -1,6 +1,7 @@
 import 'package:lastreel/domain/models/entitlement.dart';
 import 'package:lastreel/domain/models/project_settings.dart';
 import 'package:lastreel/domain/models/render_summary.dart';
+import 'package:lastreel/features/ads/data/ad_service.dart';
 import 'package:lastreel/features/export/data/video_encoder.dart';
 import 'package:lastreel/features/export/models/export_models.dart';
 import 'package:flutter/widgets.dart';
@@ -86,6 +87,7 @@ void main() {
       app = AppHarness(
         projects: FakeProjectRepository(seed: [base.copyWith(settings: base.settings.copyWith(background: MonitorBackground.alpha))]),
         encoder: FakeVideoEncoder(caps: FakeVideoEncoder.android),
+        plan: FakeEntitlementRepository(const Entitlement.pro(period: BillingPeriod.yearly)),
       );
       await openExport(tester);
       expect(find.text('Render PNG sequence'), findsOneWidget);
@@ -99,14 +101,143 @@ void main() {
 
     testWidgets('a transparent background starts on an alpha codec', (tester) async {
       final base = film();
-      app = AppHarness(projects: FakeProjectRepository(seed: [
-        base.copyWith(settings: base.settings.copyWith(background: MonitorBackground.alpha)),
-      ]));
+      app = AppHarness(
+        projects: FakeProjectRepository(seed: [
+          base.copyWith(settings: base.settings.copyWith(background: MonitorBackground.alpha)),
+        ]),
+        plan: FakeEntitlementRepository(const Entitlement.pro(period: BillingPeriod.yearly)),
+      );
       await openExport(tester);
 
       expect(find.text('Render ProRes 4444'), findsOneWidget);
       await tapText(tester, 'H.264');
       expect(find.text('H.264 has no alpha'), findsOneWidget);
+    });
+  });
+
+  group('Pro formats on the free plan', () {
+    testWidgets('a Pro pick stays selectable, marked PRO, with the ad offer instead of Render', (tester) async {
+      await openExport(tester);
+      expect(find.text('PRO'), findsNWidgets(4)); // ProRes ×2, PNG, 4K
+      await tapText(tester, 'ProRes 422 HQ');
+
+      expect(find.text('ProRes 422 HQ is a Pro codec'), findsOneWidget);
+      expect(find.text('Watch a 30-second ad to use it for this render. Each ad unlocks one render.'), findsOneWidget);
+      expect(find.text('▶  Watch ad · render once'), findsOneWidget);
+      expect(find.text('Go Pro · every render, no ads'), findsOneWidget);
+      expect(find.text('Render ProRes 422 HQ'), findsNothing);
+
+      await tapText(tester, '4K UHD');
+      expect(find.text('ProRes 422 HQ and 4K UHD are Pro'), findsOneWidget);
+      await tapText(tester, 'H.264');
+      expect(find.text('4K UHD is a Pro resolution'), findsOneWidget);
+      await tapText(tester, '1920 HD');
+      expect(find.text('Render H.264'), findsOneWidget);
+    });
+
+    testWidgets('watching the ad through renders once, then the pick is locked again', (tester) async {
+      await openExport(tester);
+      await tapText(tester, 'ProRes 422 HQ');
+      await tapText(tester, '▶  Watch ad · render once');
+      await runRender(tester);
+
+      expect(app.ads.rewardedShown, 1);
+      expect(app.encoder.started.single.codec, Codec.prores422);
+      expect(find.text('Save to Files'), findsOneWidget);
+
+      await tester.tapAt(const Offset(10, 10)); // close the sheet
+      await tester.pumpAndSettle();
+      await tapText(tester, 'Export');
+      await tapText(tester, 'ProRes 422 HQ');
+      expect(find.text('▶  Watch ad · render once'), findsOneWidget, reason: 'one ad, one render');
+    });
+
+    testWidgets('closing the ad early unlocks nothing', (tester) async {
+      app.ads.nextReward = RewardOutcome.closedEarly;
+      await openExport(tester);
+      await tapText(tester, 'PNG sequence');
+      await tapText(tester, '▶  Watch ad · render once');
+
+      expect(find.text('Ad closed early — nothing unlocked'), findsOneWidget);
+      expect(app.encoder.started, isEmpty);
+      expect(find.text('▶  Watch ad · render once'), findsOneWidget);
+    });
+
+    testWidgets('no ad to show says so, and unlocks nothing', (tester) async {
+      app.ads.nextReward = RewardOutcome.unavailable;
+      await openExport(tester);
+      await tapText(tester, 'PNG sequence');
+      await tapText(tester, '▶  Watch ad · render once');
+
+      expect(find.textContaining('No ad available right now'), findsOneWidget);
+      expect(app.encoder.started, isEmpty);
+    });
+
+    testWidgets('Go Pro opens the Pro sheet', (tester) async {
+      await openExport(tester);
+      await tapText(tester, 'ProRes 4444');
+      await tapText(tester, 'Go Pro · every render, no ads');
+      expect(find.textContaining('Pro formats. No ads.', findRichText: true), findsOneWidget);
+    });
+
+    testWidgets('a 4K canvas opens on the largest free size', (tester) async {
+      final base = film();
+      app = AppHarness(projects: FakeProjectRepository(seed: [base.copyWith(settings: base.settings.copyWith(formatId: 'uhd'))]));
+      await openExport(tester);
+      expect(find.text('Render H.264'), findsOneWidget);
+      expect(find.text('1920 × 1080'), findsOneWidget);
+    });
+
+    testWidgets('Pro renders any format with no chips, card or ad', (tester) async {
+      app = AppHarness(
+        projects: FakeProjectRepository(seed: [film()]),
+        plan: FakeEntitlementRepository(const Entitlement.pro(period: BillingPeriod.yearly)),
+      );
+      await openExport(tester);
+      expect(find.text('PRO'), findsNothing);
+      await tapText(tester, 'ProRes 422 HQ');
+      await tapText(tester, '4K UHD');
+      expect(find.text('Render ProRes 422 HQ'), findsOneWidget);
+      expect(find.textContaining('Watch ad'), findsNothing);
+    });
+  });
+
+  group('6.4 sponsored card', () {
+    testWidgets('free: one native ad below the destinations once the file is saved', (tester) async {
+      await openExport(tester);
+      await tapText(tester, 'Render H.264');
+      await runRender(tester);
+
+      expect(find.text('Save to Files'), findsOneWidget);
+      expect(find.text('SPONSORED'), findsOneWidget);
+      expect(find.text('REMOVE ADS'), findsOneWidget);
+      expect(find.text('Soundstripe — score your next cut'), findsOneWidget);
+      final destinations = tester.getBottomLeft(find.text('Share sheet')).dy;
+      expect(tester.getTopLeft(find.text('SPONSORED')).dy, greaterThan(destinations));
+    });
+
+    testWidgets('never on a failed render, never on Pro', (tester) async {
+      app = AppHarness(
+        projects: FakeProjectRepository(seed: [film()]),
+        encoder: FakeVideoEncoder(failWith: const EncoderException(EncoderFailureKind.failed, 'Stopped.')),
+      );
+      await openExport(tester);
+      await tapText(tester, 'Render H.264');
+      await runRender(tester);
+      expect(find.textContaining('stopped.'), findsOneWidget);
+      expect(find.textContaining('SPONSORED'), findsNothing);
+    });
+
+    testWidgets('Pro sees no ad on 6.4', (tester) async {
+      app = AppHarness(
+        projects: FakeProjectRepository(seed: [film()]),
+        plan: FakeEntitlementRepository(const Entitlement.pro(period: BillingPeriod.yearly)),
+      );
+      await openExport(tester);
+      await tapText(tester, 'Render H.264');
+      await runRender(tester);
+      expect(find.text('Save to Files'), findsOneWidget);
+      expect(find.textContaining('SPONSORED'), findsNothing);
     });
   });
 
@@ -152,6 +283,7 @@ void main() {
     });
 
     testWidgets('an image sequence isn’t offered to Photos', (tester) async {
+      app = AppHarness(projects: FakeProjectRepository(seed: [film()]), plan: FakeEntitlementRepository(const Entitlement.pro(period: BillingPeriod.yearly)),);
       await openExport(tester);
       await tapText(tester, 'PNG sequence');
       await tapText(tester, 'Render PNG sequence');
@@ -175,14 +307,14 @@ void main() {
       await runRender(tester);
     });
 
-    testWidgets('out of space names the cause and the size, and tries again', (tester) async {
+    testWidgets('out of space names the cause and the size, and the retry is free', (tester) async {
       app = AppHarness(
         projects: FakeProjectRepository(seed: [film()]),
         encoder: FakeVideoEncoder(failWith: const EncoderException.outOfSpace(), failAtFrame: 30),
       );
       await openExport(tester);
       await tapText(tester, '4K UHD');
-      await tapText(tester, 'Render H.264');
+      await tapText(tester, '▶  Watch ad · render once');
       await runRender(tester);
 
       expect(find.text('STOPPED AT 62%'), findsOneWidget);
@@ -197,12 +329,14 @@ void main() {
 
       expect(find.textContaining('3840 × 2160'), findsOneWidget);
       expect(lastRender()?.outcome, RenderOutcome.rendered);
+      expect(app.ads.rewardedShown, 1, reason: 'a failed render never costs a second ad');
     });
 
     testWidgets('lower resolution starts again at 1920', (tester) async {
       app = AppHarness(
         projects: FakeProjectRepository(seed: [film()]),
         encoder: FakeVideoEncoder(failWith: const EncoderException.outOfSpace(), failAtFrame: 10),
+        plan: FakeEntitlementRepository(const Entitlement.pro(period: BillingPeriod.yearly)),
       );
       await openExport(tester);
       await tapText(tester, '4K UHD');
