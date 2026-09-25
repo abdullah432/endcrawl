@@ -8,7 +8,7 @@ plugins {
 }
 
 android {
-    namespace = "com.endcrawl.endcrawl"
+    namespace = "com.lastreel.app"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -19,7 +19,7 @@ android {
 
     defaultConfig {
         // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.endcrawl.endcrawl"
+        applicationId = "com.lastreel.app"
         // Pinned rather than inherited from `flutter.minSdkVersion` because
         // the floor is a hard dependency requirement, not a Flutter default:
         // firebase_auth / cloud_firestore need 23, and google_sign_in 7.x

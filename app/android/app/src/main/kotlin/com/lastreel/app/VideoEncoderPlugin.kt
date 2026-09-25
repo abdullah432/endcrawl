@@ -1,4 +1,4 @@
-package com.endcrawl.endcrawl
+package com.lastreel.app
 
 import android.media.Image
 import android.media.MediaCodec

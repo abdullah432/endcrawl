@@ -399,6 +399,23 @@ config (`lib/firebase_options.dart`, `android/app/google-services.json`,
 FlutterFire CLI and isn't in the repo. Until you generate it,
 `DefaultFirebaseOptions.currentPlatform` throws with a pointer back here.
 
+> **After the move to `com.lastreel.app`** (iOS bundle ID and Android
+> application ID; they used to be `com.endcrawl.endcrawl`), the config files
+> in the repo still describe the old apps. Until you re-run step 1 with the
+> new IDs, the Android build stops with *"No matching client found for
+> package name 'com.lastreel.app'"*, and Google sign-in fails on iOS. Run:
+>
+> ```
+> flutterfire configure --project=endcrawl-620c2 \
+>   --ios-bundle-id=com.lastreel.app --android-package-name=com.lastreel.app
+> ```
+>
+> Then do step 3 again for the new apps: the Android SHA-1/SHA-256, and the
+> new iOS `REVERSED_CLIENT_ID` in `Info.plist`. The old
+> `com.endcrawl.endcrawl` apps can be deleted from the Firebase console
+> afterwards. Users and projects are unaffected: they belong to the project,
+> not the app.
+
 **1. Generate the config** (registers the iOS and Android apps in the Firebase
 project if they aren't there yet):
 
