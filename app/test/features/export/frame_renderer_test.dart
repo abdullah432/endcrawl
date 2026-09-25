@@ -1,10 +1,10 @@
 import 'dart:typed_data';
 
-import 'package:endcrawl/domain/engine/roll_engine.dart';
-import 'package:endcrawl/domain/models/credit_block.dart';
-import 'package:endcrawl/domain/models/credit_face.dart';
-import 'package:endcrawl/domain/models/project_settings.dart';
-import 'package:endcrawl/features/export/render/frame_renderer.dart';
+import 'package:lastreel/domain/engine/roll_engine.dart';
+import 'package:lastreel/domain/models/credit_block.dart';
+import 'package:lastreel/domain/models/credit_face.dart';
+import 'package:lastreel/domain/models/project_settings.dart';
+import 'package:lastreel/features/export/render/frame_renderer.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../../support/fixtures.dart';

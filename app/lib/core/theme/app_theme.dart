@@ -9,10 +9,10 @@ import 'tokens.dart';
 /// The app's single `ThemeData`, built from [EcPalette] and [EcType].
 ///
 /// Material's own component themes are set from the same values, so a plain
-/// `TextField`, `Switch` or `SnackBar` already looks like EndCrawl and the
+/// `TextField`, `Switch` or `SnackBar` already looks like LastReel and the
 /// shared widgets in `core/widgets` only add what Material can't express
 /// (gradient fills, glass, pill geometry).
-ThemeData buildEndcrawlTheme({EcPalette palette = EcPalette.light}) {
+ThemeData buildLastReelTheme({EcPalette palette = EcPalette.light}) {
   final type = EcType.from(palette);
   final base = ThemeData.light(useMaterial3: true);
   final textTheme = GoogleFonts.archivoTextTheme(base.textTheme).apply(

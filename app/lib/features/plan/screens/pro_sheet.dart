@@ -13,7 +13,7 @@ import '../../../domain/models/entitlement.dart';
 import '../controllers/plan_controller.dart';
 import '../widgets/plan_meter.dart';
 
-/// 6.5 — EndCrawl Pro.
+/// 6.5 — LastReel Pro.
 ///
 /// The whole pitch in one line: more than three projects, and no ads. The
 /// comparison table shows nothing else is held back, and "where ads show"
@@ -105,7 +105,7 @@ class ProSheet extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                EcEyebrow('EndCrawl Pro', color: p.accent),
+                EcEyebrow('LastReel Pro', color: p.accent),
                 const SizedBox(height: 10),
                 EcHeadline('Unlimited projects.\n', emphasis: 'No ads.', style: t.displayL.copyWith(fontSize: 44)),
                 const SizedBox(height: 10),

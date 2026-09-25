@@ -26,22 +26,22 @@ Future<void> main() async {
         firestoreProvider.overrideWithValue(services.firestore),
         sessionStoreProvider.overrideWithValue(services.sessionStore),
       ],
-      child: const EndcrawlApp(),
+      child: const LastReelApp(),
     ),
   );
 }
 
-class EndcrawlApp extends StatelessWidget {
-  const EndcrawlApp({super.key});
+class LastReelApp extends StatelessWidget {
+  const LastReelApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.dark,
       child: MaterialApp(
-        title: 'EndCrawl',
+        title: 'LastReel',
         debugShowCheckedModeBanner: false,
-        theme: buildEndcrawlTheme(),
+        theme: buildLastReelTheme(),
         navigatorObservers: [EcToastObserver()],
         home: const AuthGate(),
       ),

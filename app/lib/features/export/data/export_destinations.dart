@@ -23,7 +23,7 @@ class PlatformExportDestinations implements ExportDestinations {
   Future<Result<void>> saveToPhotos(String path) async {
     try {
       if (!await Gal.hasAccess() && !await Gal.requestAccess()) {
-        return const Err(AppFailure(FailureKind.permission, 'Allow EndCrawl to add to Photos in Settings.'));
+        return const Err(AppFailure(FailureKind.permission, 'Allow LastReel to add to Photos in Settings.'));
       }
       await Gal.putVideo(path);
       return const Ok(null);
@@ -31,7 +31,7 @@ class PlatformExportDestinations implements ExportDestinations {
       return Err(AppFailure(
         e.type == GalExceptionType.accessDenied ? FailureKind.permission : FailureKind.unknown,
         switch (e.type) {
-          GalExceptionType.accessDenied => 'Allow EndCrawl to add to Photos in Settings.',
+          GalExceptionType.accessDenied => 'Allow LastReel to add to Photos in Settings.',
           GalExceptionType.notEnoughSpace => 'Not enough free space in Photos.',
           GalExceptionType.notSupportedFormat => 'Photos can’t hold this format — share it instead.',
           GalExceptionType.unexpected => 'Couldn’t save to Photos.',

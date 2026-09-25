@@ -164,7 +164,7 @@ class EcButton extends StatelessWidget {
   }
 }
 
-/// An inline accent link inside running text: "New to EndCrawl? **Create
+/// An inline accent link inside running text: "New to LastReel? **Create
 /// account**". Kept separate from [EcButton.text] because it sits in a
 /// sentence rather than taking a button's height.
 class EcInlineLink extends StatelessWidget {

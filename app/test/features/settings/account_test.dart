@@ -1,6 +1,6 @@
-import 'package:endcrawl/core/result.dart';
-import 'package:endcrawl/domain/models/app_user.dart';
-import 'package:endcrawl/domain/models/entitlement.dart';
+import 'package:lastreel/core/result.dart';
+import 'package:lastreel/domain/models/app_user.dart';
+import 'package:lastreel/domain/models/entitlement.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -99,7 +99,7 @@ void main() {
     );
     await openSettings(tester);
 
-    await tapText(tester, 'EndCrawl Pro');
+    await tapText(tester, 'LastReel Pro');
 
     expect(find.text('Subscription'), findsOneWidget);
     expect(find.text('Unlimited · 1 in use'), findsOneWidget);

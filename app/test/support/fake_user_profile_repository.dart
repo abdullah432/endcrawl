@@ -1,8 +1,8 @@
 import 'dart:async';
 
-import 'package:endcrawl/core/result.dart';
-import 'package:endcrawl/data/repositories/user_profile_repository.dart';
-import 'package:endcrawl/domain/models/user_profile.dart';
+import 'package:lastreel/core/result.dart';
+import 'package:lastreel/data/repositories/user_profile_repository.dart';
+import 'package:lastreel/domain/models/user_profile.dart';
 
 /// In-memory [UserProfileRepository].
 class FakeUserProfileRepository implements UserProfileRepository {

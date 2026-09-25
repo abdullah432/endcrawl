@@ -1,6 +1,6 @@
-import 'package:endcrawl/domain/models/credit_block.dart';
-import 'package:endcrawl/domain/models/project.dart';
-import 'package:endcrawl/domain/models/project_settings.dart';
+import 'package:lastreel/domain/models/credit_block.dart';
+import 'package:lastreel/domain/models/project.dart';
+import 'package:lastreel/domain/models/project_settings.dart';
 
 /// A small, fully known document: five blocks, one of each common shape.
 Project film({TimingMode mode = TimingMode.speed, int durationFrames = 24 * 60}) {

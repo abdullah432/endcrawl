@@ -6,7 +6,7 @@ import VideoToolbox
 /// The native half of `NativeVideoEncoder` (lib/features/export/data/):
 /// AVAssetWriter for H.264 and HEVC (.mp4) and ProRes 422 HQ / 4444 (.mov).
 ///
-/// Channel `endcrawl/encoder`:
+/// Channel `lastreel/encoder`:
 ///   capabilities → {codecs: {name: longestEdge}, freeBytes}
 ///   start {codec, width, height, fpsNum, fpsDen, bitrate, path} → id
 ///   append {id, frame, width, height, rgba} → nil, once the frame is in
@@ -17,12 +17,12 @@ import VideoToolbox
 /// Work runs on one serial queue; each call answers when it's done, which
 /// is the back-pressure that keeps Dart a single frame ahead.
 final class VideoEncoderPlugin: NSObject, FlutterPlugin {
-  private let queue = DispatchQueue(label: "com.endcrawl.encoder", qos: .userInitiated)
+  private let queue = DispatchQueue(label: "com.lastreel.encoder", qos: .userInitiated)
   private var sessions: [Int: EncodeSession] = [:]
   private var nextId = 1
 
   static func register(with registrar: FlutterPluginRegistrar) {
-    let channel = FlutterMethodChannel(name: "endcrawl/encoder", binaryMessenger: registrar.messenger())
+    let channel = FlutterMethodChannel(name: "lastreel/encoder", binaryMessenger: registrar.messenger())
     registrar.addMethodCallDelegate(VideoEncoderPlugin(), channel: channel)
   }
 

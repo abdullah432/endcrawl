@@ -6,10 +6,10 @@ import '../../../bootstrap.dart';
 import '../../../core/result.dart';
 import '../../../domain/models/user_profile.dart';
 
-/// "EndCrawl 1.0 (214)" at the foot of Settings.
+/// "LastReel 1.0 (214)" at the foot of Settings.
 final appVersionProvider = FutureProvider<String>((ref) async {
   final info = await PackageInfo.fromPlatform();
-  return 'EndCrawl ${info.version} (${info.buildNumber})';
+  return 'LastReel ${info.version} (${info.buildNumber})';
 });
 
 /// Settings actions. Preferences are written straight to the profile

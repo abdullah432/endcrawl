@@ -50,7 +50,7 @@ class SubscriptionScreen extends ConsumerWidget {
               children: [
                 Text('CURRENT PLAN', style: t.section.copyWith(color: p.onInk.withValues(alpha: .75))),
                 const SizedBox(height: 8),
-                Text(entitlement.isPro ? 'EndCrawl Pro' : 'Free plan', style: t.displayM.copyWith(color: p.onInk)),
+                Text(entitlement.isPro ? 'LastReel Pro' : 'Free plan', style: t.displayM.copyWith(color: p.onInk)),
                 if (entitlement.isPro) ...[
                   const SizedBox(height: 6),
                   Text('${yearly ? 'Yearly' : 'Monthly'} · ${offer.price}', style: t.mono.copyWith(fontSize: 12, color: p.onInk)),

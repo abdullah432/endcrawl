@@ -2,7 +2,7 @@
     <!-- Saving a render to the gallery (gal) on Android 9 and older. -->
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28" />
     <application
-        android:label="endcrawl"
+        android:label="LastReel"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

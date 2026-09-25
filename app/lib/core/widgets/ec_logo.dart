@@ -3,7 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../theme/theme_context.dart';
 
-/// The ENDCRAWL wordmark: Archivo Narrow 700, tracked .32 em, upper case.
+/// The LASTREEL wordmark: Archivo Narrow 700, tracked .32 em, upper case.
 ///
 /// The one place the wordmark is drawn, at whatever [size] a screen needs.
 /// It scales down rather than clipping if a narrow layout can't fit it.
@@ -16,12 +16,12 @@ class EcLogo extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Semantics(
-      label: 'EndCrawl',
+      label: 'LastReel',
       excludeSemantics: true,
       child: FittedBox(
         fit: BoxFit.scaleDown,
         child: Text(
-          'ENDCRAWL',
+          'LASTREEL',
           style: GoogleFonts.archivoNarrow(
             fontSize: size,
             fontWeight: FontWeight.w700,

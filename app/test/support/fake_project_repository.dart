@@ -1,8 +1,8 @@
 import 'dart:async';
 
-import 'package:endcrawl/core/result.dart';
-import 'package:endcrawl/data/repositories/project_repository.dart';
-import 'package:endcrawl/domain/models/project.dart';
+import 'package:lastreel/core/result.dart';
+import 'package:lastreel/data/repositories/project_repository.dart';
+import 'package:lastreel/domain/models/project.dart';
 
 /// In-memory [ProjectRepository] for widget tests — same contract, no disk.
 ///

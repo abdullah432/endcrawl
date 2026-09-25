@@ -26,7 +26,7 @@ class FreeEntitlementRepository implements EntitlementRepository {
 
   static const unavailable = AppFailure(
     FailureKind.unknown,
-    'Purchases aren’t available in this build yet. Everything in EndCrawl works on Free.',
+    'Purchases aren’t available in this build yet. Everything in LastReel works on Free.',
   );
 
   @override

@@ -1,11 +1,11 @@
-import 'package:endcrawl/core/result.dart';
-import 'package:endcrawl/core/widgets/ec_ad_slot.dart';
-import 'package:endcrawl/domain/models/credit_block.dart';
-import 'package:endcrawl/domain/models/entitlement.dart';
-import 'package:endcrawl/domain/models/project.dart';
-import 'package:endcrawl/domain/models/project_settings.dart';
-import 'package:endcrawl/features/library/widgets/project_card.dart';
-import 'package:endcrawl/features/library/widgets/slot_card.dart';
+import 'package:lastreel/core/result.dart';
+import 'package:lastreel/core/widgets/ec_ad_slot.dart';
+import 'package:lastreel/domain/models/credit_block.dart';
+import 'package:lastreel/domain/models/entitlement.dart';
+import 'package:lastreel/domain/models/project.dart';
+import 'package:lastreel/domain/models/project_settings.dart';
+import 'package:lastreel/features/library/widgets/project_card.dart';
+import 'package:lastreel/features/library/widgets/slot_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 

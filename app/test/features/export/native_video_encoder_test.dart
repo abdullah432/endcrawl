@@ -1,8 +1,8 @@
 import 'dart:ui' as ui;
 
-import 'package:endcrawl/features/export/data/native_video_encoder.dart';
-import 'package:endcrawl/features/export/data/video_encoder.dart';
-import 'package:endcrawl/features/export/models/export_models.dart';
+import 'package:lastreel/features/export/data/native_video_encoder.dart';
+import 'package:lastreel/features/export/data/video_encoder.dart';
+import 'package:lastreel/features/export/models/export_models.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 

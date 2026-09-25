@@ -1,7 +1,7 @@
-import 'package:endcrawl/bootstrap.dart';
-import 'package:endcrawl/data/sources/session_store.dart';
-import 'package:endcrawl/features/export/controllers/export_controller.dart';
-import 'package:endcrawl/main.dart';
+import 'package:lastreel/bootstrap.dart';
+import 'package:lastreel/data/sources/session_store.dart';
+import 'package:lastreel/features/export/controllers/export_controller.dart';
+import 'package:lastreel/main.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -88,7 +88,7 @@ class AppHarness {
           exportDestinationsProvider.overrideWithValue(destinations),
           exportDirectoryProvider.overrideWithValue(() async => '/renders'),
         ],
-        child: const EndcrawlApp(),
+        child: const LastReelApp(),
       ),
     );
     if (settle) await tester.pumpAndSettle();

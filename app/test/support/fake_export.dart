@@ -1,13 +1,13 @@
 import 'dart:ui' as ui;
 
-import 'package:endcrawl/core/result.dart';
-import 'package:endcrawl/domain/engine/roll_engine.dart';
-import 'package:endcrawl/domain/models/credit_block.dart';
-import 'package:endcrawl/domain/models/project_settings.dart';
-import 'package:endcrawl/features/export/data/export_destinations.dart';
-import 'package:endcrawl/features/export/data/video_encoder.dart';
-import 'package:endcrawl/features/export/models/export_models.dart';
-import 'package:endcrawl/features/export/render/frame_source.dart';
+import 'package:lastreel/core/result.dart';
+import 'package:lastreel/domain/engine/roll_engine.dart';
+import 'package:lastreel/domain/models/credit_block.dart';
+import 'package:lastreel/domain/models/project_settings.dart';
+import 'package:lastreel/features/export/data/export_destinations.dart';
+import 'package:lastreel/features/export/data/video_encoder.dart';
+import 'package:lastreel/features/export/models/export_models.dart';
+import 'package:lastreel/features/export/render/frame_source.dart';
 
 /// An encoder that keeps what it's given. Each frame takes [frameTime] of
 /// (fake) time, so a render can be watched in progress.

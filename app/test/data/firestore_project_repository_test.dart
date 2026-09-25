@@ -1,9 +1,9 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:endcrawl/core/result.dart';
-import 'package:endcrawl/data/repositories/firestore_project_repository.dart';
-import 'package:endcrawl/domain/models/credit_block.dart';
-import 'package:endcrawl/domain/models/project.dart';
-import 'package:endcrawl/domain/models/project_settings.dart';
+import 'package:lastreel/core/result.dart';
+import 'package:lastreel/data/repositories/firestore_project_repository.dart';
+import 'package:lastreel/domain/models/credit_block.dart';
+import 'package:lastreel/domain/models/project.dart';
+import 'package:lastreel/domain/models/project_settings.dart';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:flutter_test/flutter_test.dart';
 

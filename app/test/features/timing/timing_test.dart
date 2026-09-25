@@ -1,5 +1,5 @@
-import 'package:endcrawl/domain/models/project_settings.dart';
-import 'package:endcrawl/features/timing/screens/background_sheet.dart';
+import 'package:lastreel/domain/models/project_settings.dart';
+import 'package:lastreel/features/timing/screens/background_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 

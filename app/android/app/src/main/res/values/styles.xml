@@ -3,7 +3,7 @@
     <!-- Theme applied to the Android Window while the process is starting.
 
          Both this file and values-night/styles.xml use the light parent and
-         the app's own ground colour: EndCrawl currently has one light theme, so
+         the app's own ground colour: LastReel currently has one light theme, so
          following the device's light/dark setting here would only produce a
          white flash before the first Flutter frame. -->
     <style name="LaunchTheme" parent="@android:style/Theme.Light.NoTitleBar">

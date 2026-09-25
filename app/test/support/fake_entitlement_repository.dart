@@ -1,6 +1,6 @@
-import 'package:endcrawl/core/result.dart';
-import 'package:endcrawl/data/repositories/entitlement_repository.dart';
-import 'package:endcrawl/domain/models/entitlement.dart';
+import 'package:lastreel/core/result.dart';
+import 'package:lastreel/data/repositories/entitlement_repository.dart';
+import 'package:lastreel/domain/models/entitlement.dart';
 
 /// A plan source whose plan a test chooses.
 class FakeEntitlementRepository implements EntitlementRepository {

@@ -1,15 +1,15 @@
-import 'package:endcrawl/core/theme/app_theme.dart';
-import 'package:endcrawl/core/theme/ec_palette.dart';
-import 'package:endcrawl/core/theme/theme_context.dart';
-import 'package:endcrawl/core/widgets/ec_button.dart';
-import 'package:endcrawl/core/widgets/ec_chip.dart';
-import 'package:endcrawl/core/widgets/ec_fields.dart';
-import 'package:endcrawl/core/widgets/ec_settings.dart';
+import 'package:lastreel/core/theme/app_theme.dart';
+import 'package:lastreel/core/theme/ec_palette.dart';
+import 'package:lastreel/core/theme/theme_context.dart';
+import 'package:lastreel/core/widgets/ec_button.dart';
+import 'package:lastreel/core/widgets/ec_chip.dart';
+import 'package:lastreel/core/widgets/ec_fields.dart';
+import 'package:lastreel/core/widgets/ec_settings.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 Widget _host(Widget child) => MaterialApp(
-      theme: buildEndcrawlTheme(),
+      theme: buildLastReelTheme(),
       home: Scaffold(body: Center(child: Padding(padding: const EdgeInsets.all(16), child: child))),
     );
 

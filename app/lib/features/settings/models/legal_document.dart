@@ -59,7 +59,7 @@ const termsOfService = LegalDocument(
   title: 'Terms of service',
   lastUpdated: '1 September 2026',
   summaryLead: 'The short version.',
-  summary: 'Your credits are yours. Use EndCrawl to make them, and don’t use it to hurt anyone.',
+  summary: 'Your credits are yours. Use LastReel to make them, and don’t use it to hurt anyone.',
   sections: [
     LegalSection('Your account', 'You need an account to keep projects. Keep your sign-in details to yourself; you are responsible for what happens under your account.'),
     LegalSection('Your content', 'You own the projects and renders you make. We store them only to sync and render them for you.'),

@@ -316,7 +316,7 @@ class FirebaseAuthRepository implements AuthRepository {
       'provider-already-linked' => (FailureKind.unknown, 'That method is already connected.'),
       'credential-already-in-use' => (
           FailureKind.permission,
-          'That account already belongs to another EndCrawl login.',
+          'That account already belongs to another LastReel login.',
         ),
       'user-mismatch' => (FailureKind.permission, 'That isn’t the account you’re signed in with.'),
       'account-exists-with-different-credential' => (

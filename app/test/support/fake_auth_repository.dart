@@ -1,8 +1,8 @@
 import 'dart:async';
 
-import 'package:endcrawl/core/result.dart';
-import 'package:endcrawl/data/repositories/auth_repository.dart';
-import 'package:endcrawl/domain/models/app_user.dart';
+import 'package:lastreel/core/result.dart';
+import 'package:lastreel/data/repositories/auth_repository.dart';
+import 'package:lastreel/domain/models/app_user.dart';
 
 const testUser = AppUser(
   uid: 'test-uid',

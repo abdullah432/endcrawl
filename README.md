@@ -1,4 +1,4 @@
-# EndCrawl
+# LastReel
 
 A dedicated end-credits roll editor for phones — an indie filmmaker, YouTuber,
 or film student produces a broadcast-clean rolling credit sequence on their
@@ -18,7 +18,7 @@ prototype exported by Claude Design (see [`design/`](design/)).
   [`.firebaserc`](.firebaserc) — Firebase CLI project config, so rules deploy
   with a single `firebase deploy`.
 - [`design/app-light/`](design/app-light/) — the current design the app is
-  built to (`EndCrawl App Light.dc.html`).
+  built to (`LastReel App Light.dc.html`).
 - [`design/`](design/) — the original handoff bundle (prompt, transcript and
   first prototype), kept for reference; not part of the shipped app.
 

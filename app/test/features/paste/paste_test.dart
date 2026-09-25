@@ -1,6 +1,6 @@
-import 'package:endcrawl/domain/models/credit_block.dart';
-import 'package:endcrawl/features/paste/controllers/paste_controller.dart';
-import 'package:endcrawl/features/paste/models/paste_models.dart';
+import 'package:lastreel/domain/models/credit_block.dart';
+import 'package:lastreel/features/paste/controllers/paste_controller.dart';
+import 'package:lastreel/features/paste/models/paste_models.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

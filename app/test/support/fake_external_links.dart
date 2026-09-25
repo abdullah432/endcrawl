@@ -1,4 +1,4 @@
-import 'package:endcrawl/core/services/external_links.dart';
+import 'package:lastreel/core/services/external_links.dart';
 
 /// Records what the app tried to open instead of leaving the test.
 class FakeExternalLinks implements ExternalLinks {

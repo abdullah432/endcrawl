@@ -56,7 +56,7 @@ class SlotsFullSheet extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.baseline,
                   textBaseline: TextBaseline.alphabetic,
                   children: [
-                    Expanded(child: Text('EndCrawl Pro', style: t.titleM.copyWith(fontWeight: FontWeight.w700))),
+                    Expanded(child: Text('LastReel Pro', style: t.titleM.copyWith(fontWeight: FontWeight.w700))),
                     Text('${PlanOffer.monthly.price}/mo', style: t.mono.copyWith(fontSize: 12, color: p.ink2)),
                   ],
                 ),

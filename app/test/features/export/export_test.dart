@@ -1,8 +1,8 @@
-import 'package:endcrawl/domain/models/entitlement.dart';
-import 'package:endcrawl/domain/models/project_settings.dart';
-import 'package:endcrawl/domain/models/render_summary.dart';
-import 'package:endcrawl/features/export/data/video_encoder.dart';
-import 'package:endcrawl/features/export/models/export_models.dart';
+import 'package:lastreel/domain/models/entitlement.dart';
+import 'package:lastreel/domain/models/project_settings.dart';
+import 'package:lastreel/domain/models/render_summary.dart';
+import 'package:lastreel/features/export/data/video_encoder.dart';
+import 'package:lastreel/features/export/models/export_models.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -328,7 +328,7 @@ void main() {
     test('file names keep the title, minus what filesystems refuse', () {
       expect(exportFileName('The Long Way Down', Codec.hevc), 'The Long Way Down.mp4');
       expect(exportFileName('A/B: "C"?', Codec.prores422), 'AB C.mov');
-      expect(exportFileName('  ', Codec.png), 'EndCrawl render.zip');
+      expect(exportFileName('  ', Codec.png), 'LastReel render.zip');
     });
   });
 }

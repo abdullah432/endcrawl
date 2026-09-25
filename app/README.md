@@ -1,4 +1,4 @@
-# EndCrawl (Flutter app)
+# LastReel (Flutter app)
 
 A dedicated end-credits roll editor for phones — see the [repo root](../README.md)
 for the product summary and the [design handoff](../design/) this was built from.
@@ -60,7 +60,7 @@ for the product summary and the [design handoff](../design/) this was built from
 
 ## Design system
 
-The design is [`../design/app-light/`](../design/app-light/) ("EndCrawl App
+The design is [`../design/app-light/`](../design/app-light/) ("LastReel App
 Light", theme T4 Aurora Noir, light): a warm off-white ground, frosted glass
 cards, an azure → violet gradient for the one primary action per screen,
 Instrument Serif titles, Archivo for UI, JetBrains Mono for figures, and
@@ -305,7 +305,7 @@ FrameRenderer (render/)      RollFrame in a detached BuildOwner/PipelineOwner/
                              ui.Image per frame, timed from its own layout.
 VideoEncoder (data/)         capabilities() · start(spec) → EncodeSession
                              { append(image, index) · finish() → file · cancel() }
-  NativeVideoEncoder         method channel 'endcrawl/encoder'
+  NativeVideoEncoder         method channel 'lastreel/encoder'
     iOS   ios/Runner/VideoEncoderPlugin.swift       AVAssetWriter: H.264, HEVC
                                                     (.mp4), ProRes 422 HQ / 4444
                                                     (.mov, alpha kept)
@@ -362,7 +362,10 @@ simple. Nothing above would need redoing to add it.
 
 ## Firebase setup
 
-The app is wired to Firebase project **`endcrawl-620c2`**, but the generated
+The app is wired to Firebase project **`endcrawl-620c2`** — the app's
+working name before it became LastReel. Firebase project IDs can't be
+renamed and users never see it; the display name can be changed in the
+console. The generated
 config (`lib/firebase_options.dart`, `android/app/google-services.json`,
 `ios/Runner/GoogleService-Info.plist`) is produced per-project by the
 FlutterFire CLI and isn't in the repo. Until you generate it,

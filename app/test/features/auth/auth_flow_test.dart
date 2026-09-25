@@ -1,10 +1,10 @@
-import 'package:endcrawl/core/result.dart';
-import 'package:endcrawl/data/repositories/auth_repository.dart';
-import 'package:endcrawl/domain/models/app_user.dart';
-import 'package:endcrawl/core/widgets/ec_fields.dart';
-import 'package:endcrawl/features/auth/widgets/legal_consent.dart';
-import 'package:endcrawl/features/library/screens/library_screen.dart';
-import 'package:endcrawl/features/onboarding/widgets/roll_hero.dart';
+import 'package:lastreel/core/result.dart';
+import 'package:lastreel/data/repositories/auth_repository.dart';
+import 'package:lastreel/domain/models/app_user.dart';
+import 'package:lastreel/core/widgets/ec_fields.dart';
+import 'package:lastreel/features/auth/widgets/legal_consent.dart';
+import 'package:lastreel/features/library/screens/library_screen.dart';
+import 'package:lastreel/features/onboarding/widgets/roll_hero.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 

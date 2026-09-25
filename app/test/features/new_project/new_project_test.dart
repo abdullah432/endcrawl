@@ -1,7 +1,7 @@
-import 'package:endcrawl/domain/models/credit_block.dart';
-import 'package:endcrawl/domain/models/project.dart';
-import 'package:endcrawl/domain/models/project_settings.dart';
-import 'package:endcrawl/domain/models/user_profile.dart';
+import 'package:lastreel/domain/models/credit_block.dart';
+import 'package:lastreel/domain/models/project.dart';
+import 'package:lastreel/domain/models/project_settings.dart';
+import 'package:lastreel/domain/models/user_profile.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 

@@ -1,7 +1,7 @@
-import 'package:endcrawl/bootstrap.dart';
-import 'package:endcrawl/data/sources/session_store.dart';
-import 'package:endcrawl/domain/models/credit_block.dart';
-import 'package:endcrawl/features/project/controllers/project_controller.dart';
+import 'package:lastreel/bootstrap.dart';
+import 'package:lastreel/data/sources/session_store.dart';
+import 'package:lastreel/domain/models/credit_block.dart';
+import 'package:lastreel/features/project/controllers/project_controller.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 

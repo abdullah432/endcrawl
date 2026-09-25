@@ -2,9 +2,9 @@ import 'dart:io';
 import 'dart:ui' as ui;
 
 import 'package:archive/archive_io.dart';
-import 'package:endcrawl/features/export/data/png_sequence_encoder.dart';
-import 'package:endcrawl/features/export/data/video_encoder.dart';
-import 'package:endcrawl/features/export/models/export_models.dart';
+import 'package:lastreel/features/export/data/png_sequence_encoder.dart';
+import 'package:lastreel/features/export/data/video_encoder.dart';
+import 'package:lastreel/features/export/models/export_models.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 ui.Image _frame(int shade) {

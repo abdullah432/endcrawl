@@ -118,9 +118,9 @@ class SettingsScreen extends ConsumerWidget {
             EcGroupRow(title: 'Help centre', onTap: () => links.openUrl(AppLinks.helpCentre)),
             EcGroupRow(
               title: 'Contact support',
-              onTap: () => links.composeEmail(AppLinks.supportEmail, subject: version == null ? 'EndCrawl support' : '$version support'),
+              onTap: () => links.composeEmail(AppLinks.supportEmail, subject: version == null ? 'LastReel support' : '$version support'),
             ),
-            EcGroupRow(title: 'Rate EndCrawl', onTap: settings.rate),
+            EcGroupRow(title: 'Rate LastReel', onTap: settings.rate),
           ]),
           const SizedBox(height: 22),
           EcGroup(label: 'Legal & privacy', children: [
@@ -129,7 +129,7 @@ class SettingsScreen extends ConsumerWidget {
             EcGroupRow(title: 'Terms of service', onTap: () => LegalDocumentScreen.open(context, termsOfService)),
             EcGroupRow(
               title: 'Open-source licences',
-              onTap: () => showLicensePage(context: context, applicationName: 'EndCrawl', applicationVersion: version),
+              onTap: () => showLicensePage(context: context, applicationName: 'LastReel', applicationVersion: version),
             ),
           ]),
           const SizedBox(height: 22),
@@ -228,7 +228,7 @@ class _PlanCard extends ConsumerWidget {
             textBaseline: TextBaseline.alphabetic,
             children: [
               Expanded(
-                child: Text(entitlement.isPro ? 'EndCrawl Pro' : 'Free plan',
+                child: Text(entitlement.isPro ? 'LastReel Pro' : 'Free plan',
                     style: t.titleM.copyWith(fontSize: 15.5, fontWeight: FontWeight.w700)),
               ),
               Text(

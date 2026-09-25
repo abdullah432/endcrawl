@@ -24,7 +24,7 @@ import java.util.concurrent.Executors
  * MediaCodec + MediaMuxer for H.264 and HEVC in .mp4. Android has no ProRes
  * encoder, so capabilities never offer it.
  *
- * Channel `endcrawl/encoder`:
+ * Channel `lastreel/encoder`:
  *   capabilities → {codecs: {name: longestEdge}, freeBytes}
  *   start {codec, width, height, fpsNum, fpsDen, bitrate, path} → id
  *   append {id, frame, width, height, rgba} → null, once the frame is in
@@ -45,7 +45,7 @@ class VideoEncoderPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
 
     override fun onAttachedToEngine(binding: FlutterPlugin.FlutterPluginBinding) {
         cacheDir = binding.applicationContext.cacheDir
-        channel = MethodChannel(binding.binaryMessenger, "endcrawl/encoder")
+        channel = MethodChannel(binding.binaryMessenger, "lastreel/encoder")
         channel.setMethodCallHandler(this)
     }
 

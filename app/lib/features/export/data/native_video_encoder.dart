@@ -13,7 +13,7 @@ import 'video_encoder.dart';
 /// pixel format and stamps each with its own time, so a paused render
 /// resumes without a gap or a duplicate.
 class NativeVideoEncoder implements VideoEncoder {
-  static const channel = MethodChannel('endcrawl/encoder');
+  static const channel = MethodChannel('lastreel/encoder');
 
   const NativeVideoEncoder();
 

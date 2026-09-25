@@ -1,8 +1,8 @@
 import 'dart:convert';
 
-import 'package:endcrawl/data/repositories/template_repository.dart';
-import 'package:endcrawl/domain/models/block_catalog.dart';
-import 'package:endcrawl/domain/models/credit_block.dart';
+import 'package:lastreel/data/repositories/template_repository.dart';
+import 'package:lastreel/domain/models/block_catalog.dart';
+import 'package:lastreel/domain/models/credit_block.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 CreditBlock _roundTrip(CreditBlock block) =>

@@ -87,7 +87,7 @@ String exportFileName(String title, Codec codec) {
       .replaceAll(RegExp(r'[\\/:*?"<>|\x00-\x1F]'), '')
       .replaceAll(RegExp(r'\s+'), ' ')
       .trim();
-  return '${stem.isEmpty ? 'EndCrawl render' : stem}.${codec.extension}';
+  return '${stem.isEmpty ? 'LastReel render' : stem}.${codec.extension}';
 }
 
 /// "about 3 min", "about 1m 52s", "about 40s".

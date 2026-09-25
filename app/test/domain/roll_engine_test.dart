@@ -1,7 +1,7 @@
-import 'package:endcrawl/domain/engine/roll_engine.dart';
-import 'package:endcrawl/domain/models/credit_block.dart';
-import 'package:endcrawl/domain/models/credit_face.dart';
-import 'package:endcrawl/domain/models/project_settings.dart';
+import 'package:lastreel/domain/engine/roll_engine.dart';
+import 'package:lastreel/domain/models/credit_block.dart';
+import 'package:lastreel/domain/models/credit_face.dart';
+import 'package:lastreel/domain/models/project_settings.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 const _blocks = <CreditBlock>[

@@ -1,11 +1,11 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:endcrawl/core/result.dart';
-import 'package:endcrawl/data/repositories/local_project_repository.dart';
-import 'package:endcrawl/data/sources/project_local_store.dart';
-import 'package:endcrawl/domain/models/credit_block.dart';
-import 'package:endcrawl/domain/models/project.dart';
+import 'package:lastreel/core/result.dart';
+import 'package:lastreel/data/repositories/local_project_repository.dart';
+import 'package:lastreel/data/sources/project_local_store.dart';
+import 'package:lastreel/domain/models/credit_block.dart';
+import 'package:lastreel/domain/models/project.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -13,7 +13,7 @@ void main() {
   late LocalProjectRepository repository;
 
   setUp(() async {
-    root = await Directory.systemTemp.createTemp('endcrawl_test');
+    root = await Directory.systemTemp.createTemp('lastreel_test');
     repository = LocalProjectRepository(ProjectLocalStore(root));
   });
 

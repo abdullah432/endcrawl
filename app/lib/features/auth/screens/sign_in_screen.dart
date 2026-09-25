@@ -88,7 +88,7 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
             const Spacer(),
             const SizedBox(height: 16),
             EcInlineLink(
-              lead: 'New to EndCrawl?',
+              lead: 'New to LastReel?',
               action: 'Create account',
               onTap: form.busy ? null : () => replaceAuthScreen(context, ref, const CreateAccountScreen()),
             ),

@@ -84,7 +84,7 @@ class LocalProjectRepository implements ProjectRepository {
     } on UnsupportedSchemaVersionException catch (e, s) {
       return Err(AppFailure(
         FailureKind.serialization,
-        'This project was made with a newer version of EndCrawl.',
+        'This project was made with a newer version of LastReel.',
         cause: e,
         stackTrace: s,
       ));
