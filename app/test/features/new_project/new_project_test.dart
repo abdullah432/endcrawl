@@ -1,5 +1,6 @@
 import 'package:endcrawl/domain/models/credit_block.dart';
 import 'package:endcrawl/domain/models/project.dart';
+import 'package:endcrawl/domain/models/project_settings.dart';
 import 'package:endcrawl/domain/models/user_profile.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -105,6 +106,34 @@ void main() {
       expect(app.projects.projects, isEmpty);
       expect(app.projects.saveCount, 0);
       expect(find.text('Pick a starting point.'), findsOneWidget);
+    });
+  });
+
+  group('judder-free from the start', () {
+    testWidgets('a template’s runtime settles on the nearest whole-pixel speed once measured', (tester) async {
+      final app = AppHarness();
+      await app.pump(tester);
+      await tapText(tester, 'Short film');
+      await continueToCanvas(tester);
+      await tapText(tester, 'Open editor');
+      await tester.pump(const Duration(seconds: 3)); // the autosave debounce
+      await tester.pumpAndSettle();
+
+      final settings = app.projects.projects.values.single.settings;
+      expect(settings.mode, TimingMode.speed);
+      expect(settings.ppf, settings.ppf.roundToDouble());
+      expect(find.textContaining(' clean '), findsWidgets);
+    });
+
+    testWidgets('an empty project starts at a whole-pixel speed', (tester) async {
+      final app = AppHarness();
+      await app.pump(tester);
+      await tapText(tester, 'Start empty');
+      await tapText(tester, 'Open editor');
+
+      final settings = app.projects.projects.values.single.settings;
+      expect(settings.mode, TimingMode.speed);
+      expect(settings.ppf, settings.ppf.roundToDouble());
     });
   });
 

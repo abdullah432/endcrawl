@@ -161,6 +161,23 @@ class _Settings extends ConsumerWidget {
               ],
             ),
           ),
+          if (!e.clean)
+            if (timingFixes(e, count: 1) case [(final ppf, final frames)]) ...[
+              const SizedBox(height: 10),
+              EcNotice(
+                tone: EcTone.warn,
+                title: 'Moves ${formatPpf(e.ppf)} px a frame',
+                body: 'It will roll evenly, but a fractional speed is drawn between pixels and can look '
+                    'slightly soft. A whole number of pixels is crisper.',
+                actions: [
+                  EcButton.secondary(
+                    label: 'Use ${formatClock(frames / e.fps)} · $ppf px/f',
+                    size: EcButtonSize.small,
+                    onPressed: () => ref.read(projectControllerProvider.notifier).applySnap(ppf),
+                  ),
+                ],
+              ),
+            ],
           const SizedBox(height: 14),
           const EcSectionLabel('Codec'),
           EcGroup(children: [

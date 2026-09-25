@@ -302,3 +302,29 @@ index b0aa123..8e35195 100644
        await runRender(tester);
        expect(app.encoder.appended, 48);
 ```
+
+## Follow-up after this report
+
+Fixed in the app since this run:
+
+- **Judder.** Two causes, both measured in `test/features/export/frame_renderer_test.dart`:
+  - Each frame's offset was rounded to a whole pixel. Every template started duration-locked at a fractional speed, so a 3.37 px/frame roll moved 3,3,4,3,4… px. It now measures 3.37 ± 0.003 px.
+  - Outputs that aren't a whole multiple of the canvas (2048 scope → 1920) re-snapped every line to the output grid, giving 3.25–4 px steps. It now measures 3.75 ± 0.07 px.
+
+  The renderer now draws at a whole multiple of the canvas and applies the sub-pixel remainder in a single resample. New projects and templates also start at a whole-pixel speed, and 6.1 flags a fractional speed with a one-tap fix.
+- **3D crawl ending.** The last lines used to stay near the horizon. They now fade out over the top of the frame, and the roll runs on until they've gone. This also covers steep tilts where the horizon sits inside the frame.
+
+### Still to run on a device
+
+1. **Smoothness.** Render a template project (or any roll) at 1920 HD and at 4K, and a 2.39:1 project at 1920. Check each with:
+
+   ```
+   python3 tool/motion_check.py <file>.mp4
+   ```
+
+   Expect `SMOOTH`, meaning a spread under 0.1 px at the measured width. Also watch one render on a 24p-capable display. A 60 Hz phone screen always adds 3:2 cadence judder to any 24 fps video, so judge 24 fps there with care, or render at 30/60 fps for social.
+2. **Home, then return, mid-render.** This should now resume and finish with the exact frame count.
+3. **Save to Photos.** Test HEVC and ProRes, and check that the first-time permission prompt text reads "LastReel…".
+4. **Share sheet and Save to Files.** Check both hand over the file.
+5. **Lower resolution.** Tap it from the low-space failure screen.
+6. **Thermals.** Note the thermal state during a long 4K render. The earlier run reached Critical.

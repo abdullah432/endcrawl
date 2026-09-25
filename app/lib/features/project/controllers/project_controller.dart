@@ -10,6 +10,7 @@ import '../../../data/repositories/template_repository.dart';
 import '../../../domain/engine/roll_engine.dart';
 import '../../../domain/engine/roll_engine.dart' as roll show blockSeconds, readabilityCulprit;
 import '../../../domain/models/credit_block.dart';
+import '../../../domain/models/canvas_format.dart';
 import '../../../domain/models/credit_face.dart';
 import '../../../domain/models/project.dart';
 import '../../../domain/models/project_settings.dart';
@@ -116,6 +117,10 @@ class ProjectController extends Notifier<ProjectState> {
   /// out of the flow leaves nothing behind.
   bool _draft = false;
 
+  /// Set when a template starts a project: once the roll is first measured,
+  /// its target runtime moves to the nearest judder-free speed.
+  bool _snapToCleanOnMeasure = false;
+
   @override
   ProjectState build() {
     ref.onDispose(() => _debounce?.cancel());
@@ -143,6 +148,7 @@ class ProjectController extends Notifier<ProjectState> {
         ),
       ),
     );
+    _snapToCleanOnMeasure = true;
   }
 
   /// Starts an empty document using the account's defaults for new
@@ -150,13 +156,18 @@ class ProjectController extends Notifier<ProjectState> {
   void createEmpty({double fps = 24, String formatId = '16x9', bool safeGuides = true}) {
     _debounce?.cancel();
     _draft = true;
+    _snapToCleanOnMeasure = false;
     state = ProjectState(
       project: Project.create(
+        // Speed-locked at a whole-pixel rate, so the roll never judders
+        // however long it grows.
         settings: ProjectSettings(
           formatId: formatId,
           fps: fps,
           safeGuides: safeGuides,
           durationFrames: (60 * fps).round(),
+          mode: TimingMode.speed,
+          ppf: defaultCleanPpf(CanvasFormat.byId(formatId).h, fps).toDouble(),
         ),
       ),
     );
@@ -170,6 +181,7 @@ class ProjectController extends Notifier<ProjectState> {
     if (result case Ok(:final value)) {
       _debounce?.cancel();
       _draft = false;
+      _snapToCleanOnMeasure = false;
       state = ProjectState(project: value);
     }
     return result;
@@ -504,6 +516,12 @@ class ProjectController extends Notifier<ProjectState> {
   void updateMeasurements(RollMeasurements m) {
     if (state.measurements.closeTo(m)) return;
     state = state.copyWith(measurements: m);
+    if (_snapToCleanOnMeasure && m.blockY.isNotEmpty) {
+      _snapToCleanOnMeasure = false;
+      // A template's runtime is a target, not a promise: the nearest
+      // whole-pixel speed keeps it close and makes the roll judder-free.
+      if (timingFixes(state.engine, count: 1) case [(final ppf, _)]) applySnap(ppf);
+    }
   }
 }
 

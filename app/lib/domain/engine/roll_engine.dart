@@ -170,6 +170,37 @@ class RollEngineResult {
   });
 }
 
+/// How the 3D crawl leaves the frame.
+///
+/// The tilt pivots on the frame's bottom edge, so a line [u] px above it on
+/// the flat roll is drawn `u·cosθ / (1 + u·sinθ/d)` px up — it recedes
+/// toward a horizon `d·cotθ` up and, with a steep tilt, never reaches the
+/// top at all. So the crawl fades out over a band below [vanishAt] (the
+/// frame's top, or well below the horizon when that's lower), and the roll
+/// runs on until its last line is past it.
+class CrawlVanish {
+  /// Height above the bottom edge where text is fully faded.
+  final double vanishAt;
+
+  /// Height where the fade begins.
+  final double fadeFrom;
+
+  /// Flat travel beyond the usual end that takes the last line to [vanishAt].
+  final double extraTravel;
+
+  const CrawlVanish({required this.vanishAt, required this.fadeFrom, required this.extraTravel});
+
+  static CrawlVanish of(ProjectSettings s, double frameH) {
+    final theta = s.tilt * pi / 180;
+    final d = frameH * (s.vanishingDistance / 100) * 2;
+    final horizon = theta <= 0 || d <= 0 ? double.infinity : d * cos(theta) / sin(theta);
+    final vanishAt = min(frameH, horizon * 0.6);
+    final denominator = cos(theta) - (d <= 0 ? 0 : vanishAt * sin(theta) / d);
+    final flatHeight = denominator <= 0 ? frameH : vanishAt / denominator;
+    return CrawlVanish(vanishAt: vanishAt, fadeFrom: vanishAt * 0.7, extraTravel: max(0, flatHeight - frameH));
+  }
+}
+
 /// Lays the roll out in time: a head freeze, scrolling interrupted by
 /// each hold card, then a tail freeze.
 ///
@@ -199,7 +230,11 @@ RollEngineResult computeEngine({
   final firstY = first is HoldBlock ? measurements.blockY[first.id] : null;
   final lastY = last is HoldBlock ? measurements.blockY[last.id] : null;
   var travel = max(1.0, measurements.travel);
-  if (lastY != null) travel = max(1.0, min(travel, lastY + frameH));
+  if (lastY != null) {
+    travel = max(1.0, min(travel, lastY + frameH));
+  } else if (project.look == RollLook.crawl3d) {
+    travel += CrawlVanish.of(project, frameH).extraTravel;
+  }
   final start = firstY != null && firstY <= 0.5 ? min(frameH, travel) : 0.0;
   final distance = max(1.0, travel - start);
 
@@ -282,6 +317,10 @@ RollEngineResult computeEngine({
 }
 
 class RollPaint {
+  /// Content y at the bottom of the frame, exact — not rounded to a pixel.
+  /// Rounding each frame turns a 3.37 px/frame roll into 3,3,4,3,4… steps,
+  /// the stutter a crawl is judged by; the renderer decides how to place
+  /// it on pixels (see FrameRenderer).
   final double offset;
   final String? holdId;
   final double holdOpacity;
@@ -310,7 +349,6 @@ RollPaint paintAt(RollEngineResult e, double frame) {
             ? max(0.0, (seg.lengthFrames - t) / seg.fadeOutFrames)
             : 1.0);
   }
-  off = off.roundToDouble();
   return RollPaint(offset: off, holdId: holdId, holdOpacity: holdOp);
 }
 
@@ -405,6 +443,11 @@ List<(int ppf, double totalFrames)> timingFixes(RollEngineResult e, {int count =
   }
   return out;
 }
+
+/// A judder-free speed for a new roll: a whole number of pixels a frame
+/// that keeps each line on screen for about ten seconds — the unhurried
+/// pace of a feature's end crawl. 4 px/frame at 1080p24.
+int defaultCleanPpf(int canvasH, double fps) => max(1, (canvasH / (fps * 10)).round());
 
 /// The whole-pixel rates either side of the current one — faster (a
 /// shorter runtime) and slower (longer) — with the runtime each gives (5.1).

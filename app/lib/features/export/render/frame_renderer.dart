@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'dart:ui' as ui;
 
 import 'package:flutter/foundation.dart';
@@ -26,6 +27,13 @@ class FrameRenderer implements FrameSource {
   final int outputHeight;
   final RollEngineResult engine;
 
+  /// Render pixels per canvas pixel: a whole number.
+  final int _scale;
+  final bool _crawl3d;
+
+  /// Rows drawn below the frame for the sub-pixel shift to reveal.
+  static const _overscanPx = 2;
+
   final ValueNotifier<double> _frame;
   final BuildOwner _buildOwner;
   final PipelineOwner _pipelineOwner;
@@ -37,6 +45,8 @@ class FrameRenderer implements FrameSource {
     this.outputWidth,
     this.outputHeight,
     this.engine,
+    this._scale,
+    this._crawl3d,
     this._frame,
     this._buildOwner,
     this._pipelineOwner,
@@ -59,10 +69,12 @@ class FrameRenderer implements FrameSource {
     required int outputHeight,
   }) async {
     final view = ui.PlatformDispatcher.instance.implicitView ?? ui.PlatformDispatcher.instance.views.first;
-    // The tree is laid out at the exact output size, with the canvas-sized
-    // frame scaled into it, so every image comes back at exactly the size
-    // the encoder was opened with — pixel ratios would round the height.
-    final size = Size(outputWidth.toDouble(), outputHeight.toDouble());
+    // Drawn at a whole multiple of the canvas — the smallest that's at least
+    // the output — so a whole-pixel speed stays whole. [render] then fits it
+    // to the exact output size, applying any sub-pixel remainder.
+    final scale = max(1, (outputWidth / geometry.w).ceil());
+    final overscan = _overscanPx / scale;
+    final size = Size(geometry.w * scale, (geometry.h + overscan) * scale);
     final boundary = RenderRepaintBoundary();
     final renderView = RenderView(
       view: view,
@@ -104,6 +116,8 @@ class FrameRenderer implements FrameSource {
                 frame: frame,
                 measurer: measurer,
                 forRender: true,
+                snap: scale.toDouble(),
+                overscan: overscan,
               ),
             ),
           ),
@@ -139,12 +153,31 @@ class FrameRenderer implements FrameSource {
     mount();
     flush();
 
-    return FrameRenderer._(geometry, outputWidth, outputHeight, engine, frame, buildOwner, pipelineOwner, boundary, root!);
+    return FrameRenderer._(
+      geometry,
+      outputWidth,
+      outputHeight,
+      engine,
+      scale,
+      settings.look == RollLook.crawl3d,
+      frame,
+      buildOwner,
+      pipelineOwner,
+      boundary,
+      root!,
+    );
   }
 
-  /// Frame [index] as an image at the output size.
+  /// Frame [index] as an image at exactly the output size.
+  ///
+  /// The roll is drawn on whole render pixels, then this one resample moves
+  /// it the rest of the way — the fraction of a pixel it really travelled —
+  /// and fits it to the output. Every frame then moves the same distance,
+  /// at any speed and any output size, rather than stepping 3,3,4,3,4 px.
+  /// A whole-pixel speed at a whole-multiple size has no fraction and no
+  /// scaling, so it comes through pixel for pixel.
   @override
-  Future<ui.Image> render(int index) {
+  Future<ui.Image> render(int index) async {
     _frame.value = index.toDouble();
     _buildOwner
       ..buildScope(_root)
@@ -153,7 +186,26 @@ class FrameRenderer implements FrameSource {
       ..flushLayout()
       ..flushCompositingBits()
       ..flushPaint();
-    return _boundary.toImage();
+    final drawn = await _boundary.toImage();
+
+    final offset = paintAt(engine, index.toDouble()).offset;
+    final placed = RollFrame.placedOffset(offset, snap: _scale.toDouble(), crawl3d: _crawl3d);
+    final fraction = (offset - placed) * _scale;
+    final source = Rect.fromLTWH(0, fraction, geometry.w * _scale, geometry.h * _scale);
+    final recorder = ui.PictureRecorder();
+    Canvas(recorder).drawImageRect(
+      drawn,
+      source,
+      Rect.fromLTWH(0, 0, outputWidth.toDouble(), outputHeight.toDouble()),
+      Paint()..filterQuality = FilterQuality.medium,
+    );
+    final picture = recorder.endRecording();
+    try {
+      return await picture.toImage(outputWidth, outputHeight);
+    } finally {
+      picture.dispose();
+      drawn.dispose();
+    }
   }
 
   /// Frame [index] as straight RGBA bytes, row by row, for the encoder.

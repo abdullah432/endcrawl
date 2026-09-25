@@ -59,6 +59,16 @@ void main() {
       expect(find.textContaining(RegExp(r'^≈ \d+ (MB|GB|KB)$')), findsNWidgets(Codec.values.length));
     });
 
+    testWidgets('a fractional speed is flagged, with a one-tap whole-pixel fix', (tester) async {
+      app = AppHarness(projects: FakeProjectRepository(seed: [film(mode: TimingMode.duration, durationFrames: 24 * 47 + 5)]));
+      await openExport(tester);
+
+      expect(find.textContaining(RegExp(r'^Moves \d+\.\d+ px a frame$')), findsOneWidget);
+      final fix = tester.widget<Text>(find.textContaining(RegExp(r'^Use \d+:\d\d · \d+ px/f$'))).data!;
+      await tapText(tester, fix);
+      expect(find.textContaining('px a frame'), findsNothing);
+    });
+
     testWidgets('only what this device can encode is offered', (tester) async {
       app = AppHarness(projects: FakeProjectRepository(seed: [film()]), encoder: FakeVideoEncoder(caps: FakeVideoEncoder.android));
       await openExport(tester);
