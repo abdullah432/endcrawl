@@ -5,7 +5,7 @@ import 'package:google_mobile_ads/google_mobile_ads.dart';
 
 import '../../../core/config/ad_config.dart';
 import '../../../core/theme/theme_context.dart';
-import '../../../core/theme/tokens.dart';
+import '../../../core/theme/ec_palette.dart';
 import 'ad_service.dart';
 
 /// [AdService] on Google AdMob.
@@ -62,13 +62,15 @@ class AdMobAdService implements AdService {
     if (_units == null) return const SizedBox.shrink();
     return _NativeAdView(
       key: ValueKey(placement),
-      load: (style, listener) async {
+      load: (colours, listener) async {
         if (!await _ensureReady()) return null;
         final ad = NativeAd(
           adUnitId: _nativeUnit(placement),
+          factoryId: nativeCardFactoryId,
+          customOptions: colours,
           request: _request,
           listener: listener,
-          nativeTemplateStyle: style,
+          nativeAdOptions: NativeAdOptions(adChoicesPlacement: AdChoicesPlacement.topRightCorner),
         );
         await ad.load();
         return ad;
@@ -170,10 +172,28 @@ class AdMobAdService implements AdService {
   }
 }
 
-/// A native ad drawn with Google's small template in the app's colours.
-/// Shows nothing until the ad has loaded, and nothing if it never does.
+/// The native ad layout registered by the platform code —
+/// `LastReelNativeAdFactory` in ios/Runner/NativeAdFactory.swift and
+/// android/…/NativeAdFactory.kt: the design's ad row on a rounded card.
+const nativeCardFactoryId = 'lastreelCard';
+
+/// The palette as the native card reads it: "#RRGGBB" per role.
+Map<String, Object> nativeCardColours(EcPalette p) {
+  String hex(Color c) => '#${(c.toARGB32() & 0xFFFFFF).toRadixString(16).padLeft(6, '0').toUpperCase()}';
+  return {
+    'surface': hex(p.surface),
+    'line': hex(p.line),
+    'tint': hex(p.tint),
+    'ink': hex(p.ink),
+    'muted': hex(p.muted),
+    'onInk': hex(p.onInk),
+  };
+}
+
+/// A native ad on the app's own card (see [nativeCardFactoryId]). Shows
+/// nothing until the ad has loaded, and nothing if it never does.
 class _NativeAdView extends StatefulWidget {
-  final Future<NativeAd?> Function(NativeTemplateStyle style, NativeAdListener listener) load;
+  final Future<NativeAd?> Function(Map<String, Object> colours, NativeAdListener listener) load;
   final Widget Function(Widget creative) framed;
 
   const _NativeAdView({super.key, required this.load, required this.framed});
@@ -192,18 +212,8 @@ class _NativeAdViewState extends State<_NativeAdView> {
     super.didChangeDependencies();
     if (_started) return;
     _started = true;
-    final p = context.palette;
-    final style = NativeTemplateStyle(
-      templateType: TemplateType.small,
-      mainBackgroundColor: p.surface,
-      cornerRadius: EcRadius.row,
-      callToActionTextStyle: NativeTemplateTextStyle(textColor: p.onInk, backgroundColor: p.ink, size: 13),
-      primaryTextStyle: NativeTemplateTextStyle(textColor: p.ink, size: 14),
-      secondaryTextStyle: NativeTemplateTextStyle(textColor: p.muted, size: 12),
-      tertiaryTextStyle: NativeTemplateTextStyle(textColor: p.muted, size: 12),
-    );
     widget.load(
-      style,
+      nativeCardColours(context.palette),
       NativeAdListener(
         onAdLoaded: (_) {
           if (mounted) setState(() => _loaded = true);
@@ -229,14 +239,7 @@ class _NativeAdViewState extends State<_NativeAdView> {
   Widget build(BuildContext context) {
     final ad = _ad;
     if (!_loaded || ad == null) return const SizedBox.shrink();
-    return widget.framed(
-      ClipRRect(
-        borderRadius: BorderRadius.circular(EcRadius.row),
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(minHeight: 90, maxHeight: 120),
-          child: AdWidget(ad: ad),
-        ),
-      ),
-    );
+    // The card draws its own rounded corners natively; nothing to clip here.
+    return widget.framed(SizedBox(height: 76, child: AdWidget(ad: ad)));
   }
 }
