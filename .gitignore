@@ -12,3 +12,10 @@ ui-debug.log
 
 # macOS
 .DS_Store
+
+# Signing credentials and keystores
+credentials/
+secrets/
+*.jks
+*.keystore
+key.properties

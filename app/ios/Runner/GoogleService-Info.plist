@@ -3,9 +3,9 @@
 <plist version="1.0">
 <dict>
 	<key>CLIENT_ID</key>
-	<string>660045439222-9ubfbmlmeosbi4d36j7a1514q719m6gv.apps.googleusercontent.com</string>
+	<string>660045439222-9lmlv92ic5r2351so0au2tdv243t8ale.apps.googleusercontent.com</string>
 	<key>REVERSED_CLIENT_ID</key>
-	<string>com.googleusercontent.apps.660045439222-9ubfbmlmeosbi4d36j7a1514q719m6gv</string>
+	<string>com.googleusercontent.apps.660045439222-9lmlv92ic5r2351so0au2tdv243t8ale</string>
 	<key>API_KEY</key>
 	<string>AIzaSyAgJj8XG0lS8jsyhkoOtTP5WI7XjqV4FyQ</string>
 	<key>GCM_SENDER_ID</key>
@@ -13,7 +13,7 @@
 	<key>PLIST_VERSION</key>
 	<string>1</string>
 	<key>BUNDLE_ID</key>
-	<string>com.endcrawl.endcrawl</string>
+	<string>com.lastreel.app</string>
 	<key>PROJECT_ID</key>
 	<string>endcrawl-620c2</string>
 	<key>STORAGE_BUCKET</key>
@@ -29,6 +29,6 @@
 	<key>IS_SIGNIN_ENABLED</key>
 	<true></true>
 	<key>GOOGLE_APP_ID</key>
-	<string>1:660045439222:ios:cf18c0f229f3b045f14cd7</string>
+	<string>1:660045439222:ios:60e2e29b8005db1ff14cd7</string>
 </dict>
 </plist>

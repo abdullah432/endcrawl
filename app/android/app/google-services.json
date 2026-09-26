@@ -29,6 +29,49 @@
             {
               "client_id": "660045439222-ct83smot6ehk7ruvuh1v34eknia9e3jg.apps.googleusercontent.com",
               "client_type": 3
+            },
+            {
+              "client_id": "660045439222-9ubfbmlmeosbi4d36j7a1514q719m6gv.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.endcrawl.endcrawl"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:660045439222:android:8d55034c9dca17bef14cd7",
+        "android_client_info": {
+          "package_name": "com.lastreel.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "660045439222-ct83smot6ehk7ruvuh1v34eknia9e3jg.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBwMeTv1cEu6k7IAoPSWhpa4rIU1iKubqY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "660045439222-ct83smot6ehk7ruvuh1v34eknia9e3jg.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "660045439222-9ubfbmlmeosbi4d36j7a1514q719m6gv.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.endcrawl.endcrawl"
+              }
             }
           ]
         }

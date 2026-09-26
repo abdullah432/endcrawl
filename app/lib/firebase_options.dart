@@ -51,19 +51,18 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions android = FirebaseOptions(
     apiKey: 'AIzaSyBwMeTv1cEu6k7IAoPSWhpa4rIU1iKubqY',
-    appId: '1:660045439222:android:df4373495a4b9bd1f14cd7',
+    appId: '1:660045439222:android:8d55034c9dca17bef14cd7',
     messagingSenderId: '660045439222',
     projectId: 'endcrawl-620c2',
     storageBucket: 'endcrawl-620c2.firebasestorage.app',
   );
-
   static const FirebaseOptions ios = FirebaseOptions(
     apiKey: 'AIzaSyAgJj8XG0lS8jsyhkoOtTP5WI7XjqV4FyQ',
-    appId: '1:660045439222:ios:cf18c0f229f3b045f14cd7',
+    appId: '1:660045439222:ios:60e2e29b8005db1ff14cd7',
     messagingSenderId: '660045439222',
     projectId: 'endcrawl-620c2',
     storageBucket: 'endcrawl-620c2.firebasestorage.app',
-    iosClientId: '660045439222-9ubfbmlmeosbi4d36j7a1514q719m6gv.apps.googleusercontent.com',
-    iosBundleId: 'com.endcrawl.endcrawl',
+    iosClientId: '660045439222-9lmlv92ic5r2351so0au2tdv243t8ale.apps.googleusercontent.com',
+    iosBundleId: 'com.lastreel.app',
   );
 }
