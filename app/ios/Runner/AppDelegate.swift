@@ -1,5 +1,6 @@
 import Flutter
 import UIKit
+import google_mobile_ads
 
 @main
 @objc class AppDelegate: FlutterAppDelegate, FlutterImplicitEngineDelegate {
@@ -15,5 +16,10 @@ import UIKit
     if let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "VideoEncoderPlugin") {
       VideoEncoderPlugin.register(with: registrar)
     }
+    FLTGoogleMobileAdsPlugin.registerNativeAdFactory(
+      engineBridge.pluginRegistry,
+      factoryId: LastReelNativeAdFactory.id,
+      nativeAdFactory: LastReelNativeAdFactory()
+    )
   }
 }

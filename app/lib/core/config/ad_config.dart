@@ -67,12 +67,11 @@ class AdUnits {
 }
 
 /// When the app-open ad may show: only on returning from the background,
-/// never in a device's first [skipLaunches] launches, and only after a real
-/// break (not a trip to the share sheet or a permission prompt). AdMob's
-/// frequency cap, set per unit in the console, limits it further.
+/// and only after a real break (not a trip to the share sheet or a
+/// permission prompt). How often is AdMob's frequency cap, set per unit in
+/// the console.
 abstract final class AppOpenPolicy {
-  static const skipLaunches = 3;
-  static const minBackground = Duration(seconds: 30);
+  static const minBackground = Duration(seconds: 15);
 
   /// Google discards app-open ads after four hours.
   static const maxAdAge = Duration(hours: 4);

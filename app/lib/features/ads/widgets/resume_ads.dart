@@ -7,10 +7,10 @@ import '../../export/controllers/export_controller.dart';
 import '../ads_providers.dart';
 
 /// The app-open ad, shown only when the app comes back from the
-/// background — never on a cold start, never in a device's first
-/// [AppOpenPolicy.skipLaunches] launches, never after a short trip away
+/// background — never on a cold start, never after a short trip away
 /// (the share sheet, a permission prompt), never on Pro, and never over a
-/// render in progress. AdMob's per-unit frequency cap applies on top.
+/// render in progress. How often it may show is AdMob's per-unit
+/// frequency cap, set in the console.
 class ResumeAds extends ConsumerStatefulWidget {
   final Widget child;
 
@@ -22,16 +22,12 @@ class ResumeAds extends ConsumerStatefulWidget {
 
 class _ResumeAdsState extends ConsumerState<ResumeAds> {
   late final AppLifecycleListener _lifecycle;
-  bool _eligible = false;
   DateTime? _hiddenAt;
 
   @override
   void initState() {
     super.initState();
     _lifecycle = AppLifecycleListener(onHide: _onHide, onShow: _onShow);
-    ref.read(sessionStoreProvider).recordLaunch().then((launches) {
-      _eligible = launches > AppOpenPolicy.skipLaunches;
-    });
   }
 
   @override
@@ -45,7 +41,7 @@ class _ResumeAdsState extends ConsumerState<ResumeAds> {
   void _onShow() {
     final hiddenAt = _hiddenAt;
     _hiddenAt = null;
-    if (!_eligible || hiddenAt == null) return;
+    if (hiddenAt == null) return;
     if (ref.read(clockProvider)().difference(hiddenAt) < AppOpenPolicy.minBackground) return;
     if (!(ref.read(entitlementProvider).value?.showsAds ?? false)) return;
     if (ref.read(exportControllerProvider).rendering) return;

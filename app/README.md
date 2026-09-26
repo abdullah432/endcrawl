@@ -269,7 +269,8 @@ Screens talk to `AdService` only; `AdMobAdService` implements it with
 Rules:
 - **No ads in these places:** the editor, the monitor, the template picker, a failed render, or the exported file.
 - **Pro:** the SDK is never started.
-- **App-open ad:** only when the app comes back from at least 30 s in the background. Never on a cold start, never in a device's first three launches, and never over a render. The frequency cap is set per unit in the AdMob console. This placement was added at the product owner's request, beyond the design handoff (whose CHANGES.md lists no full-screen ads besides 6.1a).
+- **App-open ad:** only when the app comes back from at least 15 s in the background, and never on a cold start, on Pro, or over a render. How often is left to the unit's frequency cap in the AdMob console (1 per user per 3 minutes). This placement was added at the product owner's request, beyond the design handoff (whose CHANGES.md lists no full-screen ads besides 6.1a).
+- **Native ad card:** our own layout rather than Google's template. It's registered as factory `lastreelCard` by `ios/Runner/NativeAdFactory.swift` and `android/…/NativeAdFactory.kt`, with the palette passed from Dart. The card has 16 pt corners and shows the icon, headline, an "Ad" badge, body and a pill button. The AdChoices icon is placed inset from the top-right corner so rounding never hides it. No third-party wrapper: the pub.dev native-ad packages were little used and pulled in heavy extras, so this uses `google_mobile_ads`' own factory API.
 - **Consent:** Google's consent flow (UMP) runs before the first request. It shows the form only where required (EEA, UK), and 7.4 then gets an "Ad privacy choices" row. Requests are non-personalised unless the user turns "Personalised ads" on in 7.4.
 
 **IDs** (`lib/core/config/ad_config.dart`):

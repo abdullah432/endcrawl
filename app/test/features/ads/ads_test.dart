@@ -1,11 +1,14 @@
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:lastreel/data/sources/session_store.dart';
+import 'package:lastreel/core/theme/ec_palette.dart';
 import 'package:lastreel/domain/models/entitlement.dart';
+import 'package:lastreel/features/ads/data/admob_ad_service.dart';
 
 import '../../support/app_harness.dart';
 import '../../support/fake_entitlement_repository.dart';
 import '../../support/fake_export.dart';
+import '../../support/fake_project_repository.dart';
+import '../../support/fixtures.dart';
 
 void main() {
   group('app-open ad on resume', () {
@@ -21,37 +24,49 @@ void main() {
       await tester.pump();
     }
 
-    AppHarness launchedBefore(int launches, {FakeEntitlementRepository? plan}) =>
-        AppHarness(session: InMemorySessionStore(const SessionState(), launches), plan: plan);
-
-    testWidgets('shows after a real break once the first three launches are past', (tester) async {
-      final app = launchedBefore(3);
+    testWidgets('shows on the first return after 15 s away — never on a cold start', (tester) async {
+      final app = AppHarness();
       await app.pump(tester);
-      expect(app.ads.appOpenShown, 0, reason: 'never on a cold start');
+      expect(app.ads.appOpenShown, 0, reason: 'never on open');
 
-      await leaveAndReturn(tester, app, const Duration(minutes: 2));
+      await leaveAndReturn(tester, app, const Duration(seconds: 15));
       expect(app.ads.appOpenShown, 1);
     });
 
-    testWidgets('never in the first three launches', (tester) async {
-      final app = launchedBefore(2); // this is launch 3
-      await app.pump(tester);
-      await leaveAndReturn(tester, app, const Duration(minutes: 2));
-      expect(app.ads.appOpenShown, 0);
-    });
-
     testWidgets('not after a short trip away (share sheet, a permission prompt)', (tester) async {
-      final app = launchedBefore(10);
+      final app = AppHarness();
       await app.pump(tester);
-      await leaveAndReturn(tester, app, const Duration(seconds: 5));
+      await leaveAndReturn(tester, app, const Duration(seconds: 10));
       expect(app.ads.appOpenShown, 0);
     });
 
     testWidgets('never on Pro', (tester) async {
-      final app = launchedBefore(10, plan: FakeEntitlementRepository(const Entitlement.pro(period: BillingPeriod.monthly)));
+      final app = AppHarness(plan: FakeEntitlementRepository(const Entitlement.pro(period: BillingPeriod.monthly)));
       await app.pump(tester);
       await leaveAndReturn(tester, app, const Duration(minutes: 2));
       expect(app.ads.appOpenShown, 0);
+    });
+
+    testWidgets('never over a render in progress', (tester) async {
+      final app = AppHarness(
+        projects: FakeProjectRepository(seed: [film()]),
+        frames: FakeFrames(frames: 400),
+      );
+      await app.pump(tester);
+      await tester.tap(find.text('The Long Way Down'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Export').last);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Render H.264'));
+      await tester.pump(const Duration(milliseconds: 200));
+
+      await leaveAndReturn(tester, app, const Duration(minutes: 2));
+      expect(app.ads.appOpenShown, 0);
+
+      // Let the render finish so no timers outlive the test.
+      for (var i = 0; i < 500; i++) {
+        await tester.pump(const Duration(milliseconds: 20));
+      }
     });
   });
 
@@ -79,5 +94,15 @@ void main() {
       expect(find.text('Personalised ads'), findsOneWidget);
       expect(find.text('Ad privacy choices'), findsNothing);
     });
+  });
+
+  test('the native card gets the palette as #RRGGBB per role', () {
+    final colours = nativeCardColours(EcPalette.light);
+    expect(colours.keys, unorderedEquals(['surface', 'line', 'tint', 'ink', 'muted', 'onInk']));
+    for (final v in colours.values) {
+      expect(v, matches(RegExp(r'^#[0-9A-F]{6}$')));
+    }
+    final ink = EcPalette.light.ink.toARGB32() & 0xFFFFFF;
+    expect(colours['ink'], '#${ink.toRadixString(16).padLeft(6, '0').toUpperCase()}');
   });
 }
