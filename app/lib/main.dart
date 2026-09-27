@@ -1,3 +1,4 @@
+import 'package:clarity_flutter/clarity_flutter.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -20,14 +21,22 @@ Future<void> main() async {
   // state just to find out where its data lives.
   final services = await bootstrap();
 
+  final clarityConfig = ClarityConfig(
+    projectId: "yoywe4jl9e",
+    logLevel: LogLevel.None,
+  );
+
   runApp(
-    ProviderScope(
-      overrides: [
-        firebaseAuthProvider.overrideWithValue(services.auth),
-        firestoreProvider.overrideWithValue(services.firestore),
-        sessionStoreProvider.overrideWithValue(services.sessionStore),
-      ],
-      child: const LastReelApp(),
+    ClarityWidget(
+      clarityConfig: clarityConfig,
+      app: ProviderScope(
+        overrides: [
+          firebaseAuthProvider.overrideWithValue(services.auth),
+          firestoreProvider.overrideWithValue(services.firestore),
+          sessionStoreProvider.overrideWithValue(services.sessionStore),
+        ],
+        child: const LastReelApp(),
+      ),
     ),
   );
 }

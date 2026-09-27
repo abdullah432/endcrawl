@@ -50,6 +50,22 @@
       },
       "oauth_client": [
         {
+          "client_id": "660045439222-10qqnqer4ikbfippjvpkjg6k0k25boc6.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.lastreel.app",
+            "certificate_hash": "1fc78abe833c7ecdafcb799288fe732388dbad7f"
+          }
+        },
+        {
+          "client_id": "660045439222-3a1upr1vblthlum5c6df7bbv9th60c8k.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.lastreel.app",
+            "certificate_hash": "ea9cc14bd8c02c217592933b393f173c17248c68"
+          }
+        },
+        {
           "client_id": "660045439222-muuti6e0gog7n4hja35tpea6hfh58iaa.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
