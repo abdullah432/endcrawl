@@ -37,7 +37,7 @@ void main() {
       await tapText(tester, 'Short film');
 
       expect(find.text('Short film template'.toUpperCase()), findsOneWidget);
-      expect(find.text('7 of 7 selected'), findsOneWidget);
+      expect(find.text('7 of 7 sections selected'), findsOneWidget);
       expect(find.text('Clear all'), findsOneWidget);
     });
 
@@ -49,7 +49,7 @@ void main() {
 
       await tapText(tester, 'Directed by');
 
-      expect(find.text('6 of 7 selected'), findsOneWidget);
+      expect(find.text('6 of 7 sections selected'), findsOneWidget);
       expect(continueCount(tester), before - 1);
 
       await continueToCanvas(tester);

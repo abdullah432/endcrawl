@@ -194,12 +194,17 @@ class ProjectController extends Notifier<ProjectState> {
   /// The open/left-open marks go to the device session rather than the
   /// document: with a cloud store the document is shared across devices, and
   /// "I had this open" is not true of all of them.
+  ///
+  /// The save isn't awaited: Firestore applies it to the local cache at once
+  /// (so the library shows the project), but its future only completes when
+  /// the server acknowledges it — seconds on a slow network, never offline —
+  /// and the editor shouldn't wait for that. [saveState] still reports it.
   Future<void> markOpened() async {
     _draft = false;
     final project = state.project;
     await _session.setLastOpened(project.id);
     await _session.setLeftOpen(project.id);
-    await _save(project);
+    unawaited(_save(project));
   }
 
   /// Clean close: clears the left-open mark so the next launch offers a

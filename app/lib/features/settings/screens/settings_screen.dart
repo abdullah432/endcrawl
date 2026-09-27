@@ -125,7 +125,7 @@ class SettingsScreen extends ConsumerWidget {
           const SizedBox(height: 22),
           EcGroup(label: 'Legal & privacy', children: [
             EcGroupRow(title: 'Privacy & data', onTap: () => PrivacyScreen.open(context)),
-            EcGroupRow(title: 'Privacy policy', onTap: () => LegalDocumentScreen.open(context, privacyPolicy)),
+            EcGroupRow(title: 'Privacy policy', onTap: () => links.openUrl(AppLinks.privacyPolicy)),
             EcGroupRow(title: 'Terms of service', onTap: () => LegalDocumentScreen.open(context, termsOfService)),
             EcGroupRow(
               title: 'Open-source licences',

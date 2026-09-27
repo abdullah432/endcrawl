@@ -16,11 +16,15 @@ class EcHeadline extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final base = style ?? context.type.displayL;
+    // A lead that already ends in a space or line break — "Unlimited
+    // projects.\n" — needs no separator; adding one would indent the italic
+    // line or double the gap.
+    final separated = emphasis == null || lead.endsWith(' ') || lead.endsWith('\n');
     return Text.rich(
       TextSpan(
         style: base,
         children: [
-          TextSpan(text: emphasis == null ? lead : '$lead '),
+          TextSpan(text: separated ? lead : '$lead '),
           if (emphasis != null) TextSpan(text: emphasis, style: const TextStyle(fontStyle: FontStyle.italic)),
         ],
       ),

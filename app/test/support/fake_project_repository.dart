@@ -19,6 +19,9 @@ class FakeProjectRepository implements ProjectRepository {
 
   int saveCount = 0;
 
+  /// How long [load] takes, for exercising a slow open.
+  Duration? loadDelay;
+
   final _changes = StreamController<void>.broadcast();
 
   @override
@@ -40,6 +43,7 @@ class FakeProjectRepository implements ProjectRepository {
 
   @override
   Future<Result<Project>> load(String id) async {
+    if (loadDelay case final delay?) await Future<void>.delayed(delay);
     if (failWith case final failure?) return Err(failure);
     final project = projects[id];
     if (project == null) return const Err(AppFailure.notFound('No such project.'));

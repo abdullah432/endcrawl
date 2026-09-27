@@ -12,18 +12,28 @@ import 'controllers/project_controller.dart';
 // from it, rather than a WidgetRef: they're often called from a sheet that
 // has just popped, whose ref is disposed before the awaited work finishes.
 
+/// True from the tap that opens a project until its editor is on screen, so
+/// repeated taps while the project loads don't stack several editors.
+bool _opening = false;
+
 /// Opens a stored project in the editor — from a library card, the action
 /// sheet, or the crash-recovery card. One path, so every entry point marks
 /// the project open (what makes a kill recoverable) the same way.
 Future<void> openStoredProject(BuildContext context, String id) async {
-  final container = ProviderScope.containerOf(context, listen: false);
-  final result = await container.read(projectControllerProvider.notifier).openProject(id);
-  if (!context.mounted) return;
-  switch (result) {
-    case Ok():
-      await enterEditor(context);
-    case Err(:final failure):
-      showEcToast(context, failure.message);
+  if (_opening) return;
+  _opening = true;
+  try {
+    final container = ProviderScope.containerOf(context, listen: false);
+    final result = await container.read(projectControllerProvider.notifier).openProject(id);
+    if (!context.mounted) return;
+    switch (result) {
+      case Ok():
+        await enterEditor(context, onShown: () => _opening = false);
+      case Err(:final failure):
+        showEcToast(context, failure.message);
+    }
+  } finally {
+    _opening = false;
   }
 }
 
@@ -31,7 +41,8 @@ Future<void> openStoredProject(BuildContext context, String id) async {
 /// project just loaded, or a new one just created — and refreshes the
 /// library when the editor closes. [replaceFlow] drops the new-project
 /// screens underneath, so Back from the editor returns to the library.
-Future<void> enterEditor(BuildContext context, {bool replaceFlow = false}) async {
+/// [onShown] runs once the editor route is pushed, before it closes.
+Future<void> enterEditor(BuildContext context, {bool replaceFlow = false, VoidCallback? onShown}) async {
   final container = ProviderScope.containerOf(context, listen: false);
   container.read(playbackControllerProvider.notifier).resetToHead();
   // Flags the document as open before the editor appears, so a kill while
@@ -41,10 +52,8 @@ Future<void> enterEditor(BuildContext context, {bool replaceFlow = false}) async
   if (!context.mounted) return;
   final route = MaterialPageRoute<void>(builder: (_) => const EditorScreen());
   final navigator = Navigator.of(context);
-  if (replaceFlow) {
-    await navigator.pushAndRemoveUntil(route, (r) => r.isFirst);
-  } else {
-    await navigator.push(route);
-  }
+  final closed = replaceFlow ? navigator.pushAndRemoveUntil(route, (r) => r.isFirst) : navigator.push(route);
+  onShown?.call();
+  await closed;
   container.invalidate(projectSummariesProvider);
 }

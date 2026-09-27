@@ -91,16 +91,19 @@ void main() {
       expect(find.text('Continue with Google'), findsOneWidget);
     });
 
-    testWidgets('the terms open in the app', (tester) async {
-      await AppHarness.signedOut().pump(tester);
+    testWidgets('the privacy policy opens the published page; the terms open in the app', (tester) async {
+      final app = AppHarness.signedOut();
+      await app.pump(tester);
 
       await tester.ensureVisible(find.byType(LegalConsent));
       await tester.pumpAndSettle();
       await tester.tapOnText(find.textRange.ofSubstring('Privacy Policy'));
       await tester.pumpAndSettle();
+      expect(app.links.opened, [Uri.parse('https://cookoo.dev/lastreel/privacy-policy')]);
 
-      expect(find.text('Privacy policy'), findsOneWidget);
-      expect(find.textContaining('What we collect'), findsOneWidget);
+      await tester.tapOnText(find.textRange.ofSubstring('Terms'));
+      await tester.pumpAndSettle();
+      expect(find.text('Terms of service'), findsOneWidget);
     });
   });
 

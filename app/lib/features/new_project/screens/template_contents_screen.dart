@@ -88,7 +88,9 @@ class _TemplateContentsScreenState extends ConsumerState<TemplateContentsScreen>
             child: Row(
               children: [
                 Expanded(
-                  child: Text('${_included.length} of ${_sections.length} selected',
+                  // Sections, not blocks: one section can add several blocks
+                  // (Crew departments adds 12), which the button counts.
+                  child: Text('${_included.length} of ${_sections.length} sections selected',
                       style: t.mono.copyWith(fontSize: 10.5, color: p.ink2)),
                 ),
                 EcButton.text(

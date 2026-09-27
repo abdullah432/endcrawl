@@ -4,6 +4,7 @@ import 'package:lastreel/core/theme/theme_context.dart';
 import 'package:lastreel/core/widgets/ec_button.dart';
 import 'package:lastreel/core/widgets/ec_chip.dart';
 import 'package:lastreel/core/widgets/ec_fields.dart';
+import 'package:lastreel/core/widgets/ec_headline.dart';
 import 'package:lastreel/core/widgets/ec_settings.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -35,6 +36,19 @@ void main() {
     }));
 
     expect(palette, same(EcPalette.light));
+  });
+
+  testWidgets('a headline adds a space before its italic words only where one is missing', (tester) async {
+    String rendered() => tester.widget<RichText>(find.byType(RichText).last).text.toPlainText();
+
+    await tester.pumpWidget(_host(const EcHeadline('Unlimited projects.\n', emphasis: 'Pro formats. No ads.')));
+    expect(rendered(), 'Unlimited projects.\nPro formats. No ads.');
+
+    await tester.pumpWidget(_host(const EcHeadline('Reset your', emphasis: 'password.')));
+    expect(rendered(), 'Reset your password.');
+
+    await tester.pumpWidget(_host(const EcHeadline('What we keep, and ', emphasis: 'what you control.')));
+    expect(rendered(), 'What we keep, and what you control.');
   });
 
   testWidgets('a busy button ignores taps and keeps its height', (tester) async {

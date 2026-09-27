@@ -7,6 +7,10 @@ import 'package:flutter/foundation.dart';
 abstract final class AppLinks {
   static const supportEmail = 'support@lastreel.app';
   static final helpCentre = Uri.parse('https://lastreel.app/help');
+
+  /// The published policy, hosted on cookoo.dev — the same page the store
+  /// listings link to, so there is only one version to keep current.
+  static final privacyPolicy = Uri.parse('https://cookoo.dev/lastreel/privacy-policy');
   static String get storeName => defaultTargetPlatform == TargetPlatform.android ? 'Google Play' : 'App Store';
   static Uri get manageSubscriptions => Uri.parse(defaultTargetPlatform == TargetPlatform.android
       ? 'https://play.google.com/store/account/subscriptions?package=com.lastreel.app'

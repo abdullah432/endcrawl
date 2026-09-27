@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../bootstrap.dart';
+import '../../../core/config/app_links.dart';
 import '../../../core/result.dart';
 import '../../../core/theme/theme_context.dart';
 import '../../../core/widgets/ec_headline.dart';
@@ -11,9 +12,7 @@ import '../../../core/widgets/ec_toast.dart';
 import '../../../domain/models/user_profile.dart';
 import '../../ads/ads_providers.dart';
 import '../controllers/settings_controller.dart';
-import '../models/legal_document.dart';
 import 'delete_account_screen.dart';
-import 'legal_document_screen.dart';
 
 /// 7.4 — plain language about what is kept, three switches with honest
 /// defaults, and a way out.
@@ -85,7 +84,7 @@ class PrivacyScreen extends ConsumerWidget {
               subtitle: 'A .zip of projects and account info',
               onTap: () => showEcToast(context, 'Data export is coming soon'),
             ),
-            EcGroupRow(title: 'Privacy policy', onTap: () => LegalDocumentScreen.open(context, privacyPolicy)),
+            EcGroupRow(title: 'Privacy policy', onTap: () => ref.read(externalLinksProvider).openUrl(AppLinks.privacyPolicy)),
             EcGroupRow(title: 'Delete account', destructive: true, onTap: () => DeleteAccountScreen.open(context)),
           ]),
         ],

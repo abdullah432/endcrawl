@@ -4,6 +4,7 @@ import 'package:lastreel/domain/models/credit_block.dart';
 import 'package:lastreel/domain/models/entitlement.dart';
 import 'package:lastreel/domain/models/project.dart';
 import 'package:lastreel/domain/models/project_settings.dart';
+import 'package:lastreel/features/editor/screens/editor_screen.dart';
 import 'package:lastreel/features/library/widgets/project_card.dart';
 import 'package:lastreel/features/library/widgets/slot_card.dart';
 import 'package:flutter/material.dart';
@@ -183,6 +184,28 @@ void main() {
       await tapText(tester, 'New');
       expect(find.textContaining('Pick a'), findsWidgets);
     });
+  });
+
+  testWidgets('tapping a card again while it opens still opens one editor', (tester) async {
+    final projects = FakeProjectRepository(seed: [_project('The Long Way Down', day: 1)])
+      ..loadDelay = const Duration(seconds: 2);
+    await AppHarness(projects: projects).pump(tester);
+
+    for (var i = 0; i < 3; i++) {
+      await tester.tap(find.text('The Long Way Down'));
+      await tester.pump(const Duration(milliseconds: 300));
+    }
+    await tester.pump(const Duration(seconds: 2)); // the slow load finishes
+    await tester.pumpAndSettle();
+    expect(find.byType(EditorScreen, skipOffstage: false), findsOneWidget);
+
+    // Once the editor has closed, the card opens again.
+    await tester.tap(find.byTooltip('Back'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('The Long Way Down'));
+    await tester.pump(const Duration(seconds: 2));
+    await tester.pumpAndSettle();
+    expect(find.byType(EditorScreen, skipOffstage: false), findsOneWidget);
   });
 
   group('1.3 – 1.5, 1.7 project actions', () {

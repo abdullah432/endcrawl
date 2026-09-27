@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../bootstrap.dart';
+import '../../../core/config/app_links.dart';
 import '../../../core/theme/theme_context.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../core/widgets/ec_button.dart';
@@ -135,7 +137,7 @@ class ProSheet extends ConsumerWidget {
             EcButton(label: 'Terms of service', variant: EcButtonVariant.text, size: EcButtonSize.small,
               onPressed: () => LegalDocumentScreen.open(context, termsOfService)),
             EcButton(label: 'Privacy policy', variant: EcButtonVariant.text, size: EcButtonSize.small,
-              onPressed: () => LegalDocumentScreen.open(context, privacyPolicy)),
+              onPressed: () => ref.read(externalLinksProvider).openUrl(AppLinks.privacyPolicy)),
           ]),
         ],
       ),
