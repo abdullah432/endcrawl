@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../bootstrap.dart';
@@ -5,58 +6,98 @@ import '../../../core/result.dart';
 import '../../../domain/models/entitlement.dart';
 
 class PlanState {
-  final PlanOffer selected;
+  final List<PlanOffer> offers;
+  final PlanOffer? selected;
+  final bool loading;
   final bool purchasing;
   final bool restoring;
-
-  /// A message for the person — a failed purchase, or the outcome of a
-  /// restore. Cleared on the next action.
   final String? message;
 
-  const PlanState({this.selected = PlanOffer.yearly, this.purchasing = false, this.restoring = false, this.message});
-
+  const PlanState({
+    this.offers = const [],
+    this.selected,
+    this.loading = true,
+    this.purchasing = false,
+    this.restoring = false,
+    this.message,
+  });
   bool get busy => purchasing || restoring;
 
-  PlanState copyWith({PlanOffer? selected, bool? purchasing, bool? restoring, String? message, bool clearMessage = false}) {
-    return PlanState(
-      selected: selected ?? this.selected,
-      purchasing: purchasing ?? this.purchasing,
-      restoring: restoring ?? this.restoring,
-      message: clearMessage ? null : (message ?? this.message),
-    );
-  }
+  PlanState copyWith({
+    List<PlanOffer>? offers,
+    PlanOffer? selected,
+    bool? loading,
+    bool? purchasing,
+    bool? restoring,
+    String? message,
+    bool clearMessage = false,
+  }) => PlanState(
+    offers: offers ?? this.offers,
+    selected: selected ?? this.selected,
+    loading: loading ?? this.loading,
+    purchasing: purchasing ?? this.purchasing,
+    restoring: restoring ?? this.restoring,
+    message: clearMessage ? null : (message ?? this.message),
+  );
 }
 
-/// Drives the Pro sheet (6.5) and the Restore rows on Settings.
-///
-/// Everything goes through [EntitlementRepository]; when a store-backed
-/// implementation lands, this controller and every screen above it stay as
-/// they are. The yearly plan is preselected, as in the design.
 class PlanController extends Notifier<PlanState> {
   @override
-  PlanState build() => const PlanState();
+  PlanState build() {
+    ref.watch(currentUidProvider);
+    unawaited(Future.microtask(loadOffers));
+    return const PlanState();
+  }
 
-  void select(PlanOffer offer) => state = state.copyWith(selected: offer, clearMessage: true);
+  Future<void> loadOffers() async {
+    if (!ref.mounted) return;
+    final uid = ref.read(currentUidProvider);
+    state = state.copyWith(loading: true, clearMessage: true);
+    final result = await ref.read(entitlementRepositoryProvider).offers();
+    if (!ref.mounted || ref.read(currentUidProvider) != uid) return;
+    state = switch (result) {
+      Ok(:final value) => state.copyWith(
+        offers: value,
+        loading: false,
+        selected: value.where((o) => o.period == BillingPeriod.yearly).firstOrNull ?? value.firstOrNull,
+      ),
+      Err(:final failure) => state.copyWith(loading: false, message: failure.message),
+    };
+  }
 
-  /// True when the purchase went through.
+  void select(PlanOffer offer) {
+    if (!state.busy) state = state.copyWith(selected: offer, clearMessage: true);
+  }
+
   Future<bool> purchase() async {
-    if (state.busy) return false;
+    final offer = state.selected;
+    if (state.busy || state.loading || offer == null) return false;
+    final uid = ref.read(currentUidProvider);
     state = state.copyWith(purchasing: true, clearMessage: true);
-    final result = await ref.read(entitlementRepositoryProvider).purchase(state.selected);
+    final result = await ref.read(entitlementRepositoryProvider).purchase(offer);
+    if (!ref.mounted || ref.read(currentUidProvider) != uid) return false;
     state = switch (result) {
       Ok() => state.copyWith(purchasing: false),
-      Err(:final failure) => state.copyWith(purchasing: false, message: failure.message),
+      Err(:final failure) => state.copyWith(
+        purchasing: false,
+        message: failure.kind == FailureKind.cancelled ? null : failure.message,
+        clearMessage: failure.kind == FailureKind.cancelled,
+      ),
     };
-    return result is Ok;
+    return result is Ok<Entitlement> && result.value.isPro;
   }
 
   Future<void> restore() async {
     if (state.busy) return;
+    final uid = ref.read(currentUidProvider);
     state = state.copyWith(restoring: true, clearMessage: true);
     final result = await ref.read(entitlementRepositoryProvider).restore();
+    if (!ref.mounted || ref.read(currentUidProvider) != uid) return;
     state = switch (result) {
-      Ok(:final value) =>
-        state.copyWith(restoring: false, message: value.isPro ? 'Pro restored.' : 'No active subscription found.'),
+      Ok(:final value) => state.copyWith(
+        restoring: false,
+        message: value.isPro ? 'Pro restored.' : 'No active subscription found.',
+      ),
       Err(:final failure) => state.copyWith(restoring: false, message: failure.message),
     };
   }

@@ -47,7 +47,7 @@ class PrivacyScreen extends ConsumerWidget {
           const EcGroup(label: 'Stored with your account', children: [
             EcGroupRow(title: 'Account', subtitle: 'Name, email and sign-in method', chevron: false),
             EcGroupRow(title: 'Projects & renders', subtitle: 'Synced so they survive a new phone', chevron: false),
-            EcGroupRow(title: 'Purchases', subtitle: 'Plan status only. Apple handles payment.', chevron: false),
+            EcGroupRow(title: 'Purchases', subtitle: 'Your store handles payment; RevenueCat manages plan status.', chevron: false),
           ]),
           const SizedBox(height: 22),
           EcGroup(label: 'Your choices', children: [

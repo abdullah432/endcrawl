@@ -29,7 +29,7 @@ class SubscriptionScreen extends ConsumerWidget {
     final count = ref.watch(projectSummariesProvider).value?.length ?? 0;
     final links = ref.read(externalLinksProvider);
     final yearly = entitlement.period == BillingPeriod.yearly;
-    final offer = yearly ? PlanOffer.yearly : PlanOffer.monthly;
+    final manageUrl = entitlement.managementUrl ?? AppLinks.manageSubscriptions;
     final renews = entitlement.renewsAt;
 
     return EcScaffold(
@@ -53,9 +53,9 @@ class SubscriptionScreen extends ConsumerWidget {
                 Text(entitlement.isPro ? 'LastReel Pro' : 'Free plan', style: t.displayM.copyWith(color: p.onInk)),
                 if (entitlement.isPro) ...[
                   const SizedBox(height: 6),
-                  Text('${yearly ? 'Yearly' : 'Monthly'} · ${offer.price}', style: t.mono.copyWith(fontSize: 12, color: p.onInk)),
+                  Text(entitlement.period == null ? 'Active subscription' : yearly ? 'Yearly subscription' : 'Monthly subscription', style: t.mono.copyWith(fontSize: 12, color: p.onInk)),
                   if (renews != null)
-                    Text('Renews ${_date(renews)}', style: t.mono.copyWith(fontSize: 12, color: p.onInk.withValues(alpha: .8))),
+                    Text('${entitlement.willRenew ? 'Renews' : 'Expires'} ${_date(renews)}', style: t.mono.copyWith(fontSize: 12, color: p.onInk.withValues(alpha: .8))),
                 ],
               ],
             ),
@@ -71,9 +71,9 @@ class SubscriptionScreen extends ConsumerWidget {
           ]),
           const SizedBox(height: 18),
           EcGroup(children: [
-            EcGroupRow(title: 'Change plan', value: yearly ? 'Yearly' : 'Monthly', onTap: () => ProSheet.show(context)),
-            EcGroupRow(title: 'Billing history', onTap: () => links.openUrl(AppLinks.manageSubscriptions)),
-            EcGroupRow(title: 'Manage in App Store', onTap: () => links.openUrl(AppLinks.manageSubscriptions)),
+            EcGroupRow(title: entitlement.isPro ? 'Change plan' : 'Get Pro', onTap: () => entitlement.isPro ? links.openUrl(manageUrl) : ProSheet.show(context)),
+            EcGroupRow(title: 'Billing history', onTap: () => links.openUrl(manageUrl)),
+            EcGroupRow(title: 'Manage in ${AppLinks.storeName}', onTap: () => links.openUrl(manageUrl)),
             EcGroupRow(
               title: 'Restore purchases',
               onTap: () async {
@@ -87,7 +87,7 @@ class SubscriptionScreen extends ConsumerWidget {
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 6),
             child: Text(
-              'Cancel any time in App Store settings. Pro stays on until the renewal date. After that nothing is '
+              'Cancel any time in your store settings. Pro stays on until the paid period ends. After that nothing is '
               'deleted: you keep every project, three can be edited, and ads come back.',
               style: t.caption.copyWith(height: 1.5),
             ),

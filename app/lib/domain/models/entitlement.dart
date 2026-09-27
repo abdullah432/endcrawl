@@ -18,13 +18,12 @@ class Entitlement {
   /// Set for Pro: how it's billed and when it renews (7.3).
   final BillingPeriod? period;
   final DateTime? renewsAt;
+  final bool willRenew;
+  final Uri? managementUrl;
 
-  const Entitlement.free()
-      : plan = Plan.free,
-        period = null,
-        renewsAt = null;
+  const Entitlement.free() : plan = Plan.free, period = null, renewsAt = null, willRenew = false, managementUrl = null;
 
-  const Entitlement.pro({required BillingPeriod this.period, this.renewsAt}) : plan = Plan.pro;
+  const Entitlement.pro({this.period, this.renewsAt, this.willRenew = true, this.managementUrl}) : plan = Plan.pro;
 
   bool get isPro => plan == Plan.pro;
 
@@ -46,14 +45,15 @@ class PlanOffer {
   final String price;
   final String detail;
   final String? badge;
+  final String packageId;
 
-  const PlanOffer({required this.period, required this.price, required this.detail, this.badge});
-
-  /// The design's prices. Placeholder until the store supplies localised
-  /// prices; a real store integration replaces these with its own products.
-  static const monthly = PlanOffer(period: BillingPeriod.monthly, price: r'$4.99', detail: 'Cancel anytime');
-  static const yearly = PlanOffer(period: BillingPeriod.yearly, price: r'$29.99', detail: r'$2.50 a month', badge: 'Save 50%');
-  static const all = [monthly, yearly];
+  const PlanOffer({
+    required this.period,
+    required this.price,
+    required this.detail,
+    this.badge,
+    required this.packageId,
+  });
 }
 
 /// Returned when an action would add a project beyond the plan's cap. A

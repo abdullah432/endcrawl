@@ -31,17 +31,10 @@
               "client_type": 3
             },
             {
-<<<<<<< HEAD
-              "client_id": "660045439222-9ubfbmlmeosbi4d36j7a1514q719m6gv.apps.googleusercontent.com",
-              "client_type": 2,
-              "ios_info": {
-                "bundle_id": "com.endcrawl.endcrawl"
-=======
               "client_id": "660045439222-9lmlv92ic5r2351so0au2tdv243t8ale.apps.googleusercontent.com",
               "client_type": 2,
               "ios_info": {
                 "bundle_id": "com.lastreel.app"
->>>>>>> 296540d (Refactor iOS project configuration and update dependencies)
               }
             }
           ]
@@ -57,8 +50,6 @@
       },
       "oauth_client": [
         {
-<<<<<<< HEAD
-=======
           "client_id": "660045439222-muuti6e0gog7n4hja35tpea6hfh58iaa.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
@@ -67,7 +58,6 @@
           }
         },
         {
->>>>>>> 296540d (Refactor iOS project configuration and update dependencies)
           "client_id": "660045439222-ct83smot6ehk7ruvuh1v34eknia9e3jg.apps.googleusercontent.com",
           "client_type": 3
         }
@@ -85,17 +75,10 @@
               "client_type": 3
             },
             {
-<<<<<<< HEAD
-              "client_id": "660045439222-9ubfbmlmeosbi4d36j7a1514q719m6gv.apps.googleusercontent.com",
-              "client_type": 2,
-              "ios_info": {
-                "bundle_id": "com.endcrawl.endcrawl"
-=======
               "client_id": "660045439222-9lmlv92ic5r2351so0au2tdv243t8ale.apps.googleusercontent.com",
               "client_type": 2,
               "ios_info": {
                 "bundle_id": "com.lastreel.app"
->>>>>>> 296540d (Refactor iOS project configuration and update dependencies)
               }
             }
           ]

@@ -32,6 +32,7 @@ final class Err<T> extends Result<T> {
 }
 
 enum FailureKind {
+  cancelled,
   /// The requested document does not exist.
   notFound,
 

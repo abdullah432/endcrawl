@@ -5,6 +5,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'core/services/external_links.dart';
+import 'core/config/billing_config.dart';
+import 'data/repositories/revenuecat_entitlement_repository.dart';
 import 'data/repositories/auth_repository.dart';
 import 'data/repositories/entitlement_repository.dart';
 import 'data/repositories/firebase_auth_repository.dart';
@@ -86,8 +88,14 @@ final userProfileProvider = StreamProvider<UserProfile>((ref) {
   return ref.watch(userProfileRepositoryProvider).watch();
 });
 
-/// The plan source. Free for everyone until a store is wired in.
-final entitlementRepositoryProvider = Provider<EntitlementRepository>((ref) => const FreeEntitlementRepository());
+/// One SDK owner for the lifetime of the app, with immediate account isolation.
+final entitlementRepositoryProvider = Provider<EntitlementRepository>((ref) {
+  if (BillingConfig.apiKey.isEmpty) return const FreeEntitlementRepository();
+  final repository = RevenueCatEntitlementRepository(apiKey: BillingConfig.apiKey);
+  ref.listen(currentUidProvider, (_, uid) => repository.setUser(uid), fireImmediately: true);
+  ref.onDispose(repository.dispose);
+  return repository;
+});
 
 /// The signed-in account's plan. Defaults to Free while loading, so a slow
 /// store never makes the cap disappear.

@@ -57,7 +57,7 @@ class SlotsFullSheet extends StatelessWidget {
                   textBaseline: TextBaseline.alphabetic,
                   children: [
                     Expanded(child: Text('LastReel Pro', style: t.titleM.copyWith(fontWeight: FontWeight.w700))),
-                    Text('${PlanOffer.monthly.price}/mo', style: t.mono.copyWith(fontSize: 12, color: p.ink2)),
+                    Text('View plans', style: t.mono.copyWith(fontSize: 12, color: p.ink2)),
                   ],
                 ),
                 const SizedBox(height: 12),

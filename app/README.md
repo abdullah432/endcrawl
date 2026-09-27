@@ -239,10 +239,11 @@ Free keeps three projects and renders H.264 and HEVC up to 1080p, with
 every block, timing and look tool and no watermark. Pro lifts the cap,
 renders ProRes 422 HQ, ProRes 4444, PNG and 4K every time, and removes ads.
 
-- **`EntitlementRepository` is the seam.** `FreeEntitlementRepository`
-  ships until a store (StoreKit / Play Billing, or RevenueCat) is wired in;
-  purchase and restore already go through it, and nothing above it changes
-  when the real one lands. The plan is never written by the client.
+- **`EntitlementRepository` is the seam.** Android uses RevenueCat with Firebase
+  user IDs, localized store offerings, purchase/restore, and live entitlement
+  updates. Unconfigured platforms use `FreeEntitlementRepository`. The plan is
+  never written by the client. See [subscription setup](../docs/subscriptions.md)
+  for account configuration, release artifacts, and outstanding store testing.
 - **Caps and gates are enforced in controllers, not widgets.** Creating,
   duplicating and starting the new-project flow check the project cap.
   `ExportController.start()` refuses Pro settings on Free without a pass.
@@ -269,14 +270,20 @@ Screens talk to `AdService` only; `AdMobAdService` implements it with
 Rules:
 - **No ads in these places:** the editor, the monitor, the template picker, a failed render, or the exported file.
 - **Pro:** the SDK is never started.
-- **App-open ad:** only when the app comes back from at least 15 s in the background, and never on a cold start, on Pro, or over a render. How often is left to the unit's frequency cap in the AdMob console (1 per user per 3 minutes). This placement was added at the product owner's request, beyond the design handoff (whose CHANGES.md lists no full-screen ads besides 6.1a).
+- **App-open ad:** only when the app comes back from at least 15 s in the background, and never on a cold start, on Pro, or over a render. Frequency capping is controlled in AdMob; the console currently shows no cap. This placement was added at the product owner's request, beyond the design handoff (whose CHANGES.md lists no full-screen ads besides 6.1a).
 - **Native ad card:** our own layout rather than Google's template. It's registered as factory `lastreelCard` by `ios/Runner/NativeAdFactory.swift` and `android/…/NativeAdFactory.kt`, with the palette passed from Dart. The card has 16 pt corners and shows the icon, headline, an "Ad" badge, body and a pill button. The AdChoices icon is placed inset from the top-right corner so rounding never hides it. No third-party wrapper: the pub.dev native-ad packages were little used and pulled in heavy extras, so this uses `google_mobile_ads`' own factory API.
 - **Consent:** Google's consent flow (UMP) runs before the first request. It shows the form only where required (EEA, UK), and 7.4 then gets an "Ad privacy choices" row. Requests are non-personalised unless the user turns "Personalised ads" on in 7.4.
 
 **IDs** (`lib/core/config/ad_config.dart`):
 - Debug and profile builds, the simulator included, always use Google's test units. Only `--release` uses the real ones.
-- The iOS app is `ca-app-pub-6644211975790806~5643195524`, set as `GADApplicationIdentifier` in Info.plist.
-- **Android has no AdMob app yet.** The manifest carries Google's sample app ID, and Android release builds show no ads until the real app ID and units are filled in.
+- Android release uses verified app ID `ca-app-pub-6644211975790806~5643195524`
+  and all five production units in `ad_config.dart`. Gradle uses Google's sample
+  app ID for debug/profile and the production app ID only for release.
+- Those IDs were previously mislabeled as iOS. iOS release ads are now disabled
+  pending a separate iOS AdMob app; iOS debug/profile retain Google's test units
+  and the sample iOS app ID.
+- AdMob currently reports **Requires review**, no linked store details, and no
+  frequency caps. Live delivery has not been verified. See `../docs/admob.md`.
 
 ## Notable implementation choices
 
@@ -379,8 +386,9 @@ open the file.
 
 Placeholders that say so in the UI rather than pretending: profile photos,
 "Download my data", reference-clip backgrounds, file import in bulk entry,
-image logos (marks are text), Frame.io delivery, and purchases (until a
-store is connected). The legal documents are placeholder copy for legal to
+image logos (marks are text), and Frame.io delivery. Subscription code is
+implemented; store configuration and real purchase validation remain tracked in
+[subscription setup](../docs/subscriptions.md). The legal documents are placeholder copy for legal to
 replace, and `core/config/app_links.dart` holds placeholder addresses.
 
 There is no guest mode. Firebase Anonymous Auth would let someone build a

@@ -10,6 +10,12 @@ class FakeEntitlementRepository implements EntitlementRepository {
   FakeEntitlementRepository([this.entitlement = const Entitlement.free()]);
 
   @override
+  Future<Result<List<PlanOffer>>> offers() async => const Ok([
+    PlanOffer(period: BillingPeriod.monthly, price: r'$4.99', detail: 'Billed monthly', packageId: r'$rc_monthly'),
+    PlanOffer(period: BillingPeriod.yearly, price: r'$29.99', detail: 'Billed yearly', packageId: r'$rc_annual'),
+  ]);
+
+  @override
   Stream<Entitlement> watch() => Stream.value(entitlement);
 
   @override

@@ -64,7 +64,7 @@ const termsOfService = LegalDocument(
     LegalSection('Your account', 'You need an account to keep projects. Keep your sign-in details to yourself; you are responsible for what happens under your account.'),
     LegalSection('Your content', 'You own the projects and renders you make. We store them only to sync and render them for you.'),
     LegalSection('Plans', 'The free plan keeps three projects and shows ads. Pro removes the cap and the ads. Every tool, codec and resolution is on both plans.'),
-    LegalSection('Subscriptions', 'Pro is billed by Apple and renews until you cancel in App Store settings. After it ends nothing is deleted: three projects stay editable and ads come back.'),
+    LegalSection('Subscriptions', 'Pro is billed by your app store and renews until you cancel in its subscription settings. After it ends nothing is deleted: three projects stay editable and ads come back.'),
     LegalSection('Ending', 'You can delete your account at any time from Settings. We may suspend accounts that abuse the service.'),
   ],
 );

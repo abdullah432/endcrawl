@@ -102,7 +102,7 @@ class _DeleteAccountScreenState extends ConsumerState<DeleteAccountScreen> {
           EcNotice(
             tone: EcTone.warn,
             title: 'Deleting doesn’t cancel a subscription.',
-            body: 'Apple handles billing. Cancel Pro in App Store settings first.',
+            body: 'Your store handles billing. Cancel Pro in your store subscriptions first.',
             actions: [
               EcButton.text(
                 label: 'Open subscriptions ›',

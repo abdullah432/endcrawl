@@ -10,6 +10,8 @@ import '../../../core/widgets/ec_scaffold.dart';
 import '../../../core/widgets/ec_sheet.dart';
 import '../../../core/widgets/ec_surfaces.dart';
 import '../../../domain/models/entitlement.dart';
+import '../../settings/screens/legal_document_screen.dart';
+import '../../settings/models/legal_document.dart';
 import '../controllers/plan_controller.dart';
 
 /// 6.5 — LastReel Pro.
@@ -39,7 +41,7 @@ class ProSheet extends ConsumerWidget {
     final p = context.palette;
     final t = context.type;
     final selected = state.selected;
-    final periodLabel = selected.period == BillingPeriod.yearly ? 'yr' : 'mo';
+    final periodLabel = selected?.period == BillingPeriod.yearly ? 'yr' : 'mo';
 
     return EcSheet(
       maxHeightFraction: 0.94,
@@ -66,9 +68,9 @@ class ProSheet extends ConsumerWidget {
               const SizedBox(height: 10),
             ],
             EcButton(
-              label: 'Start Pro — ${selected.price}/$periodLabel',
+              label: state.loading ? 'Loading plans…' : selected == null ? 'Plans unavailable' : 'Start Pro — ${selected.price}/$periodLabel',
               busy: state.purchasing,
-              onPressed: state.busy
+              onPressed: state.busy || state.loading || selected == null
                   ? null
                   : () async {
                       final ok = await controller.purchase();
@@ -119,12 +121,22 @@ class ProSheet extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: 18),
-          for (final offer in PlanOffer.all) ...[
+          if (!state.loading && state.offers.isEmpty)
+            EcButton(label: 'Retry loading plans', variant: EcButtonVariant.text, onPressed: controller.loadOffers),
+          for (final offer in state.offers) ...[
             _OfferTile(offer: offer, selected: offer == selected, onTap: () => controller.select(offer)),
             const SizedBox(height: 8),
           ],
           const SizedBox(height: 10),
           _ComparisonTable(rows: _comparison),
+          const SizedBox(height: 16),
+          Text('Payment is charged to your store account. Subscriptions renew automatically at the displayed price for the selected period unless cancelled in your store settings. Cancel anytime; access continues until the paid period ends.', style: t.caption),
+          Wrap(children: [
+            EcButton(label: 'Terms of service', variant: EcButtonVariant.text, size: EcButtonSize.small,
+              onPressed: () => LegalDocumentScreen.open(context, termsOfService)),
+            EcButton(label: 'Privacy policy', variant: EcButtonVariant.text, size: EcButtonSize.small,
+              onPressed: () => LegalDocumentScreen.open(context, privacyPolicy)),
+          ]),
         ],
       ),
     );

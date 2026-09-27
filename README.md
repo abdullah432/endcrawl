@@ -36,8 +36,9 @@ Projects live in Firestore under `users/{uid}/projects/{projectId}` (with a
 `users/{uid}` profile for preferences), offline-first, with autosave and
 crash recovery. Export renders on the device through the platform's own
 encoders (H.264, HEVC, ProRes where the hardware has it, and PNG
-sequences); purchases and ads sit behind seams awaiting a store and an ad
-SDK. See [`app/README.md`](app/README.md) for the architecture and what is
+sequences). Subscriptions use RevenueCat, with localized prices and account-scoped
+Pro access; see [subscription setup](docs/subscriptions.md) for store setup and
+validation status. See [`app/README.md`](app/README.md) for the architecture and what is
 a placeholder.
 
 ## Firebase setup
@@ -49,5 +50,5 @@ machine-specific and not in the repo. One person has to run the steps in
 providers, and `firebase deploy --only firestore` (redeploy after
 this update: the rules changed) — before the app will build.
 
-**Next:** a store for Pro and an ad SDK. Guest mode (Firebase Anonymous Auth,
+**Next:** finish store configuration and real-device billing validation. Guest mode (Firebase Anonymous Auth,
 upgradable in place) is a deliberate deferral, not an oversight.

@@ -46,6 +46,7 @@ android {
         // flag during build.
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        manifestPlaceholders["admobAppId"] = "ca-app-pub-3940256099942544~3347511713"
     }
 
     signingConfigs {
@@ -67,6 +68,7 @@ android {
 
     buildTypes {
         release {
+            manifestPlaceholders["admobAppId"] = "ca-app-pub-6644211975790806~5643195524"
             val releaseSigning = signingConfigs.getByName("release")
             signingConfig = if (releaseSigning.storeFile != null && releaseSigning.storeFile!!.exists()) {
                 releaseSigning

@@ -3,14 +3,15 @@ import '../../domain/models/entitlement.dart';
 
 /// Where the plan comes from.
 ///
-/// An interface because the real source is a store (StoreKit / Play
-/// Billing, or RevenueCat on top of both) that doesn't exist in this build.
+/// Implemented by RevenueCat on supported, configured stores.
 /// Everything above reads [watch] and calls [purchase] / [restore]; swapping
 /// in the store-backed implementation changes nothing else. The plan is
 /// never read from Firestore — a client-writable plan is one anyone can
 /// grant themselves.
 abstract interface class EntitlementRepository {
   Stream<Entitlement> watch();
+
+  Future<Result<List<PlanOffer>>> offers();
 
   Future<Result<Entitlement>> purchase(PlanOffer offer);
 
@@ -26,8 +27,11 @@ class FreeEntitlementRepository implements EntitlementRepository {
 
   static const unavailable = AppFailure(
     FailureKind.unknown,
-    'Purchases aren’t available in this build yet. Everything in LastReel works on Free.',
+    'Purchases aren’t available in this build yet. You can keep using the Free plan.',
   );
+
+  @override
+  Future<Result<List<PlanOffer>>> offers() async => const Err(unavailable);
 
   @override
   Stream<Entitlement> watch() => Stream.value(const Entitlement.free());
@@ -37,5 +41,5 @@ class FreeEntitlementRepository implements EntitlementRepository {
 
   @override
   Future<Result<Entitlement>> restore() async =>
-      const Err(AppFailure(FailureKind.notFound, 'No purchases to restore on this Apple ID.'));
+      const Err(AppFailure(FailureKind.notFound, 'Purchases are not configured for this platform yet.'));
 }

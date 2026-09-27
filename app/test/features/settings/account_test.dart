@@ -103,7 +103,7 @@ void main() {
 
     expect(find.text('Subscription'), findsOneWidget);
     expect(find.text('Unlimited · 1 in use'), findsOneWidget);
-    expect(find.text('Yearly · \$29.99'), findsOneWidget);
+    expect(find.text('Yearly subscription'), findsOneWidget);
     expect(find.textContaining('nothing is deleted'), findsOneWidget);
   });
 

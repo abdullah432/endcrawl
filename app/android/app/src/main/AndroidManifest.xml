@@ -1,16 +1,16 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="com.android.vending.BILLING" />
     <!-- Saving a render to the gallery (gal) on Android 9 and older. -->
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28" />
     <application
         android:label="LastReel"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
-        <!-- AdMob app ID. TODO(ads): this is Google's sample Android app ID until
-             the LastReel Android app is created in AdMob; release builds show
-             no ads on Android until then (see lib/core/config/ad_config.dart). -->
+        <!-- Gradle selects the production app ID only for release builds. -->
         <meta-data
             android:name="com.google.android.gms.ads.APPLICATION_ID"
-            android:value="ca-app-pub-3940256099942544~3347511713" />
+            android:value="${admobAppId}" />
         <activity
             android:name=".MainActivity"
             android:exported="true"

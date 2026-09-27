@@ -29,24 +29,28 @@ class AdUnits {
 
   /// The units for this build and platform, or null where there are none
   /// (a release build on a platform without real units yet shows no ads).
-  static AdUnits? get current {
-    final ios = defaultTargetPlatform == TargetPlatform.iOS;
-    if (!kReleaseMode) return ios ? _iosTest : _androidTest;
-    return ios ? _iosRelease : _androidRelease;
-  }
+  static AdUnits? get current =>
+      forBuild(platform: defaultTargetPlatform, releaseMode: kReleaseMode);
 
-  /// LastReel iOS — app ca-app-pub-6644211975790806~5643195524.
-  static const _iosRelease = AdUnits(
+  @visibleForTesting
+  static AdUnits? forBuild({
+    required TargetPlatform platform,
+    required bool releaseMode,
+  }) => switch (platform) {
+    TargetPlatform.android => releaseMode ? _androidRelease : _androidTest,
+    TargetPlatform.iOS => releaseMode ? null : _iosTest,
+    _ => null,
+  };
+
+  /// Verified Android app ca-app-pub-6644211975790806~5643195524.
+  /// iOS release ads remain disabled until a separate iOS app is configured.
+  static const _androidRelease = AdUnits(
     libraryNative: 'ca-app-pub-6644211975790806/6465497619',
     renderingNative: 'ca-app-pub-6644211975790806/7706337805',
     exportReadyNative: 'ca-app-pub-6644211975790806/4888602772',
     proRenderRewarded: 'ca-app-pub-6644211975790806/1799405002',
     appOpenResume: 'ca-app-pub-6644211975790806/6421176298',
   );
-
-  /// TODO(ads): the Android app and its units aren't created in AdMob yet.
-  /// Until they are, Android release builds show no ads at all.
-  static const AdUnits? _androidRelease = null;
 
   // Google's published sample units: always test ads, safe to click.
   static const _iosTest = AdUnits(

@@ -25,7 +25,7 @@
 	<key>CFBundleVersion</key>
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>GADApplicationIdentifier</key>
-	<string>ca-app-pub-6644211975790806~5643195524</string>
+	<string>ca-app-pub-3940256099942544~1458002511</string>
 	<key>SKAdNetworkItems</key>
 	<array>
 		<dict>
@@ -35,6 +35,8 @@
 	</array>
 	<key>NSPhotoLibraryAddUsageDescription</key>
 	<string>LastReel saves the credit rolls you render to your photo library.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>LastReel needs photo library access to export and save your credit roll videos.</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>UIApplicationSceneManifest</key>
