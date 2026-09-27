@@ -4,6 +4,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'core/services/analytics.dart';
 import 'core/services/external_links.dart';
 import 'core/config/billing_config.dart';
 import 'data/repositories/revenuecat_entitlement_repository.dart';
@@ -86,6 +87,22 @@ final userProfileRepositoryProvider = Provider<UserProfileRepository>((ref) {
 
 final userProfileProvider = StreamProvider<UserProfile>((ref) {
   return ref.watch(userProfileRepositoryProvider).watch();
+});
+
+/// Google Analytics. Overridden in tests.
+final analyticsProvider = Provider<AppAnalytics>((ref) => const FirebaseAppAnalytics());
+
+/// Applies the account's "Usage analytics" choice to Google Analytics
+/// whenever it changes. Watched from the app root; signed out, the profile
+/// is the default one, so collection stays on.
+final analyticsPreferenceSyncProvider = Provider<void>((ref) {
+  ref.listen(
+    userProfileProvider.select((profile) => profile.value?.preferences.usageAnalytics),
+    (_, enabled) {
+      if (enabled != null) ref.read(analyticsProvider).setCollectionEnabled(enabled);
+    },
+    fireImmediately: true,
+  );
 });
 
 /// One SDK owner for the lifetime of the app, with immediate account isolation.

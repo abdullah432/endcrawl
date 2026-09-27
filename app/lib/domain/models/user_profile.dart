@@ -59,7 +59,7 @@ class Preferences {
     this.haptics = true,
     this.renderNotifications = true,
     this.crashReports = true,
-    this.usageAnalytics = false,
+    this.usageAnalytics = true,
     this.personalisedAds = false,
   });
 

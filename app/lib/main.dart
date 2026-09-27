@@ -41,11 +41,12 @@ Future<void> main() async {
   );
 }
 
-class LastReelApp extends StatelessWidget {
+class LastReelApp extends ConsumerWidget {
   const LastReelApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    ref.watch(analyticsPreferenceSyncProvider);
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.dark,
       child: MaterialApp(

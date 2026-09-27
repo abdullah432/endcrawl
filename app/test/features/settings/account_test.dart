@@ -107,14 +107,26 @@ void main() {
     expect(find.textContaining('nothing is deleted'), findsOneWidget);
   });
 
+  testWidgets('help and support go to COOKOO', (tester) async {
+    await openSettings(tester);
+    await tapText(tester, 'Help centre');
+    expect(app.links.opened, [Uri.parse('https://cookoo.dev/lastreel/help')]);
+
+    await tapText(tester, 'Contact support');
+    expect(app.links.composed, ['hello@cookoo.dev']);
+  });
+
   group('7.4 privacy & data', () {
-    testWidgets('choices are saved to the account; analytics starts off', (tester) async {
+    testWidgets('analytics is on by default; turning it off is saved and stops collection', (tester) async {
       await openSettings(tester);
       await tapText(tester, 'Privacy & data');
 
-      expect(app.profile.profile.preferences.usageAnalytics, isFalse);
-      await tapText(tester, 'Usage analytics');
       expect(app.profile.profile.preferences.usageAnalytics, isTrue);
+      expect(app.analytics.enabled, isTrue);
+
+      await tapText(tester, 'Usage analytics');
+      expect(app.profile.profile.preferences.usageAnalytics, isFalse);
+      expect(app.analytics.enabled, isFalse);
     });
 
     testWidgets('data export says it is coming', (tester) async {

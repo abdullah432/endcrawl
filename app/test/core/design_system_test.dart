@@ -1,3 +1,4 @@
+import 'package:clarity_flutter/clarity_flutter.dart';
 import 'package:lastreel/core/theme/app_theme.dart';
 import 'package:lastreel/core/theme/ec_palette.dart';
 import 'package:lastreel/core/theme/theme_context.dart';
@@ -49,6 +50,17 @@ void main() {
 
     await tester.pumpWidget(_host(const EcHeadline('What we keep, and ', emphasis: 'what you control.')));
     expect(rendered(), 'What we keep, and what you control.');
+  });
+
+  testWidgets('email and password fields are hidden from session recordings; others are not', (tester) async {
+    await tester.pumpWidget(_host(EcTextField(label: 'Email', controller: TextEditingController(), keyboardType: TextInputType.emailAddress)));
+    expect(find.byType(ClarityMask), findsOneWidget);
+
+    await tester.pumpWidget(_host(EcPasswordField(label: 'Password', controller: TextEditingController())));
+    expect(find.byType(ClarityMask), findsOneWidget);
+
+    await tester.pumpWidget(_host(EcTextField(label: 'Title', controller: TextEditingController())));
+    expect(find.byType(ClarityMask), findsNothing);
   });
 
   testWidgets('a busy button ignores taps and keeps its height', (tester) async {

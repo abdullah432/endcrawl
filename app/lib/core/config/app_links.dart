@@ -1,12 +1,12 @@
 import 'package:flutter/foundation.dart';
 
-/// Addresses the app links out to.
-///
-/// PLACEHOLDERS — replace with the real support address, help centre and
-/// App Store id before release. Kept in one file so that's a one-line job.
+/// Addresses the app links out to. Last Reel's public pages live on
+/// cookoo.dev, the COOKOO Technologies site.
 abstract final class AppLinks {
-  static const supportEmail = 'support@lastreel.app';
-  static final helpCentre = Uri.parse('https://lastreel.app/help');
+  static const supportEmail = 'hello@cookoo.dev';
+
+  /// Answers to common questions, with a way to reach support.
+  static final helpCentre = Uri.parse('https://cookoo.dev/lastreel/help');
 
   /// The published policy, hosted on cookoo.dev — the same page the store
   /// listings link to, so there is only one version to keep current.

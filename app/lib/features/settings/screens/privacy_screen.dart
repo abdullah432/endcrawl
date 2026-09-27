@@ -47,18 +47,17 @@ class PrivacyScreen extends ConsumerWidget {
             EcGroupRow(title: 'Account', subtitle: 'Name, email and sign-in method', chevron: false),
             EcGroupRow(title: 'Projects & renders', subtitle: 'Synced so they survive a new phone', chevron: false),
             EcGroupRow(title: 'Purchases', subtitle: 'Your store handles payment; RevenueCat manages plan status.', chevron: false),
+            EcGroupRow(
+              title: 'Session insights',
+              subtitle: 'Microsoft Clarity records how screens are used. Emails and passwords are hidden.',
+              chevron: false,
+            ),
           ]),
           const SizedBox(height: 22),
           EcGroup(label: 'Your choices', children: [
             EcGroupRow.toggle(
-              title: 'Crash reports',
-              subtitle: 'Helps us fix failed renders',
-              value: prefs.crashReports,
-              onChanged: (v) => update((p) => p.copyWith(crashReports: v)),
-            ),
-            EcGroupRow.toggle(
               title: 'Usage analytics',
-              subtitle: 'Anonymous and off by default',
+              subtitle: 'Google Analytics, on by default',
               value: prefs.usageAnalytics,
               onChanged: (v) => update((p) => p.copyWith(usageAnalytics: v)),
             ),

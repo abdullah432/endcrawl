@@ -1,3 +1,4 @@
+import 'package:clarity_flutter/clarity_flutter.dart';
 import 'package:flutter/material.dart';
 
 import '../theme/theme_context.dart';
@@ -80,6 +81,13 @@ class _EcTextFieldState extends State<EcTextField> {
     super.dispose();
   }
 
+  static const _sensitiveHints = {AutofillHints.email, AutofillHints.password, AutofillHints.newPassword};
+
+  /// An email or password field, by its keyboard or autofill hints.
+  bool get _sensitive =>
+      widget.keyboardType == TextInputType.emailAddress ||
+      (widget.autofillHints ?? const []).any(_sensitiveHints.contains);
+
   @override
   Widget build(BuildContext context) {
     final p = context.palette;
@@ -90,7 +98,7 @@ class _EcTextFieldState extends State<EcTextField> {
     final borderColor = hasError ? p.warnFill : (focused ? p.accentSolid : p.line2);
     final ring = hasError ? p.warnWash : (focused ? p.accentWash : null);
 
-    return Column(
+    final field = Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -152,6 +160,8 @@ class _EcTextFieldState extends State<EcTextField> {
         ],
       ],
     );
+    // Sign-in details never appear in Clarity session recordings.
+    return _sensitive ? ClarityMask(child: field) : field;
   }
 }
 

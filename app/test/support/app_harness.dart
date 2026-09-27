@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'fake_analytics.dart';
 import 'fake_auth_repository.dart';
 import 'fake_entitlement_repository.dart';
 import 'fake_export.dart';
@@ -30,6 +31,7 @@ class AppHarness {
   FakeFrames frames;
   FakeExportDestinations destinations;
   FakeAdService ads;
+  FakeAnalytics analytics;
   DateTime now;
 
   AppHarness({
@@ -52,6 +54,7 @@ class AppHarness {
         frames = frames ?? FakeFrames(),
         destinations = FakeExportDestinations(),
         ads = FakeAdService(),
+        analytics = FakeAnalytics(),
         now = now ?? DateTime.utc(2026, 9, 23, 12);
 
   /// A signed-out start.
@@ -91,6 +94,7 @@ class AppHarness {
           exportDestinationsProvider.overrideWithValue(destinations),
           exportDirectoryProvider.overrideWithValue(() async => '/renders'),
           adServiceProvider.overrideWithValue(ads),
+          analyticsProvider.overrideWithValue(analytics),
         ],
         child: const LastReelApp(),
       ),
