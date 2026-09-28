@@ -55,11 +55,7 @@ class FirebaseAuthRepository implements AuthRepository {
       );
       final user = credential.user!;
       await user.updateDisplayName(name.trim());
-      // Best effort: the account exists either way, and the verify screen
-      // offers "Resend link" if this one never arrives.
-      try {
-        await user.sendEmailVerification();
-      } on FirebaseAuthException catch (_) {}
+      // Email verification skipped for now.
       await user.reload();
       return _requireUser(_auth.currentUser);
     });

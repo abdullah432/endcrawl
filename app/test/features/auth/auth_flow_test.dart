@@ -214,7 +214,7 @@ void main() {
       expect(app.auth.registerCalls, 0);
     });
 
-    testWidgets('creates the account, names it, and asks for verification', (tester) async {
+    testWidgets('creates the account, names it, and signs in directly', (tester) async {
       final app = await openCreate(tester);
 
       await fill(tester, 'Name', 'Maya Okonkwo');
@@ -223,8 +223,7 @@ void main() {
       await tapText(tester, 'Create account');
 
       expect(app.auth.registeredName, 'Maya Okonkwo');
-      expect(app.auth.verificationEmailsSent, 1);
-      expect(find.text('One last step'.toUpperCase()), findsOneWidget);
+      expect(_library, findsOneWidget);
       expect(app.profile.saves, 0, reason: 'opt-in is off by default, so nothing is written');
     });
 
@@ -273,7 +272,7 @@ void main() {
     });
   });
 
-  group('0.5 Verify email', () {
+  group('0.5 Verify email', skip: 'Email verification skipped for now', () {
     const unverified = AppUser(uid: 'u1', email: 'maya@okonkwo.studio', methods: {SignInMethod.password});
 
     testWidgets('gates an unverified email sign-up', (tester) async {

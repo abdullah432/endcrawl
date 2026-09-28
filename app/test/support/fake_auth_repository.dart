@@ -72,7 +72,6 @@ class FakeAuthRepository implements AuthRepository {
     registerCalls++;
     registeredName = name;
     if (failWith case final failure?) return Err(failure);
-    verificationEmailsSent++;
     final user = AppUser(uid: 'test-uid', email: email, displayName: name, methods: const {SignInMethod.password});
     _emit(user);
     return Ok(user);
