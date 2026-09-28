@@ -1,6 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
+import '../../core/config/features.dart';
 import '../../core/result.dart';
 import '../../domain/models/app_user.dart';
 import 'auth_repository.dart';
@@ -55,7 +56,13 @@ class FirebaseAuthRepository implements AuthRepository {
       );
       final user = credential.user!;
       await user.updateDisplayName(name.trim());
-      // Email verification skipped for now.
+      // Best effort: the account exists either way, and the verify screen
+      // offers "Resend link" if this one never arrives.
+      if (Features.emailVerification) {
+        try {
+          await user.sendEmailVerification();
+        } on FirebaseAuthException catch (_) {}
+      }
       await user.reload();
       return _requireUser(_auth.currentUser);
     });

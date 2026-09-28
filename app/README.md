@@ -169,9 +169,14 @@ AuthGate
 ```
 
 Apple and Google accounts arrive verified; only an email & password sign-up
-sees 0.5, which re-checks when the app returns from Mail. Settings → Profile
-(7.2) can add or remove sign-in methods later — someone who started with
-Apple can add a password for a second device — but never the last one.
+sees 0.5, which re-checks when the app returns from Mail. The gate is built
+but switched off (`Features.emailVerification`): for now sign-up sends no
+link and every account goes straight to the library; turning it on brings
+back both.
+
+Settings → Profile (7.2) can add or remove sign-in methods later — someone
+who started with Apple can add a password for a second device — but never
+the last one.
 
 Signing in, creating an account and resetting a password are three screens
 rather than one screen with a mode flag. Each asks one thing, a button label

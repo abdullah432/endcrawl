@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../bootstrap.dart';
+import '../../../core/config/features.dart';
 import '../../../core/result.dart';
 import '../../../data/repositories/auth_repository.dart';
 import '../../../domain/models/password_policy.dart';
@@ -115,7 +116,7 @@ class AuthController extends Notifier<AuthFormState> {
     await _run(AuthAction.email, () async {
       final result = await _auth.registerWithEmail(name: name, email: email, password: password);
       if (result case Ok(:final value)) {
-        state = state._copy(verificationSentAt: _now());
+        if (Features.emailVerification) state = state._copy(verificationSentAt: _now());
         // Only an opt-in needs writing: a missing profile document already
         // reads as the default, which is "off".
         if (marketingOptIn) {

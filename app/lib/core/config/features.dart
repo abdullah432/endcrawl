@@ -5,4 +5,9 @@ abstract final class Features {
   /// Sign in with Apple. Off until the Apple provider and the Xcode
   /// capability are set up — see app/README.md, "Firebase setup".
   static const appleSignIn = false;
+
+  /// The verify-email gate (0.5) for email & password sign-ups. Off while
+  /// new accounts go straight to the library; turning it on sends the link
+  /// at sign-up again and holds unverified accounts on 0.5.
+  static const emailVerification = false;
 }

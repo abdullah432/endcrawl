@@ -1,3 +1,4 @@
+import 'package:lastreel/core/config/features.dart';
 import 'package:lastreel/core/result.dart';
 import 'package:lastreel/data/repositories/auth_repository.dart';
 import 'package:lastreel/domain/models/app_user.dart';
@@ -214,7 +215,7 @@ void main() {
       expect(app.auth.registerCalls, 0);
     });
 
-    testWidgets('creates the account, names it, and signs in directly', (tester) async {
+    testWidgets('creates the account, names it, and signs in directly; verification is off', (tester) async {
       final app = await openCreate(tester);
 
       await fill(tester, 'Name', 'Maya Okonkwo');
@@ -223,9 +224,24 @@ void main() {
       await tapText(tester, 'Create account');
 
       expect(app.auth.registeredName, 'Maya Okonkwo');
+      expect(app.auth.verificationEmailsSent, 0);
       expect(_library, findsOneWidget);
       expect(app.profile.saves, 0, reason: 'opt-in is off by default, so nothing is written');
-    });
+    }, skip: Features.emailVerification);
+
+    testWidgets('creates the account, names it, and asks for verification', (tester) async {
+      final app = await openCreate(tester);
+
+      await fill(tester, 'Name', 'Maya Okonkwo');
+      await fill(tester, 'Email', 'maya@okonkwo.studio');
+      await fill(tester, 'Password', 'longer-pass-9');
+      await tapText(tester, 'Create account');
+
+      expect(app.auth.registeredName, 'Maya Okonkwo');
+      expect(app.auth.verificationEmailsSent, 1);
+      expect(find.text('One last step'.toUpperCase()), findsOneWidget);
+      expect(app.profile.saves, 0, reason: 'opt-in is off by default, so nothing is written');
+    }, skip: !Features.emailVerification);
 
     testWidgets('an opt-in is saved to the new account’s profile', (tester) async {
       final app = await openCreate(tester);
@@ -272,8 +288,15 @@ void main() {
     });
   });
 
-  group('0.5 Verify email', skip: 'Email verification skipped for now', () {
+  group('0.5 Verify email', () {
     const unverified = AppUser(uid: 'u1', email: 'maya@okonkwo.studio', methods: {SignInMethod.password});
+
+    testWidgets('lets an unverified email sign-up in while switched off', (tester) async {
+      await AppHarness(auth: FakeAuthRepository(initialUser: unverified)).pump(tester);
+
+      expect(find.text('ONE LAST STEP'), findsNothing);
+      expect(_library, findsOneWidget);
+    }, skip: Features.emailVerification);
 
     testWidgets('gates an unverified email sign-up', (tester) async {
       await AppHarness(auth: FakeAuthRepository(initialUser: unverified)).pump(tester);
@@ -281,7 +304,7 @@ void main() {
       expect(find.text('ONE LAST STEP'), findsOneWidget);
       expect(find.textContaining('maya@okonkwo.studio'), findsOneWidget);
       expect(_library, findsNothing);
-    });
+    }, skip: !Features.emailVerification);
 
     testWidgets('Apple and Google accounts skip it', (tester) async {
       const apple = AppUser(uid: 'u2', methods: {SignInMethod.apple});
@@ -299,7 +322,7 @@ void main() {
 
       expect(app.auth.reloadCalls, greaterThan(0));
       expect(_library, findsOneWidget);
-    });
+    }, skip: !Features.emailVerification);
 
     testWidgets('resend sends another link, then cools down', (tester) async {
       final app = AppHarness(auth: FakeAuthRepository(initialUser: unverified));
@@ -309,7 +332,7 @@ void main() {
 
       expect(app.auth.verificationEmailsSent, 1);
       expect(find.text('Resend link in 1:00'), findsOneWidget);
-    });
+    }, skip: !Features.emailVerification);
 
     testWidgets('"Use a different email" deletes the empty account and starts over', (tester) async {
       final app = AppHarness(auth: FakeAuthRepository(initialUser: unverified));
@@ -319,7 +342,7 @@ void main() {
 
       expect(app.auth.deleted, isTrue);
       expect(find.text('Continue with Google'), findsOneWidget);
-    });
+    }, skip: !Features.emailVerification);
   });
 
   testWidgets('signing out returns to the welcome screen', (tester) async {

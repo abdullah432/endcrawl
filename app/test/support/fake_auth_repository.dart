@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:lastreel/core/config/features.dart';
 import 'package:lastreel/core/result.dart';
 import 'package:lastreel/data/repositories/auth_repository.dart';
 import 'package:lastreel/domain/models/app_user.dart';
@@ -72,6 +73,7 @@ class FakeAuthRepository implements AuthRepository {
     registerCalls++;
     registeredName = name;
     if (failWith case final failure?) return Err(failure);
+    if (Features.emailVerification) verificationEmailsSent++;
     final user = AppUser(uid: 'test-uid', email: email, displayName: name, methods: const {SignInMethod.password});
     _emit(user);
     return Ok(user);

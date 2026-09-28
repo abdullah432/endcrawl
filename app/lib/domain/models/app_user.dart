@@ -26,9 +26,8 @@ class AppUser {
   /// An email/password sign-up that hasn't clicked its verification link.
   /// Apple and Google accounts arrive already verified by the provider, so
   /// any account that has one of those never sees the verify screen.
-  ///
-  /// Temporarily disabled: email verification is skipped so users proceed directly.
-  bool get needsEmailVerification => false;
+  bool get needsEmailVerification =>
+      !isEmailVerified && methods.contains(SignInMethod.password) && methods.length == 1;
 
   /// The method shown on the Settings profile card ("Signed in with Apple").
   /// Social providers win over the password because that's the one people

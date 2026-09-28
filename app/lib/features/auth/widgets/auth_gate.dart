@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/widgets/ec_toast.dart';
 import '../../../bootstrap.dart';
+import '../../../core/config/features.dart';
 import '../../../core/theme/theme_context.dart';
 import '../../../core/widgets/ec_logo.dart';
 import '../../../core/widgets/ec_scaffold.dart';
@@ -39,7 +40,7 @@ class AuthGate extends ConsumerWidget {
       AsyncError(:final error) => _Splash(message: 'Could not reach sign-in.\n$error'),
       AsyncValue(:final value) => switch (value) {
           null => const _AuthFlow(),
-          final user when user.needsEmailVerification => VerifyEmailScreen(user: user),
+          final user when Features.emailVerification && user.needsEmailVerification => VerifyEmailScreen(user: user),
           _ => const LibraryScreen(),
         },
     };
