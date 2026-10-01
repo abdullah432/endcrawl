@@ -19,8 +19,43 @@ Flutter assets, Dart defines, or source control.
 | Offering packages | `$rc_monthly`, `$rc_annual` |
 
 Prices above were approved by the owner on 2026-09-27. The app displays localized
-store prices fetched through RevenueCat, not these USD reference prices. No trial
-or introductory offer is advertised.
+store prices fetched through RevenueCat, not these USD reference prices.
+
+## Free trials (from 2026-10-01)
+
+The free plan holds **one** project (`Entitlement.freeProjectLimit`). Hitting the
+limit offers a free trial, not a purchase: **7 days on monthly, 14 days on
+yearly** (yearly preselected). A trial user is Pro. When a trial or Pro ends,
+nothing is deleted: the most recently edited project stays editable, the others
+open read-only (they still play and render), and ads come back.
+
+**Store setup still to do** — the app reads trials from the store and shows the
+plain price wherever none is offered, so nothing changes in code once these exist:
+
+| Store | Where | What |
+| --- | --- | --- |
+| Google Play | Monetize → Subscriptions → `lastreel_pro` → base plan `monthly` → Add offer | Free trial, **7 days**, eligibility *New customer acquisition — never had this subscription* |
+| Google Play | same, base plan `yearly` | Free trial, **14 days**, same eligibility |
+| App Store | the monthly / yearly products → Subscription Prices → Introductory Offers | **Free**, 1 week / 2 weeks, new subscribers |
+
+How the app reads them (`revenuecat_entitlement_repository.dart`):
+
+- **Play** returns only the offers an account is eligible for; the trial length is
+  the default option's free phase. An account that has had a trial gets none.
+- **App Store** describes the trial as a free introductory price; the app asks
+  `checkTrialOrIntroductoryPriceEligibility` and drops it for ineligible accounts.
+- A trial shows as the `pro` entitlement with period type `TRIAL`; its expiry is
+  the trial end (the "6 days left" countdown). An inactive `pro` means *lapsed*.
+
+Analytics (Google Analytics): `trial_card_shown`, `trial_card_dismissed`,
+`trial_plan_selected{plan}`, `trial_started{plan, source}` (library, slots_full,
+paywall, settings), and `trial_converted` / `trial_cancelled` inferred in the app.
+For conversions and cancellations, prefer RevenueCat's Firebase integration, which
+reports them from the store even when the app isn't running.
+
+Test with a Play license tester: start each trial, check the countdown and the
+"Free until …" date, cancel in the Play Store (Pro stays until the trial ends),
+then let it expire and check that one project stays editable.
 
 ## Runtime
 
@@ -75,7 +110,7 @@ Verified on 2026-09-27:
   auto-renewing base plans. US prices are USD 4.99 and USD 29.99 respectively.
   Both are available in 174 countries/regions with Play-generated regional
   prices. Monthly is Play's backwards-compatible base plan. No trial or offer
-  was added. Default grace periods are 7 days monthly and 14 days yearly, with
+  was added at the time; see "Free trials" above for the offers now needed. Default grace periods are 7 days monthly and 14 days yearly, with
   automatic account hold and resubscribe enabled.
 - Both RevenueCat product mappings are attached to `pro` and assigned to the
   default offering's monthly/annual packages.

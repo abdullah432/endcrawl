@@ -240,9 +240,11 @@ and then updated into an invalid or mis-owned state), and hold `id`,
 
 ## Plan and monetisation
 
-Free keeps three projects and renders H.264 and HEVC up to 1080p, with
-every block, timing and look tool and no watermark. Pro lifts the cap,
-renders ProRes 422 HQ, ProRes 4444, PNG and 4K every time, and removes ads.
+Free keeps **one** project (`Entitlement.freeProjectLimit`) and renders H.264
+and HEVC up to 1080p, with every block, timing and look tool and no watermark.
+Pro lifts the cap, renders ProRes 422 HQ, ProRes 4444, PNG and 4K every time,
+and removes ads. Hitting the limit offers a **free trial** — 7 days monthly,
+14 days yearly — rather than a charge; a trial is Pro in full.
 
 - **`EntitlementRepository` is the seam.** Android uses RevenueCat with Firebase
   user IDs, localized store offerings, purchase/restore, and live entitlement
@@ -252,6 +254,19 @@ renders ProRes 422 HQ, ProRes 4444, PNG and 4K every time, and removes ads.
 - **Caps and gates are enforced in controllers, not widgets.** Creating,
   duplicating and starting the new-project flow check the project cap.
   `ExportController.start()` refuses Pro settings on Free without a pass.
+- **Trials come from the store.** Each `PlanOffer` carries the trial this
+  account would get (`trialDays`, null when none), so every trial label —
+  the 1.1a card, 1.6, 6.5, 7.1 — falls back to the plain price for an
+  account that has had one. The library shows the trial card (1.1a) in place
+  of the ad when the free slot is full (✕ hides it for a week), and a
+  countdown while on the trial (1.1).
+- **After a trial or Pro ends, one project stays editable.** Nothing is
+  deleted. The most recently updated project is the editable one;
+  `readOnlyProjectIdsProvider` names the rest. They open read-only (play
+  and export still work) and `ProjectController` refuses edits at its
+  single write path. "Edit this one instead" touches the chosen project to
+  make it the most recent, so the choice needs no storage and holds on
+  every device.
 - **One rewarded ad, one Pro render (6.1a).** On Free, Pro options stay
   selectable with a PRO pill. Picking one offers "Watch ad · render once"
   or "Go Pro". A watched-through ad grants a `ProRenderPass` for that

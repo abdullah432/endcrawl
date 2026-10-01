@@ -8,6 +8,7 @@ import 'core/config/orientations.dart';
 import 'core/theme/app_theme.dart';
 import 'core/widgets/ec_toast.dart';
 import 'features/ads/widgets/resume_ads.dart';
+import 'features/plan/controllers/trial_analytics.dart';
 import 'features/auth/widgets/auth_gate.dart';
 
 Future<void> main() async {
@@ -47,6 +48,7 @@ class LastReelApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     ref.watch(analyticsPreferenceSyncProvider);
+    ref.watch(trialAnalyticsProvider);
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.dark,
       child: MaterialApp(
