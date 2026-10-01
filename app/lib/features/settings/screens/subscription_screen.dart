@@ -5,6 +5,7 @@ import '../../../bootstrap.dart';
 import '../../../core/config/app_links.dart';
 import '../../../core/theme/theme_context.dart';
 import '../../../core/theme/tokens.dart';
+import '../../../core/utils/formatting.dart';
 import '../../../core/widgets/ec_scaffold.dart';
 import '../../../core/widgets/ec_settings.dart';
 import '../../../core/widgets/ec_toast.dart';
@@ -14,7 +15,7 @@ import '../../plan/controllers/plan_controller.dart';
 import '../../plan/screens/pro_sheet.dart';
 
 /// 7.3 — the Pro subscription, and exactly what cancelling means: nothing
-/// is deleted, three projects stay editable, and ads come back.
+/// is deleted, one project stays editable, and ads come back.
 class SubscriptionScreen extends ConsumerWidget {
   const SubscriptionScreen({super.key});
 
@@ -55,7 +56,7 @@ class SubscriptionScreen extends ConsumerWidget {
                   const SizedBox(height: 6),
                   Text(entitlement.period == null ? 'Active subscription' : yearly ? 'Yearly subscription' : 'Monthly subscription', style: t.mono.copyWith(fontSize: 12, color: p.onInk)),
                   if (renews != null)
-                    Text('${entitlement.willRenew ? 'Renews' : 'Expires'} ${_date(renews)}', style: t.mono.copyWith(fontSize: 12, color: p.onInk.withValues(alpha: .8))),
+                    Text(entitlement.isTrial ? 'Free trial · ${entitlement.willRenew ? 'first charge' : 'ends'} ${formatDate(renews)}' : '${entitlement.willRenew ? 'Renews' : 'Expires'} ${formatDate(renews)}', style: t.mono.copyWith(fontSize: 12, color: p.onInk.withValues(alpha: .8))),
                 ],
               ],
             ),
@@ -88,7 +89,7 @@ class SubscriptionScreen extends ConsumerWidget {
             padding: const EdgeInsets.symmetric(horizontal: 6),
             child: Text(
               'Cancel any time in your store settings. Pro stays on until the paid period ends. After that nothing is '
-              'deleted: you keep every project, three can be edited, and ads come back.',
+              'deleted: you keep every project, one can be edited, and ads come back.',
               style: t.caption.copyWith(height: 1.5),
             ),
           ),
@@ -96,7 +97,4 @@ class SubscriptionScreen extends ConsumerWidget {
       ),
     );
   }
-
-  static const _months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-  static String _date(DateTime d) => '${d.day} ${_months[d.month - 1]} ${d.year}';
 }

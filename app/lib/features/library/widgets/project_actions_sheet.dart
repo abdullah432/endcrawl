@@ -42,7 +42,7 @@ class ProjectActionsSheet extends StatelessWidget {
 
     final duplicateDetail = switch (slotsLeft) {
       null => null,
-      0 => 'No free slots — Pro removes the cap',
+      0 => 'No free slot left — Pro removes the cap',
       1 => 'Uses your last free slot',
       final n => 'Uses one of $n free slots',
     };

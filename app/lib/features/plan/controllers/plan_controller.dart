@@ -5,6 +5,17 @@ import '../../../bootstrap.dart';
 import '../../../core/result.dart';
 import '../../../domain/models/entitlement.dart';
 
+/// Where a plan purchase started, for the trial funnel's analytics.
+enum PlanSource {
+  library('library'),
+  slotsFull('slots_full'),
+  paywall('paywall'),
+  settings('settings');
+
+  final String analyticsName;
+  const PlanSource(this.analyticsName);
+}
+
 class PlanState {
   final List<PlanOffer> offers;
   final PlanOffer? selected;
@@ -66,10 +77,16 @@ class PlanController extends Notifier<PlanState> {
   }
 
   void select(PlanOffer offer) {
-    if (!state.busy) state = state.copyWith(selected: offer, clearMessage: true);
+    if (state.busy) return;
+    state = state.copyWith(selected: offer, clearMessage: true);
+    if (offer.hasTrial) {
+      ref.read(analyticsProvider).logEvent('trial_plan_selected', {'plan': offer.period.name});
+    }
   }
 
-  Future<bool> purchase() async {
+  /// Buys — or, where the store offers one, starts the free trial of — the
+  /// selected plan. [source] is where the user started, for analytics.
+  Future<bool> purchase({PlanSource source = PlanSource.paywall}) async {
     final offer = state.selected;
     if (state.busy || state.loading || offer == null) return false;
     final uid = ref.read(currentUidProvider);
@@ -84,7 +101,11 @@ class PlanController extends Notifier<PlanState> {
         clearMessage: failure.kind == FailureKind.cancelled,
       ),
     };
-    return result is Ok<Entitlement> && result.value.isPro;
+    final ok = result is Ok<Entitlement> && result.value.isPro;
+    if (ok && offer.hasTrial) {
+      ref.read(analyticsProvider).logEvent('trial_started', {'plan': offer.period.name, 'source': source.analyticsName});
+    }
+    return ok;
   }
 
   Future<void> restore() async {

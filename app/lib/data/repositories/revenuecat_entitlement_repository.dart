@@ -139,6 +139,7 @@ class RevenueCatEntitlementRepository with WidgetsBindingObserver implements Ent
         'Subscriptions are not available from the store yet. Please try again later.',
       );
     }
+    final eligibility = await _introEligibility(packages.map((p) => p.storeProduct));
     _packages.clear();
     return packages.map((p) {
       _packages[p.identifier] = p;
@@ -149,9 +150,25 @@ class RevenueCatEntitlementRepository with WidgetsBindingObserver implements Ent
             ? 'Billed yearly · Cancel anytime'
             : 'Billed monthly · Cancel anytime',
         packageId: p.identifier,
+        trialDays: freeTrialDays(p.storeProduct, eligibility[p.storeProduct.identifier]?.status),
+        pricePerMonth: p.storeProduct.pricePerMonthString,
       );
     }).toList();
   });
+
+  /// The App Store's per-account answer to "would this person get the
+  /// free trial?". Only iOS products carry an introductory price; Play
+  /// already leaves out offers an account isn't eligible for, and the SDK
+  /// answers "unknown" there.
+  Future<Map<String, rc.IntroEligibility>> _introEligibility(Iterable<rc.StoreProduct> products) async {
+    final ids = [for (final p in products) if (p.introductoryPrice != null) p.identifier];
+    if (ids.isEmpty) return const {};
+    try {
+      return await rc.Purchases.checkTrialOrIntroductoryPriceEligibility(ids);
+    } catch (_) {
+      return const {};
+    }
+  }
 
   @override
   Future<Result<Entitlement>> purchase(PlanOffer offer) async {
@@ -202,7 +219,11 @@ class RevenueCatEntitlementRepository with WidgetsBindingObserver implements Ent
 
 Entitlement entitlementFromCustomerInfo(rc.CustomerInfo info) {
   final pro = info.entitlements.active[BillingConfig.entitlementId];
-  if (pro == null || !pro.isActive || pro.verification == rc.VerificationResult.failed) return const Entitlement.free();
+  if (pro == null || !pro.isActive || pro.verification == rc.VerificationResult.failed) {
+    // Had Pro once — a trial or a subscription that has ended.
+    return Entitlement.free(lapsed: info.entitlements.all.containsKey(BillingConfig.entitlementId));
+  }
+  final expires = pro.expirationDate == null ? null : DateTime.tryParse(pro.expirationDate!);
   final plan = pro.productPlanIdentifier ?? pro.productIdentifier.split(':').last;
   final period = switch (plan) {
     'monthly' || 'lastreel_pro_monthly' => BillingPeriod.monthly,
@@ -211,10 +232,39 @@ Entitlement entitlementFromCustomerInfo(rc.CustomerInfo info) {
   };
   return Entitlement.pro(
     period: period,
-    renewsAt: pro.expirationDate == null ? null : DateTime.tryParse(pro.expirationDate!),
+    renewsAt: expires,
     willRenew: pro.willRenew,
     managementUrl: info.managementURL == null ? null : Uri.tryParse(info.managementURL!),
+    trialEndsAt: pro.periodType == rc.PeriodType.trial ? expires : null,
   );
+}
+
+/// The free trial a product would give this account, in days, or null.
+///
+/// Play (Android) returns only the offers an account is eligible for, and
+/// the SDK's default option is the one with the longest free phase. The
+/// App Store (iOS) describes the trial as a free introductory price, and
+/// [eligibility] says whether this account would get it.
+int? freeTrialDays(rc.StoreProduct product, rc.IntroEligibilityStatus? eligibility) {
+  int days(rc.PeriodUnit unit, int count) => switch (unit) {
+    rc.PeriodUnit.day => count,
+    rc.PeriodUnit.week => count * 7,
+    rc.PeriodUnit.month => count * 30,
+    rc.PeriodUnit.year => count * 365,
+    rc.PeriodUnit.unknown => 0,
+  };
+
+  final free = product.defaultOption?.freePhase?.billingPeriod;
+  if (free != null) return days(free.unit, free.value);
+
+  final intro = product.introductoryPrice;
+  if (intro == null || intro.price != 0) return null;
+  if (eligibility == rc.IntroEligibilityStatus.introEligibilityStatusIneligible ||
+      eligibility == rc.IntroEligibilityStatus.introEligibilityStatusNoIntroOfferExists) {
+    return null;
+  }
+  final total = days(intro.periodUnit, intro.periodNumberOfUnits) * (intro.cycles < 1 ? 1 : intro.cycles);
+  return total > 0 ? total : null;
 }
 
 AppFailure billingFailure(PlatformException error) {

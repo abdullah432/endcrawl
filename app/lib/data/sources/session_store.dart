@@ -24,11 +24,16 @@ abstract interface class SessionStore {
   Future<SessionState> read();
   Future<void> setLastOpened(String? projectId);
   Future<void> setLeftOpen(String? projectId);
+
+  /// Until when the library's free-trial card (1.1a) stays dismissed.
+  Future<DateTime?> trialOfferHiddenUntil();
+  Future<void> hideTrialOfferUntil(DateTime until);
 }
 
 class PreferencesSessionStore implements SessionStore {
   static const _lastOpenedKey = 'session.lastOpenedProjectId';
   static const _leftOpenKey = 'session.leftOpenProjectId';
+  static const _trialOfferHiddenKey = 'plan.trialOfferHiddenUntil';
 
   final SharedPreferences _prefs;
 
@@ -48,6 +53,15 @@ class PreferencesSessionStore implements SessionStore {
   @override
   Future<void> setLeftOpen(String? projectId) => _write(_leftOpenKey, projectId);
 
+  @override
+  Future<DateTime?> trialOfferHiddenUntil() async {
+    final millis = _prefs.getInt(_trialOfferHiddenKey);
+    return millis == null ? null : DateTime.fromMillisecondsSinceEpoch(millis);
+  }
+
+  @override
+  Future<void> hideTrialOfferUntil(DateTime until) => _prefs.setInt(_trialOfferHiddenKey, until.millisecondsSinceEpoch);
+
   Future<void> _write(String key, String? value) async {
     if (value == null) {
       await _prefs.remove(key);
@@ -63,6 +77,14 @@ class InMemorySessionStore implements SessionStore {
   SessionState _state;
 
   InMemorySessionStore([this._state = const SessionState()]);
+
+  DateTime? hiddenUntil;
+
+  @override
+  Future<DateTime?> trialOfferHiddenUntil() async => hiddenUntil;
+
+  @override
+  Future<void> hideTrialOfferUntil(DateTime until) async => hiddenUntil = until;
 
   @override
   Future<SessionState> read() async => _state;

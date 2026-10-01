@@ -11,6 +11,8 @@ Map<String, dynamic> customer({
   bool renews = true,
   String uid = 'a',
   String verification = 'NOT_REQUESTED',
+  String periodType = 'NORMAL',
+  bool everHadPro = true,
 }) {
   final entitlement = <String, dynamic>{
     'identifier': 'pro',
@@ -23,10 +25,11 @@ Map<String, dynamic> customer({
     'isSandbox': true,
     'expirationDate': '2027-09-27T00:00:00Z',
     'verification': verification,
+    'periodType': periodType,
   };
   return {
     'entitlements': {
-      'all': {'pro': entitlement},
+      'all': {if (pro || everHadPro) 'pro': entitlement},
       'active': {if (pro) 'pro': entitlement},
     },
     'allPurchaseDates': <String, String>{},
@@ -225,5 +228,103 @@ void main() {
     intercept = (call) async => call.method == 'getOfferings' ? {'current': null, 'all': <String, dynamic>{}} : null;
     repository.setUser('a');
     expect((await repository.offers()).failureOrNull?.kind, FailureKind.notFound);
+  });
+
+  group('free trials', () {
+    rc.CustomerInfo info(Map<String, dynamic> json) => rc.CustomerInfo.fromJson(json);
+
+    test('a trial is Pro in full, ending at the entitlement’s expiry', () {
+      final e = entitlementFromCustomerInfo(info(customer(pro: true, periodType: 'TRIAL')));
+      expect(e.isPro, isTrue);
+      expect(e.isTrial, isTrue);
+      expect(e.trialEndsAt, DateTime.utc(2027, 9, 27));
+      expect(e.showsAds, isFalse);
+    });
+
+    test('a paid subscription is not a trial', () {
+      expect(entitlementFromCustomerInfo(info(customer(pro: true))).isTrial, isFalse);
+    });
+
+    test('Pro that ended is Free, marked lapsed; never having had it is not', () {
+      final lapsed = entitlementFromCustomerInfo(info(customer()));
+      expect((lapsed.isPro, lapsed.lapsed), (false, true));
+      final fresh = entitlementFromCustomerInfo(info(customer(everHadPro: false)));
+      expect((fresh.isPro, fresh.lapsed), (false, false));
+    });
+
+    Map<String, dynamic> product({Map<String, dynamic>? freePhase, Map<String, dynamic>? intro}) => {
+      'identifier': 'lastreel_pro:yearly',
+      'description': 'Pro',
+      'title': 'Pro',
+      'price': 29.99,
+      'priceString': r'$29.99',
+      'currencyCode': 'USD',
+      'pricePerMonthString': r'$2.50',
+      'introPrice': ?intro,
+      if (freePhase != null)
+        'defaultOption': {
+          'id': 'trial',
+          'storeProductId': 'lastreel_pro:yearly',
+          'productId': 'lastreel_pro',
+          'pricingPhases': [freePhase],
+          'tags': <String>[],
+          'isBasePlan': false,
+          'isPrepaid': false,
+          'freePhase': freePhase,
+        },
+    };
+
+    Map<String, dynamic> phase(String unit, int value) => {
+      'billingPeriod': {'unit': unit, 'value': value, 'iso8601': 'P$value${unit[0]}'},
+      'price': {'formatted': 'Free', 'amountMicros': 0, 'currencyCode': 'USD'},
+    };
+
+    Map<String, dynamic> intro(String unit, int units) => {
+      'price': 0,
+      'priceString': 'Free',
+      'period': 'P$units${unit[0]}',
+      'cycles': 1,
+      'periodUnit': unit,
+      'periodNumberOfUnits': units,
+    };
+
+    rc.StoreProduct sp(Map<String, dynamic> json) => rc.StoreProduct.fromJson(json);
+
+    test('Play: the default option’s free phase is the trial (only eligible offers come back)', () {
+      expect(freeTrialDays(sp(product(freePhase: phase('WEEK', 2))), null), 14);
+      expect(freeTrialDays(sp(product(freePhase: phase('DAY', 7))), null), 7);
+      expect(freeTrialDays(sp(product()), null), isNull);
+    });
+
+    test('App Store: a free introductory price, unless this account has had it', () {
+      final p = sp(product(intro: intro('WEEK', 1)));
+      expect(freeTrialDays(p, rc.IntroEligibilityStatus.introEligibilityStatusEligible), 7);
+      expect(freeTrialDays(p, rc.IntroEligibilityStatus.introEligibilityStatusUnknown), 7);
+      expect(freeTrialDays(p, rc.IntroEligibilityStatus.introEligibilityStatusIneligible), isNull);
+    });
+
+    test('offers carry the trial and the monthly figure', () {
+      final offer = PlanOffer(
+        period: BillingPeriod.yearly,
+        price: r'$29.99',
+        detail: 'Billed yearly',
+        packageId: r'$rc_annual',
+        trialDays: 14,
+        pricePerMonth: r'$2.50',
+      );
+      expect(offer.ctaLabel, 'Start 14-day free trial');
+      expect(offer.trialSubtitle, r'14 days free, then $2.50 a month');
+      const plain = PlanOffer(period: BillingPeriod.monthly, price: r'$4.99', detail: 'Billed monthly', packageId: 'm');
+      expect(plain.ctaLabel, r'Start Pro — $4.99/mo');
+    });
+
+    test('days left count a part day as a day', () {
+      final e = Entitlement.pro(trialEndsAt: DateTime.utc(2026, 10, 7, 12));
+      expect(e.trialDaysLeft(DateTime.utc(2026, 10, 1, 12)), 6);
+      expect(e.trialDaysLeft(DateTime.utc(2026, 10, 1, 13)), 6);
+      expect(e.trialDaysLeft(DateTime.utc(2026, 10, 7, 11)), 1);
+      expect(e.trialDaysLeft(DateTime.utc(2026, 10, 8)), 0);
+      expect(const Entitlement.free().trialDaysLeft(DateTime.utc(2026)), isNull);
+    });
   });
 }

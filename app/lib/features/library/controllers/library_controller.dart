@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../bootstrap.dart';
 import '../../../core/result.dart';
+import '../../../core/utils/formatting.dart';
 import '../../../data/sources/session_store.dart';
 import '../../../domain/models/entitlement.dart';
 import '../../../domain/models/project.dart';
@@ -40,7 +41,10 @@ class LibraryView {
   final List<LibraryItem> items;
   final Entitlement entitlement;
 
-  const LibraryView({required this.items, required this.entitlement});
+  /// Whole days left in a Pro trial, or null off a trial.
+  final int? trialDaysLeft;
+
+  const LibraryView({required this.items, required this.entitlement, this.trialDaysLeft});
 
   int get count => items.length;
   int? get limit => entitlement.projectLimit;
@@ -50,12 +54,20 @@ class LibraryView {
   /// The reel number the next project will take.
   int get nextReel => count + 1;
 
-  /// "Reel · 2 of 3 · Free", "Reel · 3 of 3 · Full", "Reel · 7 · Pro".
-  String get reelLabel => switch (limit) {
-        null => 'Reel · $count · Pro',
-        final limit when isFull => 'Reel · $count of $limit · Full',
-        final limit => 'Reel · $count of $limit · Free',
-      };
+  /// "Reel · 1 of 1 · Free", "Reel · Pro trial · 6 days left",
+  /// "Reel · 7 · Pro". [countOnTrial] swaps the trial's countdown for the
+  /// project count — right after a duplicate (1.7).
+  String reelLabel({bool countOnTrial = false}) {
+    final days = trialDaysLeft;
+    if (days != null) {
+      return countOnTrial ? 'Reel · Pro trial · ${plural(count, 'project')}' : 'Reel · Pro trial · ${plural(days, 'day')} left';
+    }
+    return switch (limit) {
+      null => 'Reel · $count · Pro',
+      final limit when count > limit => 'Reel · $count · Free',
+      final limit => 'Reel · $count of $limit · Free',
+    };
+  }
 }
 
 final libraryViewProvider = FutureProvider<LibraryView>((ref) async {
@@ -67,6 +79,7 @@ final libraryViewProvider = FutureProvider<LibraryView>((ref) async {
   return LibraryView(
     items: [for (final s in summaries) LibraryItem(s, reels[s.id]!)],
     entitlement: entitlement,
+    trialDaysLeft: entitlement.trialDaysLeft(ref.read(clockProvider)()),
   );
 });
 

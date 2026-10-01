@@ -21,7 +21,7 @@ import '../widgets/template_list.dart';
 /// 2.1 — "+ New" once projects exist: the same template list as the empty
 /// library, as a sheet, with a crash recovery above it when there is one.
 class NewProjectSheet extends ConsumerStatefulWidget {
-  /// The reel number the new project will take — "slot 3 of 3".
+  /// The reel the new project will take — "Reel 03".
   final String slotLabel;
 
   const NewProjectSheet({super.key, required this.slotLabel});

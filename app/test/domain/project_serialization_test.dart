@@ -280,12 +280,20 @@ void main() {
   });
 
   group('entitlement', () {
-    test('free keeps three projects and shows ads', () {
+    test('free keeps one project and shows ads', () {
       const free = Entitlement.free();
-      expect(free.canAddProject(2), isTrue);
-      expect(free.canAddProject(3), isFalse);
-      expect(free.slotsLeft(2), 1);
+      expect(Entitlement.freeProjectLimit, 1);
+      expect(free.canAddProject(0), isTrue);
+      expect(free.canAddProject(1), isFalse);
+      expect(free.slotsLeft(0), 1);
       expect(free.showsAds, isTrue);
+    });
+
+    test('a trial is Pro: unlimited and ad-free', () {
+      final trial = Entitlement.pro(trialEndsAt: DateTime.utc(2026, 10, 7));
+      expect(trial.isTrial, isTrue);
+      expect(trial.canAddProject(5), isTrue);
+      expect(trial.showsAds, isFalse);
     });
 
     test('pro is unlimited and ad-free', () {

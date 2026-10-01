@@ -232,7 +232,11 @@ class _PlanCard extends ConsumerWidget {
                     style: t.titleM.copyWith(fontSize: 15.5, fontWeight: FontWeight.w700)),
               ),
               Text(
-                limit == null ? '$count projects · no ads' : '$count of $limit projects · ads on',
+                switch ((entitlement.trialEndsAt, limit)) {
+                  (final ends?, _) => 'Pro trial · ends ${formatDayMonth(ends)}',
+                  (_, null) => '${plural(count, 'project')} · no ads',
+                  (_, final limit?) => '$count of ${plural(limit, 'project')} · ads on',
+                },
                 style: t.mono.copyWith(fontSize: 10),
               ),
             ],
@@ -243,7 +247,13 @@ class _PlanCard extends ConsumerWidget {
             const SizedBox(height: 12),
             Row(
               children: [
-                Expanded(child: EcButton(label: 'Upgrade to Pro', size: EcButtonSize.medium, onPressed: () => ProSheet.show(context))),
+                Expanded(
+                  child: EcButton(
+                    label: plan.offers.any((o) => o.hasTrial) ? 'Start free trial' : 'Upgrade to Pro',
+                    size: EcButtonSize.medium,
+                    onPressed: () => ProSheet.show(context, source: PlanSource.settings),
+                  ),
+                ),
                 const SizedBox(width: 8),
                 EcButton.secondary(
                   label: 'Restore',

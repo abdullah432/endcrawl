@@ -3,8 +3,8 @@ import 'package:flutter/material.dart';
 import '../../../core/theme/theme_context.dart';
 import '../../../core/theme/tokens.dart';
 
-/// The free plan's slots as segments — filled for each project in use.
-/// On 1.6 all three are filled; on Settings (7.1) it's "2 of 3".
+/// The free plan's slots as segments — filled for each project in use. With
+/// a one-project plan it's a single bar: full on 1.6 and Settings (7.1).
 class PlanMeter extends StatelessWidget {
   final int used;
   final int limit;

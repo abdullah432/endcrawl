@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../library/controllers/library_controller.dart';
+import 'controllers/plan_controller.dart';
 import 'screens/pro_sheet.dart';
 import 'widgets/slots_full_sheet.dart';
 
@@ -13,7 +14,7 @@ Future<void> handleSlotsFull(BuildContext context) async {
   if (!context.mounted) return;
   switch (choice) {
     case SlotsFullChoice.upgrade:
-      await ProSheet.show(context);
+      await ProSheet.show(context, source: PlanSource.slotsFull);
     case SlotsFullChoice.freeUp:
       container.read(libraryUiProvider.notifier).setFreeingSlot(true);
       Navigator.of(context).popUntil((route) => route.isFirst);

@@ -35,3 +35,11 @@ String formatSecondsFrames(double seconds, double fps) {
   final frames = (seconds * fps).round();
   return '${frames ~/ base}:${(frames % base).toString().padLeft(2, '0')}';
 }
+
+const _months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+/// "7 Oct".
+String formatDayMonth(DateTime d) => '${d.day} ${_months[d.month - 1]}';
+
+/// "7 Oct 2026".
+String formatDate(DateTime d) => '${formatDayMonth(d)} ${d.year}';

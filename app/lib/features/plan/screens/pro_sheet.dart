@@ -5,6 +5,7 @@ import '../../../bootstrap.dart';
 import '../../../core/config/app_links.dart';
 import '../../../core/theme/theme_context.dart';
 import '../../../core/theme/tokens.dart';
+import '../../../core/utils/formatting.dart';
 import '../../../core/widgets/ec_button.dart';
 import '../../../core/widgets/ec_choice_card.dart';
 import '../../../core/widgets/ec_headline.dart';
@@ -22,9 +23,13 @@ import '../controllers/plan_controller.dart';
 /// table makes plain that editing is identical on both plans; only the
 /// project cap and the export formats differ.
 class ProSheet extends ConsumerWidget {
-  const ProSheet({super.key});
+  /// Where the user came from, for the trial funnel's analytics.
+  final PlanSource source;
 
-  static Future<void> show(BuildContext context) => showEcSheet<void>(context, builder: (_) => const ProSheet());
+  const ProSheet({super.key, this.source = PlanSource.paywall});
+
+  static Future<void> show(BuildContext context, {PlanSource source = PlanSource.paywall}) =>
+      showEcSheet<void>(context, builder: (_) => ProSheet(source: source));
 
   static const _comparison = <(String, String, String)>[
     ('Projects', '${Entitlement.freeProjectLimit}', 'Unlimited'),
@@ -43,7 +48,9 @@ class ProSheet extends ConsumerWidget {
     final p = context.palette;
     final t = context.type;
     final selected = state.selected;
-    final periodLabel = selected?.period == BillingPeriod.yearly ? 'yr' : 'mo';
+    final trialEnds = selected != null && selected.hasTrial
+        ? ref.read(clockProvider)().add(Duration(days: selected.trialDays!))
+        : null;
 
     return EcSheet(
       maxHeightFraction: 0.94,
@@ -70,15 +77,26 @@ class ProSheet extends ConsumerWidget {
               const SizedBox(height: 10),
             ],
             EcButton(
-              label: state.loading ? 'Loading plans…' : selected == null ? 'Plans unavailable' : 'Start Pro — ${selected.price}/$periodLabel',
+              label: state.loading ? 'Loading plans…' : selected == null ? 'Plans unavailable' : selected.ctaLabel,
               busy: state.purchasing,
               onPressed: state.busy || state.loading || selected == null
                   ? null
                   : () async {
-                      final ok = await controller.purchase();
+                      final ok = await controller.purchase(source: source);
                       if (ok && context.mounted) Navigator.of(context).pop();
                     },
             ),
+            // The first charge date, spelled out (Play and App Store both
+            // ask for it next to a trial).
+            if (selected != null && trialEnds != null) ...[
+              const SizedBox(height: 8),
+              Text(
+                'Free until ${formatDayMonth(trialEnds)}, then ${selected.price}${selected.perPeriod}. '
+                'Cancel before then and you pay nothing.',
+                textAlign: TextAlign.center,
+                style: t.caption,
+              ),
+            ],
             const SizedBox(height: 4),
             Wrap(
               alignment: WrapAlignment.center,
@@ -116,7 +134,8 @@ class ProSheet extends ConsumerWidget {
                 const SizedBox(height: 10),
                 Text(
                   'Free has every block, timing and look tool, with H.264 and HEVC up to 1080p. Pro lifts the '
-                  'three-project cap, unlocks ProRes, PNG and 4K on every render, and removes ads.',
+                  '${Entitlement.freeProjectLimit == 1 ? 'one' : '${Entitlement.freeProjectLimit}'}-project cap, '
+                  'unlocks ProRes, PNG and 4K on every render, and removes ads.',
                   style: t.body,
                 ),
               ],
@@ -184,7 +203,7 @@ class _OfferTile extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 2),
-                Text(offer.detail, style: t.caption),
+                Text(offer.trialSubtitle, style: t.caption),
               ],
             ),
           ),

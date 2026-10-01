@@ -16,7 +16,9 @@ import '../../plan/plan_navigation.dart';
 import '../../export/controllers/export_controller.dart';
 import '../../ads/data/ad_service.dart';
 import '../../ads/widgets/sponsored_slot.dart';
-import '../../plan/screens/pro_sheet.dart';
+import '../../plan/controllers/plan_controller.dart';
+import '../../plan/controllers/trial_offer_controller.dart';
+import '../../plan/widgets/trial_offer_card.dart';
 import '../../project/project_navigation.dart';
 import '../../settings/screens/settings_screen.dart';
 import '../controllers/library_controller.dart';
@@ -24,14 +26,14 @@ import '../widgets/delete_project_sheet.dart';
 import '../widgets/project_actions_sheet.dart';
 import '../widgets/project_card.dart';
 import '../widgets/rename_sheet.dart';
-import '../widgets/slot_card.dart';
 
 /// 1.1 / 1.2 / 1.7 — the home screen, where finished work lives.
 ///
-/// Every project is a credit frame numbered like a reel. On the free plan
-/// the next empty reel is shown as a slot, so the cap is visible long before
-/// it blocks anyone. With no projects yet, the empty state *is* the
-/// template picker — no illustration, no "get started" button.
+/// Every project is a credit frame numbered like a reel. A full free plan
+/// offers the Pro trial in place of the ad (1.1a); on the trial a countdown
+/// closes the list (1.1), so neither the trial's end nor the free limit is
+/// a surprise. With no projects yet, the empty state *is* the template
+/// picker — no illustration, no "get started" button.
 class LibraryScreen extends ConsumerWidget {
   const LibraryScreen({super.key});
 
@@ -74,6 +76,7 @@ class _Header extends ConsumerWidget {
     final user = ref.watch(authStateProvider).value;
     final view = this.view;
     final full = view?.isFull ?? false;
+    final justDuplicated = ref.watch(libraryUiProvider.select((ui) => ui.highlightedId != null));
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 6, 20, 20),
@@ -84,7 +87,7 @@ class _Header extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                if (view != null) EcEyebrow(view.reelLabel, color: full ? p.warn : null),
+                if (view != null) EcEyebrow(view.reelLabel(countOnTrial: justDuplicated)),
                 const SizedBox(height: 8),
                 Text('Projects', style: t.displayXL),
               ],
@@ -117,8 +120,7 @@ class _Header extends ConsumerWidget {
       handleSlotsFull(context);
       return;
     }
-    final label = view.limit == null ? 'reel ${view.nextReel}' : 'slot ${view.nextReel} of ${view.limit}';
-    NewProjectSheet.show(context, slotLabel: label);
+    NewProjectSheet.show(context, slotLabel: 'Reel ${view.nextReel.toString().padLeft(2, '0')}');
   }
 }
 
@@ -165,7 +167,11 @@ class _ProjectList extends ConsumerWidget {
       ...view.items.where((i) => i.summary.id == ui.highlightedId),
       ...view.items.where((i) => i.summary.id != ui.highlightedId),
     ];
-    final slotsLeft = view.slotsLeft;
+    final showTrialOffer = !view.entitlement.isPro &&
+        view.isFull &&
+        !ui.freeingSlot &&
+        !ref.watch(trialOfferHiddenProvider) &&
+        ref.watch(planControllerProvider.select((s) => s.offers.isNotEmpty));
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 22),
@@ -200,11 +206,19 @@ class _ProjectList extends ConsumerWidget {
           ),
           const SizedBox(height: 14),
         ],
-        if (slotsLeft != null && slotsLeft > 0 && !ui.freeingSlot) ...[
-          SlotCard(reel: view.nextReel, slotsLeft: slotsLeft, onUpgrade: () => ProSheet.show(context)),
+        if (view.entitlement.trialEndsAt case final endsAt? when view.trialDaysLeft != null) ...[
+          TrialReminderRow(daysLeft: view.trialDaysLeft!, endsAt: endsAt, limit: Entitlement.freeProjectLimit),
           const SizedBox(height: 14),
         ],
-        const SponsoredSlot(AdPlacement.library, gap: 14),
+        // On a full free plan the trial offer takes the ad's place; dismissed,
+        // the ad comes back (1.1a).
+        if (showTrialOffer) ...[
+          const SizedBox(height: 4),
+          FreePlanDivider(used: view.count, limit: view.limit!),
+          const SizedBox(height: 14),
+          TrialOfferCard(limit: view.limit!),
+        ] else
+          const SponsoredSlot(AdPlacement.library, gap: 14),
       ],
     );
   }

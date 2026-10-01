@@ -164,13 +164,13 @@ void main() {
   testWidgets('with every slot used, the flow never starts', (tester) async {
     final app = AppHarness(
       projects: FakeProjectRepository(seed: [
-        for (var i = 0; i < 3; i++) Project.create(title: 'P$i', now: DateTime.utc(2026, 9, i + 1)),
+        Project.create(title: 'P0', now: DateTime.utc(2026, 9, 1)),
       ]),
     );
     await app.pump(tester);
 
     await tapText(tester, 'New');
-    expect(find.text('3 OF 3 SLOTS USED'), findsOneWidget);
+    expect(find.descendant(of: find.byType(BottomSheet), matching: find.text('1 OF 1 PROJECT USED')), findsOneWidget);
     expect(find.textContaining('Continue with'), findsNothing);
   });
 }
