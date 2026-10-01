@@ -58,6 +58,14 @@
           }
         },
         {
+          "client_id": "660045439222-2ddj0kufmvrh5afnudbk3fun9lsm5565.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.lastreel.app",
+            "certificate_hash": "3a6fe1eb3ae71d2deed12c74a48f8f053b74bb44"
+          }
+        },
+        {
           "client_id": "660045439222-3a1upr1vblthlum5c6df7bbv9th60c8k.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
@@ -66,11 +74,27 @@
           }
         },
         {
+          "client_id": "660045439222-3dnvs4a5mqv53ipk3me0s2jvujnhj5f6.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.lastreel.app",
+            "certificate_hash": "4c0c94de279b7d44755d41e47d40059111f2b99b"
+          }
+        },
+        {
           "client_id": "660045439222-muuti6e0gog7n4hja35tpea6hfh58iaa.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
             "package_name": "com.lastreel.app",
             "certificate_hash": "54efb79082899cf8d15d6a752155a45396f38a3a"
+          }
+        },
+        {
+          "client_id": "660045439222-vpn8pbuad0bi3u7v064gpo36bis0qtif.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.lastreel.app",
+            "certificate_hash": "29b3ee4ec8599b064fcd80ffb0eaa1f8ca52c359"
           }
         },
         {
