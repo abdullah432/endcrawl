@@ -28,5 +28,8 @@ The design medium is **HTML/CSS/JS** — these are prototypes, not production co
 
 **Current source of truth:** `app-light/LastReel App Light.dc.html` (open it
 with `support.js` beside it) and `app-light/CHANGES.md`, the LastReel handoff
-that renamed the app and made ProRes, PNG and 4K Pro-only. The files above
+that renamed the app and made ProRes, PNG and 4K Pro-only; then
+`app-light/plan-and-trial-changes.md` with its bundled design
+`app-light/LastReel App Light.html` (open it directly — it adds 1.1a and the
+on-trial 1.1), which cut Free to one project and added Pro free trials. The files above
 are the original EndCrawl bundle, kept for history.
