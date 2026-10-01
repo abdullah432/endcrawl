@@ -9,6 +9,7 @@ import '../../../core/widgets/ec_button.dart';
 import '../../../core/widgets/ec_surfaces.dart';
 import '../../blocks/screens/add_block_sheet.dart';
 import '../../project/controllers/project_controller.dart';
+import 'read_only_banner.dart';
 import '../controllers/editor_ui_controller.dart';
 import 'block_row.dart';
 
@@ -40,7 +41,7 @@ class BlockList extends ConsumerWidget {
           child: Row(
             children: [
               Expanded(child: Text(caps(count), style: t.eyebrow)),
-              if (blocks.isNotEmpty)
+              if (blocks.isNotEmpty && !ref.watch(editorReadOnlyProvider))
                 TextButton(
                   onPressed: ui.selectMode ? uiController.exitSelectMode : uiController.enterSelectMode,
                   style: TextButton.styleFrom(

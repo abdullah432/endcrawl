@@ -12,6 +12,7 @@ import '../../blocks/screens/block_editor_sheet.dart';
 import '../../monitor/controllers/playback_controller.dart';
 import '../../project/controllers/project_controller.dart';
 import '../controllers/editor_ui_controller.dart';
+import 'read_only_banner.dart';
 import '../editor_actions.dart';
 
 /// One block in the editor's list (3.1): code tile, title, detail, its
@@ -49,8 +50,15 @@ class BlockRow extends ConsumerWidget {
             ? Border.all(color: p.accentSolid, width: 1.5)
             : Border.all(color: p.glassEdge);
 
+    final readOnly = ref.watch(editorReadOnlyProvider);
+
     void onTap() {
       final ui = ref.read(editorUiControllerProvider.notifier);
+      if (readOnly && !selecting) {
+        ref.read(playbackControllerProvider.notifier).seekToBlock(block.id);
+        explainReadOnly(context);
+        return;
+      }
       if (selecting) {
         ui.toggleSelected(block.id);
         return;
@@ -108,7 +116,7 @@ class BlockRow extends ConsumerWidget {
                 ),
                 const SizedBox(width: 8),
                 Text(seconds == null ? '—' : formatClock(seconds), style: t.mono.copyWith(fontSize: 10.5)),
-                if (!selecting)
+                if (!selecting && !readOnly)
                   ReorderableDragStartListener(
                     index: index,
                     child: Tooltip(
@@ -127,7 +135,7 @@ class BlockRow extends ConsumerWidget {
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
-      child: selecting
+      child: selecting || readOnly
           ? row
           : Slidable(
               key: ValueKey('slide-${block.id}'),

@@ -18,7 +18,8 @@ import '../controllers/library_controller.dart';
 /// Two variants from the design: [highlighted] is the fresh copy after a
 /// duplicate (1.7), with Open and Rename side by side so two renders never
 /// end up with the same name; [onDelete] replaces "···" with a delete
-/// button while the user is freeing a slot (1.6).
+/// button while the user is freeing a slot (1.6). [readOnly] marks a project
+/// the free plan can't edit right now (it still opens, plays and renders).
 class ProjectCard extends StatelessWidget {
   final LibraryItem item;
   final DateTime now;
@@ -29,6 +30,7 @@ class ProjectCard extends StatelessWidget {
   final VoidCallback onMore;
   final VoidCallback? onRename;
   final VoidCallback? onDelete;
+  final bool readOnly;
 
   const ProjectCard({
     super.key,
@@ -41,6 +43,7 @@ class ProjectCard extends StatelessWidget {
     this.renderProgress,
     this.onRename,
     this.onDelete,
+    this.readOnly = false,
   });
 
   ProjectSummary get _s => item.summary;
@@ -90,7 +93,14 @@ class ProjectCard extends StatelessWidget {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(_s.title, style: t.titleM, maxLines: 1, overflow: TextOverflow.ellipsis),
+                            Row(
+                              children: [
+                                Flexible(
+                                  child: Text(_s.title, style: t.titleM, maxLines: 1, overflow: TextOverflow.ellipsis),
+                                ),
+                                if (readOnly) ...[const SizedBox(width: 8), const EcStatusPill('Read-only')],
+                              ],
+                            ),
                             const SizedBox(height: 4),
                             Text(meta, style: t.mono.copyWith(fontSize: 10), maxLines: 1, overflow: TextOverflow.ellipsis),
                           ],

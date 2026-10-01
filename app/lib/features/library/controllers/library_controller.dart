@@ -6,6 +6,7 @@ import '../../../core/utils/formatting.dart';
 import '../../../data/sources/session_store.dart';
 import '../../../domain/models/entitlement.dart';
 import '../../../domain/models/project.dart';
+import '../../plan/controllers/editable_projects.dart';
 
 /// Every stored project, newest first, kept live: a create, rename or
 /// delete anywhere — this screen, the editor, account deletion, another
@@ -103,6 +104,9 @@ class LibraryUi extends Notifier<LibraryUiState> {
 
 final libraryUiProvider = NotifierProvider<LibraryUi, LibraryUiState>(LibraryUi.new);
 
+/// Refused edits to a project the free plan can't edit right now.
+const readOnlyOnFree = AppFailure(FailureKind.permission, 'Read-only on the free plan — one project stays editable.');
+
 /// Library-level actions. Each one refreshes what it changed, so the screen
 /// never has to remember to invalidate anything.
 class LibraryController {
@@ -161,6 +165,8 @@ class LibraryController {
   }
 
   Future<Result<Project>> rename(String id, String title) async {
+    // Renaming touches the project, which would make it the editable one.
+    if (_ref.read(readOnlyProjectIdsProvider).contains(id)) return const Err(readOnlyOnFree);
     final clean = sanitizeProjectTitle(title);
     final repository = _ref.read(projectRepositoryProvider);
     final loaded = await repository.load(id);

@@ -3,6 +3,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'read_only_banner.dart';
 import '../../../core/theme/theme_context.dart';
 import '../../../core/utils/formatting.dart';
 import '../../../core/widgets/ec_option_sheet.dart';
@@ -27,6 +28,8 @@ class EditorDock extends ConsumerWidget {
     final project = ref.watch(projectControllerProvider);
     final healthy = rollHealth(project) == RollHealth.clean;
     final runtime = formatClock(project.runtime.inMilliseconds / 1000);
+    // A read-only project still plays and exports; nothing else changes it.
+    final editable = !ref.watch(editorReadOnlyProvider);
 
     return ClipRRect(
       borderRadius: BorderRadius.circular(24),
@@ -42,13 +45,21 @@ class EditorDock extends ConsumerWidget {
           ),
           child: Row(
             children: [
-              _DockItem(glyph: const Icon(Icons.add_rounded, size: 18), label: 'Block', onTap: () => AddBlockSheet.show(context)),
-              _DockItem(glyph: const Icon(Icons.keyboard_tab_rounded, size: 16), label: 'Paste', onTap: () => PasteSheet.show(context)),
+              _DockItem(
+                glyph: const Icon(Icons.add_rounded, size: 18),
+                label: 'Block',
+                onTap: editable ? () => AddBlockSheet.show(context) : null,
+              ),
+              _DockItem(
+                glyph: const Icon(Icons.keyboard_tab_rounded, size: 16),
+                label: 'Paste',
+                onTap: editable ? () => PasteSheet.show(context) : null,
+              ),
               _DockItem(
                 glyph: Text(runtime, style: context.type.mono.copyWith(fontSize: 11, color: healthy ? p.ink : p.warn)),
                 label: 'Timing',
-                warn: !healthy,
-                onTap: () => TimingSheet.show(context),
+                warn: !healthy && editable,
+                onTap: editable ? () => TimingSheet.show(context) : null,
               ),
               const SizedBox(width: 4),
               Expanded(
@@ -78,14 +89,16 @@ class _DockItem extends StatelessWidget {
   final Widget glyph;
   final String label;
   final bool warn;
-  final VoidCallback onTap;
+
+  /// Null greys the item out — on a read-only project.
+  final VoidCallback? onTap;
 
   const _DockItem({required this.glyph, required this.label, this.warn = false, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
     final p = context.palette;
-    final fg = warn ? p.warn : p.ink;
+    final fg = onTap == null ? p.faint : (warn ? p.warn : p.ink);
     return Expanded(
       flex: 10,
       child: Material(

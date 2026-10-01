@@ -16,6 +16,7 @@ import '../../plan/plan_navigation.dart';
 import '../../export/controllers/export_controller.dart';
 import '../../ads/data/ad_service.dart';
 import '../../ads/widgets/sponsored_slot.dart';
+import '../../plan/controllers/editable_projects.dart';
 import '../../plan/controllers/plan_controller.dart';
 import '../../plan/controllers/trial_offer_controller.dart';
 import '../../plan/widgets/trial_offer_card.dart';
@@ -167,6 +168,7 @@ class _ProjectList extends ConsumerWidget {
       ...view.items.where((i) => i.summary.id == ui.highlightedId),
       ...view.items.where((i) => i.summary.id != ui.highlightedId),
     ];
+    final readOnly = ref.watch(readOnlyProjectIdsProvider);
     final showTrialOffer = !view.entitlement.isPro &&
         view.isFull &&
         !ui.freeingSlot &&
@@ -203,6 +205,7 @@ class _ProjectList extends ConsumerWidget {
             onRename: () => actions.rename(item),
             onDelete: ui.freeingSlot ? () => actions.delete(item) : null,
             renderProgress: ref.watch(renderProgressProvider(item.summary.id)),
+            readOnly: readOnly.contains(item.summary.id),
           ),
           const SizedBox(height: 14),
         ],

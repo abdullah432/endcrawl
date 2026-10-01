@@ -11,6 +11,7 @@ import '../controllers/editor_ui_controller.dart';
 import '../widgets/block_list.dart';
 import '../widgets/editor_dock.dart';
 import '../widgets/landscape_monitor.dart';
+import '../widgets/read_only_banner.dart';
 import '../widgets/readability_banner.dart';
 import '../widgets/scrub_bar.dart';
 import '../widgets/status_line.dart';
@@ -140,6 +141,7 @@ class _PortraitEditor extends ConsumerWidget {
                       ],
                     ),
                   ),
+                  const ReadOnlyBanner(),
                   const ReadabilityBanner(),
                   const SizedBox(height: 6),
                   const Expanded(child: BlockList()),

@@ -15,6 +15,7 @@ import '../../../domain/models/credit_face.dart';
 import '../../../domain/models/project.dart';
 import '../../../domain/models/project_settings.dart';
 import '../../../domain/models/render_summary.dart';
+import '../../plan/controllers/editable_projects.dart';
 
 enum SaveState { idle, saving, saved, failed }
 
@@ -244,10 +245,25 @@ class ProjectController extends Notifier<ProjectState> {
   ProjectRepository get _repository => ref.read(projectRepositoryProvider);
   SessionStore get _session => ref.read(sessionStoreProvider);
 
-  /// The single write path for document content.
+  /// Whether the open project is one the free plan can't edit (see
+  /// [readOnlyProjectIdsProvider]). Live, so starting a trial from the
+  /// editor unlocks it at once.
+  bool get readOnly => ref.read(readOnlyProjectIdsProvider).contains(state.project.id);
+
+  /// The single write path for document content. A read-only project
+  /// refuses every edit here, whatever screen asked for it.
   void _writeDocument(Project next) {
+    if (readOnly) return;
     state = state.copyWith(project: next.touch());
     _scheduleSave();
+  }
+
+  /// Makes the open project the one the free plan edits, by making it the
+  /// most recently updated — the previously editable one becomes read-only.
+  Future<void> keepEditable() async {
+    _debounce?.cancel();
+    state = state.copyWith(project: state.project.touch());
+    await _save(state.project);
   }
 
   void _scheduleSave() {
