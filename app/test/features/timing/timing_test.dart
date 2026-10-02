@@ -52,8 +52,8 @@ void main() {
       await openEditor(tester);
       await tapText(tester, 'Timing');
 
-      expect(find.text('No judder'), findsOneWidget);
-      expect(find.text('Whole pixel at 1920'), findsOneWidget);
+      expect(find.text('Steady pace'), findsOneWidget);
+      expect(find.text('Playback also depends on the display'), findsOneWidget);
       expect(find.text('Readable'), findsOneWidget);
       expect(find.textContaining('dwell · floor 3.0s'), findsOneWidget);
     });

@@ -119,7 +119,7 @@ class ProjectController extends Notifier<ProjectState> {
   bool _draft = false;
 
   /// Set when a template starts a project: once the roll is first measured,
-  /// its target runtime moves to the nearest judder-free speed.
+  /// its target runtime moves to a conservative whole-pixel speed.
   bool _snapToCleanOnMeasure = false;
 
   @override
@@ -160,8 +160,7 @@ class ProjectController extends Notifier<ProjectState> {
     _snapToCleanOnMeasure = false;
     state = ProjectState(
       project: Project.create(
-        // Speed-locked at a whole-pixel rate, so the roll never judders
-        // however long it grows.
+        // Speed-locked at a conservative rate however long it grows.
         settings: ProjectSettings(
           formatId: formatId,
           fps: fps,
@@ -298,9 +297,15 @@ class ProjectController extends Notifier<ProjectState> {
       _updateSettings((s) => s.copyWith(formatId: 'custom', customW: w, customH: h));
 
   void setFps(double v) {
+    if (v <= 0) return;
     final e = state.engine;
     final newDurF = e.fps == 0 ? state.settings.durationFrames : (e.totalFrames / e.fps * v).round();
-    _updateSettings((s) => s.copyWith(fps: v, durationFrames: newDurF));
+    _updateSettings((s) => s.copyWith(
+          fps: v,
+          durationFrames: newDurF,
+          // A new delivery rate must not speed up a speed-locked roll.
+          ppf: e.fps == 0 ? s.ppf : s.ppf * e.fps / v,
+        ));
   }
 
   // ---------- timing ----------
@@ -332,6 +337,9 @@ class ProjectController extends Notifier<ProjectState> {
   void setPpf(double v) => _updateSettings((s) => s.copyWith(mode: TimingMode.speed, ppf: v));
 
   void applySnap(int ppf) => _updateSettings((s) => s.copyWith(mode: TimingMode.speed, ppf: ppf.toDouble()));
+
+  void setMotionSmoothing(bool value) =>
+      _updateSettings((s) => s.copyWith(motionSmoothing: value));
 
   void setHead(double v) => _updateSettings((s) => s.copyWith(headSeconds: v.clamp(0.0, 1e6)));
   void setTail(double v) => _updateSettings((s) => s.copyWith(tailSeconds: v.clamp(0.0, 1e6)));
@@ -539,9 +547,12 @@ class ProjectController extends Notifier<ProjectState> {
     state = state.copyWith(measurements: m);
     if (_snapToCleanOnMeasure && m.blockY.isNotEmpty) {
       _snapToCleanOnMeasure = false;
-      // A template's runtime is a target, not a promise: the nearest
-      // whole-pixel speed keeps it close and makes the roll judder-free.
-      if (timingFixes(state.engine, count: 1) case [(final ppf, _)]) applySnap(ppf);
+      // Keep a template near its target while starting at a conservative pace.
+      if (timingFixes(state.engine, count: 1) case [(final ppf, _)]) {
+        applySnap(ppf);
+      } else if (!state.engine.clean) {
+        applySnap(state.engine.ppf.round().clamp(1, 1 << 30));
+      }
     }
   }
 }

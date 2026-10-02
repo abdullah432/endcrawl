@@ -41,7 +41,7 @@ void main() {
 
       expect(find.text('The Long Way Down'), findsOneWidget);
       expect(find.textContaining('24 fps · '), findsOneWidget);
-      expect(find.textContaining('4 px/frame · clean'), findsOneWidget);
+      expect(find.textContaining('4 px/frame · steady pace'), findsOneWidget);
       expect(find.text('5 BLOCKS'), findsOneWidget);
       expect(find.text('Directed by'), findsWidgets);
       for (final action in ['Block', 'Paste', 'Timing', 'Export']) {
@@ -95,26 +95,26 @@ void main() {
   });
 
   group('3.2 readability warning', () {
-    testWidgets('a fractional rate states the runtime and cause, with fixes and Ignore', (tester) async {
-      app = AppHarness(projects: FakeProjectRepository(seed: [film(mode: TimingMode.duration, durationFrames: 24 * 47 + 5)]));
+    testWidgets('a fast whole-pixel rate states the runtime and cause, with fixes and Ignore', (tester) async {
+      app = AppHarness(projects: FakeProjectRepository(seed: [film().copyWith(settings: film().settings.copyWith(ppf: 11))]));
       await openEditor(tester);
 
-      expect(find.textContaining('will judder.', findRichText: true), findsOneWidget);
-      expect(find.textContaining('px/frame is fractional', findRichText: true), findsOneWidget);
+      expect(find.textContaining('may strobe.', findRichText: true), findsOneWidget);
+      expect(find.textContaining('px per frame at', findRichText: true), findsOneWidget);
       expect(find.textContaining(RegExp(r'px/f$')), findsWidgets);
 
       await tapText(tester, 'Ignore');
-      expect(find.textContaining('will judder.', findRichText: true), findsNothing);
+      expect(find.textContaining('may strobe.', findRichText: true), findsNothing);
     });
 
     testWidgets('a fix locks a whole-pixel speed and clears the warning', (tester) async {
-      app = AppHarness(projects: FakeProjectRepository(seed: [film(mode: TimingMode.duration, durationFrames: 24 * 47 + 5)]));
+      app = AppHarness(projects: FakeProjectRepository(seed: [film().copyWith(settings: film().settings.copyWith(ppf: 11))]));
       await openEditor(tester);
 
       await tester.tap(find.textContaining(RegExp(r'px/f$')).first);
       await tester.pumpAndSettle();
 
-      expect(find.textContaining('will judder.', findRichText: true), findsNothing);
+      expect(find.textContaining('may strobe.', findRichText: true), findsNothing);
       await flushAutosave(tester);
       final settings = app.projects.projects.values.single.settings;
       expect(settings.mode, TimingMode.speed);

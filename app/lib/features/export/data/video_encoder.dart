@@ -36,16 +36,21 @@ class EncoderCapabilities {
 
   /// Free space where renders are written, in bytes; null when unknown.
   final int? freeBytes;
+  /// 60 fps limits can be lower than the ordinary 30 fps limits on Android.
+  /// Null is the older capability protocol, which has no separate rate limit.
+  final Map<Codec, int>? maxEdgeAt60;
 
-  const EncoderCapabilities(this.maxEdge, {this.freeBytes});
+  const EncoderCapabilities(this.maxEdge, {this.freeBytes, this.maxEdgeAt60});
+
+  bool supports60Fps(Codec codec, int edge) => ((maxEdgeAt60 ?? maxEdge)[codec] ?? 0) >= edge;
 
   bool supports(Codec codec) => maxEdge.containsKey(codec);
 
   Iterable<Codec> get codecs => Codec.values.where(supports);
 
   /// The output sizes [codec] can be made at here.
-  Iterable<ExportResolution> resolutionsFor(Codec codec) =>
-      ExportResolution.values.where((r) => (maxEdge[codec] ?? 0) >= r.edge);
+  Iterable<ExportResolution> resolutionsFor(Codec codec, {double fps = 30}) =>
+      ExportResolution.values.where((r) => ((fps > 30 ? maxEdgeAt60 ?? maxEdge : maxEdge)[codec] ?? 0) >= r.edge);
 }
 
 /// Turns rendered frames into a file. Implemented natively for video
@@ -100,7 +105,11 @@ class RoutingVideoEncoder implements VideoEncoder {
   @override
   Future<EncoderCapabilities> capabilities() async {
     final (v, i) = await (video.capabilities(), images.capabilities()).wait;
-    return EncoderCapabilities({...v.maxEdge, ...i.maxEdge}, freeBytes: v.freeBytes ?? i.freeBytes);
+    return EncoderCapabilities(
+      {...v.maxEdge, ...i.maxEdge},
+      freeBytes: v.freeBytes ?? i.freeBytes,
+      maxEdgeAt60: {...(v.maxEdgeAt60 ?? v.maxEdge), ...(i.maxEdgeAt60 ?? i.maxEdge)},
+    );
   }
 
   @override

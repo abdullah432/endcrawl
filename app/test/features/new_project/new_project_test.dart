@@ -122,7 +122,7 @@ void main() {
       final settings = app.projects.projects.values.single.settings;
       expect(settings.mode, TimingMode.speed);
       expect(settings.ppf, settings.ppf.roundToDouble());
-      expect(find.textContaining(' clean '), findsWidgets);
+      expect(find.textContaining(' steady pace '), findsWidgets);
     });
 
     testWidgets('an empty project starts at a whole-pixel speed', (tester) async {

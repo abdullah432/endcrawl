@@ -43,6 +43,12 @@ class ProjectSettings {
   final CreditFace? face; // null = the app default (grotesque)
   final bool safeGuides;
 
+  /// Optional 180-degree motion blur: each frame integrates half a frame
+  /// of travel. It softens moving text but does not remove the step between
+  /// frames, so it is no cure for judder; a higher frame rate or a slower
+  /// roll is. Off by default: frames are sharp.
+  final bool motionSmoothing;
+
   const ProjectSettings({
     this.formatId = '239',
     this.customW = 1080,
@@ -59,6 +65,7 @@ class ProjectSettings {
     this.background = MonitorBackground.black,
     this.face,
     this.safeGuides = true,
+    this.motionSmoothing = false,
   });
 
   /// The output format, whether a preset or a custom size.
@@ -81,6 +88,7 @@ class ProjectSettings {
     MonitorBackground? background,
     CreditFace? face,
     bool? safeGuides,
+    bool? motionSmoothing,
   }) {
     return ProjectSettings(
       formatId: formatId ?? this.formatId,
@@ -98,6 +106,7 @@ class ProjectSettings {
       background: background ?? this.background,
       face: face ?? this.face,
       safeGuides: safeGuides ?? this.safeGuides,
+      motionSmoothing: motionSmoothing ?? this.motionSmoothing,
     );
   }
 
@@ -117,6 +126,7 @@ class ProjectSettings {
         'background': background.name,
         'face': face?.name,
         'safeGuides': safeGuides,
+        'motionSmoothing': motionSmoothing,
       };
 
   factory ProjectSettings.fromJson(Map<String, Object?> json) {
@@ -137,6 +147,10 @@ class ProjectSettings {
       background: json['background'] == null ? defaults.background : MonitorBackground.fromWire(json['background']),
       face: json['face'] == null ? null : asEnum(CreditFace.values, json['face'], CreditFace.grotesque),
       safeGuides: asBool(json['safeGuides'], defaults.safeGuides),
+      motionSmoothing: asBool(
+        json['motionSmoothing'],
+        defaults.motionSmoothing,
+      ),
     );
   }
 }

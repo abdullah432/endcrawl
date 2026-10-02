@@ -37,6 +37,13 @@ void main() {
     expect(caps.freeBytes, 5000000000);
   });
 
+  test('capabilities preserve a stricter Android 60 fps limit', () async {
+    reply = (_) => {'codecs': {'h264': 3840}, 'codecs60': {'h264': 1280}};
+    final caps = await const NativeVideoEncoder().capabilities();
+    expect(caps.supports60Fps(Codec.h264, 1920), isFalse);
+    expect(caps.supports60Fps(Codec.h264, 1280), isTrue);
+  });
+
   test('a session starts, takes RGBA frames with their index, and finishes with the file', () async {
     reply = (call) => switch (call.method) {
           'start' => 7,

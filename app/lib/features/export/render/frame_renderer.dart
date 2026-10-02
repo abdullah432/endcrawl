@@ -30,6 +30,7 @@ class FrameRenderer implements FrameSource {
   /// Render pixels per canvas pixel: a whole number.
   final int _scale;
   final bool _crawl3d;
+  final bool _motionSmoothing;
 
   /// Rows drawn below the frame for the sub-pixel shift to reveal.
   static const _overscanPx = 2;
@@ -47,6 +48,7 @@ class FrameRenderer implements FrameSource {
     this.engine,
     this._scale,
     this._crawl3d,
+    this._motionSmoothing,
     this._frame,
     this._buildOwner,
     this._pipelineOwner,
@@ -73,8 +75,8 @@ class FrameRenderer implements FrameSource {
     // the output — so a whole-pixel speed stays whole. [render] then fits it
     // to the exact output size, applying any sub-pixel remainder.
     final scale = max(1, (outputWidth / geometry.w).ceil());
-    final overscan = _overscanPx / scale;
-    final size = Size(geometry.w * scale, (geometry.h + overscan) * scale);
+    var overscan = _overscanPx / scale;
+    var size = Size(geometry.w * scale, (geometry.h + overscan) * scale);
     final boundary = RenderRepaintBoundary();
     final renderView = RenderView(
       view: view,
@@ -118,6 +120,7 @@ class FrameRenderer implements FrameSource {
                 forRender: true,
                 snap: scale.toDouble(),
                 overscan: overscan,
+                sampleSubframes: true,
               ),
             ),
           ),
@@ -150,6 +153,18 @@ class FrameRenderer implements FrameSource {
 
     final measured = measurer.measure() ?? const RollMeasurements();
     engine = computeEngine(project: settings, activeBlocks: blocks, measurements: measured, geometry: geometry);
+    // A flat roll needs only one rasterization per output frame: sample
+    // shifted crops of the same pixels over a 180-degree shutter exposure.
+    // Draw enough below the frame to reveal every crop without a dark edge.
+    if (settings.motionSmoothing && settings.look == RollLook.flat2d) {
+      overscan = (_overscanPx + (engine.ppf * scale / 2).ceil()) / scale;
+      size = Size(geometry.w * scale, (geometry.h + overscan) * scale);
+      renderView.configuration = ViewConfiguration(
+        logicalConstraints: BoxConstraints.tight(size),
+        physicalConstraints: BoxConstraints.tight(size),
+        devicePixelRatio: 1,
+      );
+    }
     mount();
     flush();
 
@@ -160,6 +175,7 @@ class FrameRenderer implements FrameSource {
       engine,
       scale,
       settings.look == RollLook.crawl3d,
+      settings.motionSmoothing,
       frame,
       buildOwner,
       pipelineOwner,
@@ -168,17 +184,9 @@ class FrameRenderer implements FrameSource {
     );
   }
 
-  /// Frame [index] as an image at exactly the output size.
-  ///
-  /// The roll is drawn on whole render pixels, then this one resample moves
-  /// it the rest of the way — the fraction of a pixel it really travelled —
-  /// and fits it to the output. Every frame then moves the same distance,
-  /// at any speed and any output size, rather than stepping 3,3,4,3,4 px.
-  /// A whole-pixel speed at a whole-multiple size has no fraction and no
-  /// scaling, so it comes through pixel for pixel.
-  @override
-  Future<ui.Image> render(int index) async {
-    _frame.value = index.toDouble();
+  /// Draw at an exact time, retaining the existing pixel-stable rasterization.
+  Future<ui.Image> _draw(double frame) async {
+    _frame.value = frame;
     _buildOwner
       ..buildScope(_root)
       ..finalizeTree();
@@ -186,25 +194,73 @@ class FrameRenderer implements FrameSource {
       ..flushLayout()
       ..flushCompositingBits()
       ..flushPaint();
-    final drawn = await _boundary.toImage();
+    return _boundary.toImage();
+  }
 
-    final offset = paintAt(engine, index.toDouble()).offset;
-    final placed = RollFrame.placedOffset(offset, snap: _scale.toDouble(), crawl3d: _crawl3d);
-    final fraction = (offset - placed) * _scale;
-    final source = Rect.fromLTWH(0, fraction, geometry.w * _scale, geometry.h * _scale);
+  /// Frame [index] at the output size. Smoothing integrates a half-frame
+  /// exposure rather than taking an instantaneous, perfectly sharp sample.
+  /// Holds and freezes remain sharp; perspective is sampled in time, not
+  /// blurred uniformly across lines that move at different speeds.
+  ///
+  /// Without smoothing, a flat roll at a fractional speed is still kept at
+  /// one sharpness on every frame. A plain resample is crisp on a whole
+  /// pixel and softest half way between, so 5.5 px/frame (a whole-pixel
+  /// speed moved to 60 fps at the same runtime) would alternate crisp and
+  /// soft frames, a visible 30 Hz shimmer. Half-pixel speeds are biased a
+  /// quarter pixel, so frames alternate between mirror-image filters of
+  /// equal sharpness; other fractional speeds average one pixel of travel.
+  /// Whole-pixel speeds stay pixel for pixel.
+  @override
+  Future<ui.Image> render(int index) async {
+    final first = paintAt(engine, index - .25, subframe: true);
+    final last = paintAt(engine, index + .25, subframe: true);
+    final moving = (last.offset - first.offset).abs() > .000001;
+    final smoothing = _motionSmoothing && moving;
+    final flat = !_crawl3d && first.holdId == null && last.holdId == null;
+    final step = (engine.ppf * _scale) % 1;
+    final subpixel = !smoothing && moving && flat && step > .0001 && step < .9999;
+    final halfPixel = subpixel && (step - .5).abs() <= .0001;
+    // Exposure in frames: half a frame when smoothing; one render pixel of
+    // travel for an uneven fractional speed; otherwise an instant.
+    final exposure = smoothing ? .5 : (subpixel && !halfPixel ? 1 / (engine.ppf * _scale) : 0.0);
+    // Flat rolls reuse one image; keep sample spacing below one output pixel
+    // when possible. Perspective needs distinct rasterizations, bounded to
+    // four to limit memory and GPU work on phones.
+    final samples = smoothing
+        ? (flat ? ((last.offset - first.offset).abs() * outputHeight / geometry.h).ceil().clamp(4, 16) : 4)
+        : (exposure > 0 ? 8 : 1);
+    final times = [for (var i = 0; i < samples; i++) index + (samples == 1 ? 0.0 : ((i + .5) / samples - .5) * exposure)];
+    final paints = [for (final time in times) paintAt(engine, time, subframe: true)];
+    final images = <ui.Image>[];
     final recorder = ui.PictureRecorder();
-    Canvas(recorder).drawImageRect(
-      drawn,
-      source,
-      Rect.fromLTWH(0, 0, outputWidth.toDouble(), outputHeight.toDouble()),
-      Paint()..filterQuality = FilterQuality.medium,
-    );
-    final picture = recorder.endRecording();
+    final canvas = Canvas(recorder);
+    final destination = Rect.fromLTWH(0, 0, outputWidth.toDouble(), outputHeight.toDouble());
+    final paint = Paint()
+      ..filterQuality = FilterQuality.medium
+      ..color = Color.from(alpha: 1 / samples, red: 1, green: 1, blue: 1)
+      ..blendMode = samples == 1 ? BlendMode.src : BlendMode.plus;
+    ui.Picture? picture;
     try {
+      ui.Image? reused;
+      if (flat) {
+        reused = await _draw(times.first);
+        images.add(reused);
+      }
+      for (var i = 0; i < samples; i++) {
+        final drawn = reused ?? await _draw(times[i]);
+        if (reused == null) images.add(drawn);
+        final placed = RollFrame.placedOffset(flat ? paints.first.offset : paints[i].offset, snap: _scale.toDouble(), crawl3d: _crawl3d);
+        var fraction = (paints[i].offset - placed) * _scale;
+        if (halfPixel) fraction = (fraction * 2 + .0001).floorToDouble() / 2 + .25;
+        canvas.drawImageRect(drawn, Rect.fromLTWH(0, fraction, geometry.w * _scale, geometry.h * _scale), destination, paint);
+      }
+      picture = recorder.endRecording();
       return await picture.toImage(outputWidth, outputHeight);
     } finally {
-      picture.dispose();
-      drawn.dispose();
+      picture?.dispose();
+      for (final image in images) {
+        image.dispose();
+      }
     }
   }
 

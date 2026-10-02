@@ -9,6 +9,7 @@ import '../../../core/widgets/ec_chip.dart';
 import '../../../core/widgets/ec_scaffold.dart';
 import '../../../core/widgets/ec_sheet.dart';
 import '../../../core/widgets/ec_stepper.dart';
+import '../../../core/widgets/ec_settings.dart';
 import '../../../domain/engine/roll_engine.dart';
 import '../../../domain/models/project_settings.dart';
 import '../../editor/controllers/editor_ui_controller.dart';
@@ -86,9 +87,9 @@ class TimingSheet extends ConsumerWidget {
             children: [
               Expanded(
                 child: _Verdict(
-                  ok: e.clean,
-                  title: e.clean ? 'No judder' : 'Judder',
-                  detail: e.clean ? 'Whole pixel at ${project.formatW}' : '${e.ppf.toStringAsFixed(2)} px/frame is fractional',
+                  ok: !e.judderRisk,
+                  title: e.judderRisk ? 'Judder risk' : 'Steady pace',
+                  detail: e.judderRisk ? 'Try slower motion or 60 fps' : 'Playback also depends on the display',
                 ),
               ),
               const SizedBox(width: 8),
@@ -98,6 +99,15 @@ class TimingSheet extends ConsumerWidget {
                   title: e.readable ? 'Readable' : 'Too fast',
                   detail: '${e.dwellSeconds.toStringAsFixed(1)}s dwell · floor 3.0s',
                 ),
+            ),
+          ]),
+          const SizedBox(height: 14),
+          EcGroup(children: [
+            EcGroupRow.toggle(
+              title: 'Motion blur',
+              subtitle: 'A film-style 180° shutter. Softens moving text; holds stay sharp.',
+              value: settings.motionSmoothing,
+              onChanged: (v) => edit(() => controller.setMotionSmoothing(v)),
               ),
             ],
           ),

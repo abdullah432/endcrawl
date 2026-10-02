@@ -21,8 +21,7 @@ class RollHero extends StatefulWidget {
 }
 
 class _RollHeroState extends State<RollHero> with SingleTickerProviderStateMixin {
-  /// One pass of the sequence. At the frame's size this is roughly the
-  /// "4 px/frame at 24 fps" the footnote claims.
+  /// A live display-rate animation, independent of a project's delivery fps.
   static const _cycle = Duration(seconds: 18);
 
   late final AnimationController _controller = AnimationController(vsync: this, duration: _cycle);
@@ -63,7 +62,7 @@ class _RollHeroState extends State<RollHero> with SingleTickerProviderStateMixin
       ),
       child: EcCreditFrame(
         radius: 22,
-        footnote: '24 fps · 4 px/frame',
+        footnote: 'Live preview',
         child: LayoutBuilder(
           builder: (context, constraints) {
             final h = constraints.maxHeight;

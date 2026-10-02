@@ -124,21 +124,24 @@ class VideoEncoderPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
      */
     private fun capabilities(): Map<String, Any> {
         val codecs = HashMap<String, Int>()
+        val codecs60 = HashMap<String, Int>()
         val infos = MediaCodecList(MediaCodecList.REGULAR_CODECS).codecInfos.filter { it.isEncoder }
-        for ((name, mime) in MIMES) {
-            val edge = listOf(3840, 1920, 1280).firstOrNull { edge ->
+        fun maxEdge(mime: String, fps: Double): Int? =
+            listOf(3840, 1920, 1280).firstOrNull { edge ->
                 val short = edge * 9 / 16
                 infos.any { info ->
                     info.supportedTypes.any { it.equals(mime, ignoreCase = true) } &&
                         info.getCapabilitiesForType(mime).videoCapabilities?.let {
-                            it.areSizeAndRateSupported(edge, short, 30.0) &&
-                                it.areSizeAndRateSupported(short, edge, 30.0)
+                            it.areSizeAndRateSupported(edge, short, fps) &&
+                                it.areSizeAndRateSupported(short, edge, fps)
                         } == true
                 }
             }
-            if (edge != null) codecs[name] = edge
+        for ((name, mime) in MIMES) {
+            maxEdge(mime, 30.0)?.let { codecs[name] = it }
+            maxEdge(mime, 60.0)?.let { codecs60[name] = it }
         }
-        return mapOf("codecs" to codecs, "freeBytes" to StatFs(cacheDir.path).availableBytes)
+        return mapOf("codecs" to codecs, "codecs60" to codecs60, "freeBytes" to StatFs(cacheDir.path).availableBytes)
     }
 
     companion object {

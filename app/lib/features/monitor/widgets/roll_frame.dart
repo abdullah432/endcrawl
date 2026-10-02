@@ -43,6 +43,7 @@ class RollFrame extends StatelessWidget {
   /// Extra canvas rows drawn below the frame, so a sub-pixel shift upward
   /// has real picture to reveal rather than an empty edge.
   final double overscan;
+  final bool sampleSubframes;
 
   const RollFrame({
     super.key,
@@ -56,6 +57,7 @@ class RollFrame extends StatelessWidget {
     this.forRender = false,
     this.snap,
     this.overscan = 0,
+    this.sampleSubframes = false,
   });
 
   /// Where the roll is drawn for [offset]: on whole render pixels when
@@ -101,7 +103,7 @@ class RollFrame extends StatelessWidget {
                     valueListenable: frame,
                     child: content,
                     builder: (context, f, content) {
-                      final placed = placedOffset(paintAt(engine, f).offset, snap: snap, crawl3d: crawl3d);
+                      final placed = placedOffset(paintAt(engine, f, subframe: sampleSubframes).offset, snap: snap, crawl3d: crawl3d);
                       final translated = Transform.translate(offset: Offset(0, g.h - placed), child: content);
                       if (!crawl3d) return translated;
                       final perspectivePx = g.h * (settings.vanishingDistance / 100) * 2;
@@ -124,7 +126,7 @@ class RollFrame extends StatelessWidget {
                   paper: paper,
                   child: ValueListenableBuilder<double>(
                     valueListenable: frame,
-                    builder: (context, f, _) => HoldOverlay(holds: holds, geometry: g, paint: paintAt(engine, f)),
+                    builder: (context, f, _) => HoldOverlay(holds: holds, geometry: g, paint: paintAt(engine, f, subframe: sampleSubframes)),
                   ),
                 ),
               ),

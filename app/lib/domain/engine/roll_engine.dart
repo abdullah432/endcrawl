@@ -149,6 +149,14 @@ class RollEngineResult {
   final double canvasH;
   final double canvasW;
 
+  /// Conservative motion guidance, measured in canvas pixels per frame.
+  /// Integer movement does not prevent temporal strobing. About 1/240 of
+  /// the frame height per frame is a slow crawl; faster motion may strobe,
+  /// especially with thin, high-contrast text. This is guidance, not a
+  /// prediction of a particular display or viewer's perception.
+  double get recommendedMaxPpf => max(1.0, canvasH / 240);
+  bool get judderRisk => ppf > recommendedMaxPpf;
+
   const RollEngineResult({
     required this.fps,
     required this.ppf,
@@ -245,7 +253,7 @@ RollEngineResult computeEngine({
     scrollF = tot - fixed;
     ppf = distance / scrollF;
   } else {
-    ppf = max(1.0, project.ppf);
+    ppf = max(0.001, project.ppf);
     scrollF = (distance / ppf).ceilToDouble();
   }
   final travelUsed = project.mode == TimingMode.speed ? start + ppf * scrollF : travel;
@@ -327,8 +335,9 @@ class RollPaint {
   const RollPaint({required this.offset, required this.holdId, required this.holdOpacity});
 }
 
-RollPaint paintAt(RollEngineResult e, double frame) {
-  final fi = frame.clamp(0, max(0, e.totalFrames - 1)).floorToDouble();
+RollPaint paintAt(RollEngineResult e, double frame, {bool subframe = false}) {
+  final time = frame.clamp(0, max(0, e.totalFrames - 1)).toDouble();
+  final fi = subframe ? time : time.floorToDouble();
   RollSegment seg = e.segments.last;
   for (final s in e.segments) {
     if (fi >= s.f0 && fi < s.f1) {
@@ -428,26 +437,27 @@ String? readabilityCulprit(RollEngineResult e, List<CreditBlock> activeBlocks) {
   return id;
 }
 
-/// One-tap fixes for a juddering or too-fast roll (3.2): the nearest whole
-/// pixel-per-frame rates that also keep every line on screen for the 3 s
-/// floor, nearest first, with the runtime each gives.
+/// Slower whole-pixel rates for motion or readability guidance. A fractional
+/// rate alone is not a fault: the renderer preserves sub-pixel movement.
 List<(int ppf, double totalFrames)> timingFixes(RollEngineResult e, {int count = 2}) {
   if (e.fps == 0 || e.travel <= 1) return const [];
   final readableMax = max(1, (e.canvasH / (3 * e.fps)).floor());
-  final start = min(readableMax, max(1, e.ppf.round()));
+  final motionMax = e.recommendedMaxPpf.floor();
+  final start = min(min(readableMax, motionMax), max(1, e.ppf.round()));
+  final distance = e.travel - e.segments.first.y0;
   final out = <(int, double)>[];
   for (var k = start; k >= 1 && out.length < count; k--) {
-    if (e.clean && e.readable) break;
+    if (!e.judderRisk && e.readable) break;
     if ((k - e.ppf).abs() < 0.0008) continue;
-    out.add((k, (e.travel / k).ceilToDouble() + e.fixedFrames));
+    out.add((k, (distance / k).ceilToDouble() + e.fixedFrames));
   }
   return out;
 }
 
-/// A judder-free speed for a new roll: a whole number of pixels a frame
+/// A conservative speed for a new roll: a whole number of pixels a frame
 /// that keeps each line on screen for about ten seconds — the unhurried
 /// pace of a feature's end crawl. 4 px/frame at 1080p24.
-int defaultCleanPpf(int canvasH, double fps) => max(1, (canvasH / (fps * 10)).round());
+int defaultCleanPpf(int canvasH, double fps) => max(1, min((canvasH / (fps * 10)).round(), (canvasH / 240).floor()));
 
 /// The whole-pixel rates either side of the current one — faster (a
 /// shorter runtime) and slower (longer) — with the runtime each gives (5.1).
@@ -456,6 +466,7 @@ int defaultCleanPpf(int canvasH, double fps) => max(1, (canvasH / (fps * 10)).ro
   final whole = (e.ppf - e.ppf.roundToDouble()).abs() < 0.0008;
   final up = whole ? e.ppf.round() + 1 : e.ppf.ceil();
   final down = whole ? e.ppf.round() - 1 : e.ppf.floor();
-  (int, double) at(int k) => (k, (e.travel / k).ceilToDouble() + e.fixedFrames);
+  final distance = e.travel - e.segments.first.y0;
+  (int, double) at(int k) => (k, (distance / k).ceilToDouble() + e.fixedFrames);
   return (shorter: at(up), longer: down >= 1 ? at(down) : null);
 }

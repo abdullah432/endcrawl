@@ -32,6 +32,7 @@ Project _fullProject() {
       background: MonitorBackground.alpha,
       face: CreditFace.condensed,
       safeGuides: false,
+      motionSmoothing: true,
     ),
     blocks: const [
       TitleBlock(id: 'b1', banner: 'OYELARAN PICTURES', title: 'THE LONG WAY DOWN', byline: 'A FILM BY', titleScale: 2.8),
@@ -60,6 +61,10 @@ Project _fullProject() {
 }
 
 void main() {
+  test('projects without the field render sharp frames', () {
+    expect(ProjectSettings.fromJson(const {}).motionSmoothing, isFalse);
+  });
+
   group('Project serialization', () {
     test('survives a round trip through JSON text', () {
       final original = _fullProject();
@@ -86,6 +91,7 @@ void main() {
       expect(s.mode, o.mode);
       expect(s.durationFrames, o.durationFrames);
       expect(s.ppf, o.ppf);
+      expect(s.motionSmoothing, isTrue);
       expect(s.headSeconds, o.headSeconds);
       expect(s.tailSeconds, o.tailSeconds);
       expect(s.look, o.look);

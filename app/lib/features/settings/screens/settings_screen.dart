@@ -96,7 +96,7 @@ class SettingsScreen extends ConsumerWidget {
             ),
             EcGroupRow.toggle(
               title: 'Readability warnings',
-              subtitle: 'Flags judder and names on screen under 3s',
+              subtitle: 'Flags fast motion and names on screen under 3s',
               value: prefs.readabilityWarnings,
               onChanged: (v) => update((p) => p.copyWith(readabilityWarnings: v)),
             ),

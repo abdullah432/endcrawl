@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'dart:typed_data';
 
 import 'package:lastreel/domain/engine/roll_engine.dart';
@@ -59,6 +60,84 @@ double _spread(List<double> xs) {
 }
 
 void main() {
+  testWidgets('smoothing reduces sharp moving edges but leaves hold cards unchanged', (tester) async {
+    await tester.runAsync(() async {
+      const settings = ProjectSettings(formatId: '1x1', mode: TimingMode.speed, ppf: 11);
+      const blocks = [
+        NameListBlock(id: 'moving', header: 'Directed by', names: ['Maya Okonkwo']),
+        HoldBlock(id: 'still', lines: ['THE END']),
+      ];
+      Future<FrameRenderer> source(bool smooth) => FrameRenderer.open(
+        settings: settings.copyWith(motionSmoothing: smooth),
+        blocks: blocks,
+        geometry: computeGeometry(formatW: 1080, formatH: 1080, face: CreditFace.grotesque),
+        outputWidth: 540,
+        outputHeight: 540,
+      );
+      final sharp = await source(false);
+      final smooth = await source(true);
+      addTearDown(sharp.dispose);
+      addTearDown(smooth.dispose);
+      expect(smooth.frameCount, sharp.frameCount);
+      final frame = (sharp.engine.headFrames + 60).round();
+      double edgeEnergy(Uint8List rgba) {
+        final rows = [for (var y = 0; y < 540; y++)
+          [for (var x = 0; x < 540; x++) rgba[(y * 540 + x) * 4]].fold<double>(0, (a, b) => a + b)];
+        return [for (var y = 1; y < rows.length; y++) (rows[y] - rows[y - 1]) * (rows[y] - rows[y - 1])]
+            .fold<double>(0, (a, b) => a + b);
+      }
+      final a = await sharp.renderRgba(frame);
+      final b = await smooth.renderRgba(frame);
+      expect(edgeEnergy(a), greaterThan(0));
+      expect(edgeEnergy(b), lessThan(edgeEnergy(a) * .8));
+      expect(_centroid(b, 540), closeTo(_centroid(a, 540)!, .1));
+
+      final hold = sharp.engine.segments.whereType<HoldSegment>().single;
+      final heldFrame = (hold.f0 + hold.lengthFrames / 2).round();
+      expect(await smooth.renderRgba(heldFrame), orderedEquals(await sharp.renderRgba(heldFrame)));
+    });
+  });
+
+  testWidgets('a fractional speed keeps one sharpness on every frame', (tester) async {
+    // A whole-pixel speed moved to 60 fps at the same runtime lands on a
+    // half pixel every other frame. A plain resample alternates crisp and
+    // soft frames (measured 1.55x apart on device): a 30 Hz shimmer.
+    await tester.runAsync(() async {
+      const blocks = [NameListBlock(id: 'moving', header: 'Directed by', names: ['Maya Okonkwo', 'Idris Oyelaran'])];
+      Future<FrameRenderer> source(double ppf) => FrameRenderer.open(
+            settings: ProjectSettings(formatId: '1x1', fps: 60, mode: TimingMode.speed, ppf: ppf),
+            blocks: blocks,
+            geometry: computeGeometry(formatW: 540, formatH: 540, face: CreditFace.grotesque),
+            outputWidth: 540,
+            outputHeight: 540,
+          );
+      double edgeEnergy(Uint8List rgba) {
+        var sum = 0.0;
+        for (var y = 1; y < 540; y++) {
+          for (var x = 0; x < 540; x++) {
+            final d = rgba[(y * 540 + x) * 4] - rgba[((y - 1) * 540 + x) * 4];
+            sum += d * d;
+          }
+        }
+        return sum;
+      }
+
+      for (final ppf in [5.5, 5.37]) {
+        final r = await source(ppf);
+        addTearDown(r.dispose);
+        final mid = (r.engine.headFrames + r.engine.scrollFrames / 2).round();
+        final energies = [for (var i = mid - 6; i < mid + 6; i++) edgeEnergy(await r.renderRgba(i))];
+        final lo = energies.reduce(min);
+        final hi = energies.reduce(max);
+        expect(hi / lo, lessThan(1.12), reason: '$ppf px/frame: sharpness $energies');
+        final steps = await _steps(r, 540);
+        expect(steps, isNotEmpty);
+        expect(_spread(steps), lessThan(.12), reason: '$ppf px/frame moves evenly: $steps');
+        expect(steps.reduce((a, b) => a + b) / steps.length, closeTo(ppf, .05));
+      }
+    });
+  });
+
   final project = film();
   final blocks = [
     ...project.blocks,

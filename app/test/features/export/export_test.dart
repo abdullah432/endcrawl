@@ -44,6 +44,56 @@ void main() {
   RenderSummary? lastRender() => app.projects.projects.values.single.lastRender;
 
   group('6.1 settings', () {
+    testWidgets('primary fast-roll export uses 60 fps without doubling scroll speed', (tester) async {
+      final project = film().copyWith(settings: film().settings.copyWith(formatId: '9x16', fps: 30, ppf: 11));
+      app = AppHarness(projects: FakeProjectRepository(seed: [project]));
+      await openExport(tester);
+      await tapText(tester, 'Render H.264 · 60 fps');
+      await runRender(tester);
+      expect(app.encoder.started.single.fps, 60);
+      expect(app.projects.projects.values.single.settings.ppf, 5.5);
+      expect(find.text('Save to Files'), findsOneWidget);
+    });
+
+    testWidgets('60 fps export only offers resolutions supported at that rate', (tester) async {
+      final project = film().copyWith(settings: film().settings.copyWith(formatId: '9x16', fps: 60, ppf: 5.5));
+      app = AppHarness(
+        projects: FakeProjectRepository(seed: [project]),
+        encoder: FakeVideoEncoder(caps: const EncoderCapabilities({Codec.h264: 1920}, maxEdgeAt60: {Codec.h264: 1280})),
+      );
+      await openExport(tester);
+      expect(find.text('1920 HD'), findsNothing);
+      await tapText(tester, 'Render H.264');
+      await runRender(tester);
+      final spec = app.encoder.started.single;
+      expect((spec.width, spec.height, spec.fps), (720, 1280, 60.0));
+    });
+
+    testWidgets('does not recommend 60 fps beyond the selected encoder limit', (tester) async {
+      final project = film().copyWith(settings: film().settings.copyWith(formatId: '9x16', fps: 30, ppf: 11));
+      app = AppHarness(
+        projects: FakeProjectRepository(seed: [project]),
+        encoder: FakeVideoEncoder(caps: const EncoderCapabilities({Codec.h264: 3840}, maxEdgeAt60: {Codec.h264: 1280})),
+      );
+      await openExport(tester);
+      expect(find.text('Use 60 fps · same runtime'), findsNothing);
+      await tapText(tester, '1280');
+      expect(find.text('Use 60 fps · same runtime'), findsOneWidget);
+    });
+
+    testWidgets('60 fps recommendation keeps a vertical roll at the same speed', (tester) async {
+      final project = film().copyWith(settings: film().settings.copyWith(formatId: '9x16', fps: 30, ppf: 11));
+      app = AppHarness(projects: FakeProjectRepository(seed: [project]));
+      await openExport(tester);
+      await tapText(tester, 'Use 60 fps · same runtime');
+      await tester.pump(const Duration(seconds: 1));
+      final saved = app.projects.projects.values.single.settings;
+      expect(saved.fps, 60);
+      expect(saved.ppf, 5.5);
+      expect(saved.mode, TimingMode.speed);
+      expect(find.text('Fast motion may strobe'), findsNothing);
+    });
+
     testWidgets('locked facts come first, then codecs with sizes and the resolution', (tester) async {
       await openExport(tester);
 
@@ -60,14 +110,14 @@ void main() {
       expect(find.textContaining(RegExp(r'^≈ \d+ (MB|GB|KB)$')), findsNWidgets(Codec.values.length));
     });
 
-    testWidgets('a fractional speed is flagged, with a one-tap whole-pixel fix', (tester) async {
-      app = AppHarness(projects: FakeProjectRepository(seed: [film(mode: TimingMode.duration, durationFrames: 24 * 47 + 5)]));
+    testWidgets('fast whole-pixel motion is flagged, with a one-tap slower fix', (tester) async {
+      app = AppHarness(projects: FakeProjectRepository(seed: [film().copyWith(settings: film().settings.copyWith(ppf: 11))]));
       await openExport(tester);
 
-      expect(find.textContaining(RegExp(r'^Moves \d+\.\d+ px a frame$')), findsOneWidget);
+      expect(find.text('Fast motion may strobe'), findsOneWidget);
       final fix = tester.widget<Text>(find.textContaining(RegExp(r'^Use \d+:\d\d · \d+ px/f$'))).data!;
       await tapText(tester, fix);
-      expect(find.textContaining('px a frame'), findsNothing);
+      expect(find.text('Fast motion may strobe'), findsNothing);
     });
 
     testWidgets('only what this device can encode is offered', (tester) async {

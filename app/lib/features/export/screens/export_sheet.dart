@@ -76,13 +76,15 @@ class _Settings extends ConsumerWidget {
     final e = project.engine;
     final device = ref.watch(encoderCapabilitiesProvider).value;
     final codec = export.codecFor(project.settings, device);
-    final resolutions = export.resolutionsFor(codec, device);
+    final resolutions = export.resolutionsFor(codec, device, fps: e.fps);
     final isPro = ref.watch(entitlementProvider).value?.isPro ?? false;
-    final resolution = export.resolutionFor(project.formatW, project.formatH, codec, device, isPro: isPro);
+    final resolution = export.resolutionFor(project.formatW, project.formatH, codec, device, isPro: isPro, fps: e.fps);
     final access = export.accessFor(project.project.id, codec, resolution, isPro: isPro);
     final (w, h) = resolution.sizeFor(project.formatW, project.formatH);
     final seconds = e.totalFrames / e.fps;
     final transparent = project.settings.background == MonitorBackground.alpha;
+    final prefer60 = e.judderRisk && e.fps < 60 && (device?.supports60Fps(codec, resolution.edge) ?? false);
+    final unsupportedRate = e.fps > 30 && device != null && !device.supports60Fps(codec, resolution.edge);
 
     final facts = [
       ('Format', '${project.formatW} × ${project.formatH}'),
@@ -125,8 +127,19 @@ class _Settings extends ConsumerWidget {
               ),
               const SizedBox(height: 8),
               EcButton.secondary(label: 'Go Pro · every render, no ads', onPressed: () => ProSheet.show(context)),
-            ] else
-              EcButton(label: 'Render ${codec.label}', onPressed: busyWith != null ? null : controller.start),
+            ] else ...[
+              if (prefer60) ...[
+                Text('60 fps keeps the same runtime and scroll speed.', textAlign: TextAlign.center, style: t.caption),
+                const SizedBox(height: 8),
+                EcButton(
+                  label: 'Render ${codec.label} · 60 fps',
+                  onPressed: busyWith != null ? null : controller.startAt60Fps,
+                ),
+                const SizedBox(height: 8),
+                EcButton.secondary(label: 'Render current ${formatFps(e.fps)}', onPressed: busyWith != null ? null : controller.start),
+              ] else
+                EcButton(label: 'Render ${codec.label}', onPressed: busyWith != null || unsupportedRate ? null : controller.start),
+            ],
           ],
         ),
       ),
@@ -177,23 +190,48 @@ class _Settings extends ConsumerWidget {
               ],
             ),
           ),
-          if (!e.clean)
-            if (timingFixes(e, count: 1) case [(final ppf, final frames)]) ...[
-              const SizedBox(height: 10),
-              EcNotice(
-                tone: EcTone.warn,
-                title: 'Moves ${formatPpf(e.ppf)} px a frame',
-                body: 'It will roll evenly, but a fractional speed is drawn between pixels and can look '
-                    'slightly soft. A whole number of pixels is crisper.',
-                actions: [
+          const SizedBox(height: 10),
+          if (unsupportedRate) ...[
+            EcNotice(
+              tone: EcTone.warn,
+              title: 'This device cannot export this frame rate',
+              body: 'Use 30 fps and a slower scroll for smoother motion.',
+              actions: [EcButton.secondary(label: 'Use 30 fps · same runtime', onPressed: () => ref.read(projectControllerProvider.notifier).setFps(30))],
+            ),
+            const SizedBox(height: 10),
+          ],
+          EcGroup(children: [
+            EcGroupRow.toggle(
+              title: 'Motion blur',
+              subtitle: 'A film-style 180° shutter. Softens moving text; it does not remove judder.',
+              value: project.settings.motionSmoothing,
+              onChanged: ref.read(projectControllerProvider.notifier).setMotionSmoothing,
+            ),
+          ]),
+          if (e.judderRisk || !e.readable) ...[
+            const SizedBox(height: 10),
+            EcNotice(
+              tone: EcTone.warn,
+              title: e.judderRisk ? 'Fast motion may strobe' : 'Names pass too quickly',
+              body: 'Text moves ${formatPpf(e.ppf)} px per frame at ${formatFps(e.fps)}. '
+                  'A whole-pixel speed does not guarantee smooth playback. '
+                  'Try a slower roll or a higher frame rate.',
+              actions: [
+                if (e.judderRisk && e.fps < 60 && (device?.supports60Fps(codec, resolution.edge) ?? false))
+                  EcButton.secondary(
+                    label: 'Use 60 fps · same runtime',
+                    size: EcButtonSize.small,
+                    onPressed: () => ref.read(projectControllerProvider.notifier).setFps(60),
+                  ),
+                if (timingFixes(e, count: 1) case [(final ppf, final frames)])
                   EcButton.secondary(
                     label: 'Use ${formatClock(frames / e.fps)} · $ppf px/f',
                     size: EcButtonSize.small,
                     onPressed: () => ref.read(projectControllerProvider.notifier).applySnap(ppf),
                   ),
-                ],
-              ),
-            ],
+              ],
+            ),
+          ],
           const SizedBox(height: 14),
           const EcSectionLabel('Codec'),
           EcGroup(children: [

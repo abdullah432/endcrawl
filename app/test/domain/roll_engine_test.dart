@@ -31,6 +31,18 @@ RollEngineResult _roll(List<CreditBlock> blocks, RollMeasurements m) => computeE
 HoldSegment _holdSeg(RollEngineResult e) => e.segments.whereType<HoldSegment>().single;
 
 void main() {
+  test('subframe sampling is continuous while monitor sampling stays frame accurate', () {
+    final e = _engine(const ProjectSettings(fps: 30, mode: TimingMode.speed, ppf: 11));
+    final f = e.headFrames + 10;
+    expect(paintAt(e, f + .25).offset, paintAt(e, f).offset);
+    expect(paintAt(e, f + .25, subframe: true).offset - paintAt(e, f, subframe: true).offset, closeTo(2.75, .001));
+  });
+
+  test('fractional slow motion is not labelled judder, but fast whole-pixel motion is', () {
+    expect(_engine(const ProjectSettings(mode: TimingMode.speed, ppf: 3.37)).judderRisk, isFalse);
+    expect(_engine(const ProjectSettings(mode: TimingMode.speed, ppf: 11)).judderRisk, isTrue);
+  });
+
   group('hold cards', () {
     const dir = NameListBlock(id: 'dir', header: 'Directed by', names: ['Maya Okonkwo']);
     const thx = NameListBlock(id: 'thx', kind: BlockKind.thanks, header: 'Thanks', names: ['A']);
@@ -108,9 +120,21 @@ void main() {
   });
 
   group('timingFixes', () {
+    test('a suggested runtime excludes the opening hold’s skipped scroll-in', () {
+      const blocks = [HoldBlock(id: 'hld'), NameListBlock(id: 'dir', names: ['Maya'])];
+      const measured = RollMeasurements(travel: 4000, blockY: {'hld': 0, 'dir': 1080});
+      const settings = ProjectSettings(fps: 24, mode: TimingMode.speed, ppf: 11);
+      RollEngineResult compute(ProjectSettings s) => computeEngine(project: s, activeBlocks: blocks, measurements: measured, geometry: _hd);
+      final e = compute(settings);
+      for (final (ppf, frames) in timingFixes(e)) {
+        expect(frames, compute(settings.copyWith(ppf: ppf.toDouble())).totalFrames);
+      }
+    });
+
     test('offers whole, readable rates nearest first, with their runtimes', () {
-      final e = _engine(const ProjectSettings(fps: 24, mode: TimingMode.duration, durationFrames: 24 * 47 + 5));
-      expect(e.clean, isFalse);
+      final e = _engine(const ProjectSettings(fps: 24, mode: TimingMode.speed, ppf: 11));
+      expect(e.clean, isTrue);
+      expect(e.judderRisk, isTrue);
 
       final fixes = timingFixes(e);
       expect(fixes, hasLength(2));

@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Measures how evenly a rendered credit roll moves, frame to frame.
 
-A crawl reads as smooth when every frame moves the picture the same
-distance. This decodes the video with ffmpeg (greyscale, downscaled for
+Even movement requires each frame to move the picture the same
+distance. This check does not predict perceptual smoothness: a perfectly
+even but fast, sharp roll can still strobe at low frame rates. This decodes the video with ffmpeg (greyscale, downscaled for
 speed), finds the vertical centre of the lit pixels in each frame, and
 reports the step between consecutive frames over the stretches where no
 line is entering or leaving the frame.
@@ -16,7 +17,7 @@ Reading the result:
   * mean      — pixels per frame at the measured width; scale it up for the
                 real width (×4 for 1920 when measuring at 480).
   * spread    — the largest difference of any step from the mean. Below
-                ~0.1 px (at the measured width) is smooth; a judder shows as
+                ~0.1 px (at the measured width) is even; a judder shows as
                 a regular pattern such as 3,3,4,3,4 in the steps list.
 """
 import argparse
@@ -83,7 +84,7 @@ def main():
     print(f"{args.video}: {w}×{h} @ {rate} fps, measured at {mw}×{mh}")
     print(f"  moving frames: {len(moving)}")
     print(f"  mean step:     {mean:.3f} px/frame  (≈ {mean * w / mw:.2f} px at full width)")
-    print(f"  spread:        {spread:.3f} px  → {'SMOOTH' if spread < 0.1 else 'UNEVEN'}")
+    print(f"  spread:        {spread:.3f} px  → {'EVEN MOVEMENT' if spread < 0.1 else 'UNEVEN MOVEMENT'}")
     print("  first steps:   " + ", ".join(f"{s:.2f}" for s in moving[:24]))
 
 

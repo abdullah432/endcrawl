@@ -4,13 +4,12 @@ import '../../../core/theme/theme_context.dart';
 import '../../../core/utils/formatting.dart';
 import '../../project/controllers/project_controller.dart';
 
-/// Where the roll stands: judder-free and readable, juddering, or too fast
-/// to read. Judder wins when both apply — it is the one a new runtime fixes.
+/// Motion and readability guidance; fractional placement alone is not judder.
 enum RollHealth { clean, judder, tooFast }
 
 RollHealth rollHealth(ProjectState project) {
   final e = project.engine;
-  if (!e.clean) return RollHealth.judder;
+  if (e.judderRisk) return RollHealth.judder;
   if (!e.readable) return RollHealth.tooFast;
   return RollHealth.clean;
 }
@@ -19,8 +18,8 @@ RollHealth rollHealth(ProjectState project) {
 String rollStatusText(ProjectState project, {bool withTotal = true}) {
   final e = project.engine;
   final health = switch (rollHealth(project)) {
-    RollHealth.clean => 'clean',
-    RollHealth.judder => 'judder',
+    RollHealth.clean => 'steady pace',
+    RollHealth.judder => 'judder risk',
     RollHealth.tooFast => 'too fast',
   };
   final runtime = formatRuntime(project.runtime);

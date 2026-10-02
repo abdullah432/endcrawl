@@ -1,6 +1,8 @@
 import 'package:lastreel/bootstrap.dart';
 import 'package:lastreel/data/sources/session_store.dart';
 import 'package:lastreel/domain/models/credit_block.dart';
+import 'package:lastreel/domain/engine/roll_engine.dart';
+import 'package:lastreel/domain/models/project_settings.dart';
 import 'package:lastreel/features/project/controllers/project_controller.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -25,6 +27,31 @@ void main() {
   });
 
   tearDown(() => container.dispose());
+
+  for (final mode in TimingMode.values) {
+    test('changing fps preserves movement per second and runtime in $mode', () {
+      controller.updateMeasurements(const RollMeasurements(travel: 6000, blockY: {'a': 0, 'b': 2000, 'c': 4000}));
+      if (mode == TimingMode.speed) {
+        controller.setPpf(11);
+      } else {
+        controller.setDurationFrames(24 * 30);
+      }
+      final before = container.read(projectControllerProvider).engine;
+      controller.setFps(60);
+      final after = container.read(projectControllerProvider).engine;
+      expect(after.pps, closeTo(before.pps, 0.02));
+      expect(after.totalFrames / after.fps, closeTo(before.totalFrames / before.fps, 1 / before.fps));
+      expect(container.read(projectControllerProvider).settings.mode, mode);
+      expect(after.ppf, lessThan(before.ppf));
+    });
+  }
+
+  test('60 fps preserves a slow speed below one canvas pixel per frame', () {
+    controller.setFps(24);
+    controller.setPpf(1);
+    controller.setFps(60);
+    expect(container.read(projectControllerProvider).engine.pps, closeTo(24, .001));
+  });
 
   test('insertBlock goes after the given block, or at the end', () {
     controller.insertBlock(const SpacerBlock(id: 'x'), afterId: 'a');

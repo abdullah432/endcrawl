@@ -6,6 +6,8 @@ import '../../../core/theme/tokens.dart';
 import '../../../core/utils/formatting.dart';
 import '../../../domain/engine/roll_engine.dart';
 import '../../project/controllers/project_controller.dart';
+import '../../export/controllers/export_controller.dart';
+import '../../export/models/export_models.dart';
 import '../controllers/editor_ui_controller.dart';
 import 'status_line.dart';
 
@@ -24,13 +26,15 @@ class ReadabilityBanner extends ConsumerWidget {
     final p = context.palette;
     final t = context.type;
     final e = project.engine;
+    final canUse60 = ref.watch(encoderCapabilitiesProvider).value?.supports60Fps(Codec.h264, 1920) ?? false;
     final runtime = formatClock(project.runtime.inMilliseconds / 1000);
     final dwell = '${e.dwellSeconds.toStringAsFixed(1)}s';
     final (lead, cause) = switch (health) {
       RollHealth.judder => (
-          '$runtime will judder.',
+          '$runtime may strobe.',
           [
-            '${formatPpf(e.ppf)} px/frame is fractional',
+            'Text moves ${formatPpf(e.ppf)} px per frame at ${formatFps(e.fps)}; '
+                'a slower roll or higher frame rate reduces judder',
             if (!e.readable) 'and each name is on screen $dwell — under the 3.0s floor',
           ].join(', '),
         ),
@@ -79,6 +83,15 @@ class ReadabilityBanner extends ConsumerWidget {
             spacing: 8,
             runSpacing: 8,
             children: [
+              if (e.judderRisk && e.fps < 60 && canUse60)
+                _FixChip(
+                  label: '60 fps · same runtime',
+                  primary: true,
+                  onTap: () {
+                    controller.setFps(60);
+                    ui.resetWarn();
+                  },
+                ),
               for (final (i, (ppf, frames)) in fixes.indexed)
                 _FixChip(
                   label: '${formatClock(frames / e.fps)} · $ppf px/f',

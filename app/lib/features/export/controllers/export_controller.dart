@@ -69,15 +69,15 @@ class ExportState {
   }
 
   /// The sizes [codec] can be made at on this device.
-  List<ExportResolution> resolutionsFor(Codec codec, EncoderCapabilities? caps) {
-    final options = caps?.resolutionsFor(codec).toList() ?? ExportResolution.values;
+  List<ExportResolution> resolutionsFor(Codec codec, EncoderCapabilities? caps, {double fps = 30}) {
+    final options = caps?.resolutionsFor(codec, fps: fps).toList() ?? ExportResolution.values;
     return options.isEmpty ? const [ExportResolution.small] : options;
   }
 
   /// The size picked, or the one nearest the canvas — among the free sizes
   /// on the free plan, so a 4K canvas doesn't open on a Pro option.
-  ExportResolution resolutionFor(int canvasW, int canvasH, Codec codec, EncoderCapabilities? caps, {bool isPro = true}) {
-    final options = resolutionsFor(codec, caps);
+  ExportResolution resolutionFor(int canvasW, int canvasH, Codec codec, EncoderCapabilities? caps, {bool isPro = true, double fps = 30}) {
+    final options = resolutionsFor(codec, caps, fps: fps);
     if (resolution case final r? when options.contains(r)) return r;
     final free = options.where((r) => !r.isPro);
     return ExportResolution.nearest(canvasW, canvasH, isPro || free.isEmpty ? options : free);
@@ -133,7 +133,7 @@ class ExportController extends Notifier<ExportState> {
     final project = ref.read(projectControllerProvider);
     final caps = ref.read(encoderCapabilitiesProvider).value;
     final codec = state.codecFor(project.settings, caps);
-    final resolution = state.resolutionFor(project.formatW, project.formatH, codec, caps, isPro: _isPro);
+    final resolution = state.resolutionFor(project.formatW, project.formatH, codec, caps, isPro: _isPro, fps: project.engine.fps);
     return (codec, resolution, state.accessFor(project.project.id, codec, resolution, isPro: _isPro));
   }
 
@@ -148,11 +148,22 @@ class ExportController extends Notifier<ExportState> {
   /// Starts rendering the open project with the chosen settings. Refuses
   /// Pro settings on the free plan without a pass — the gate is here, not
   /// just a hidden button.
+  bool startAt60Fps() {
+    if (state.rendering) return false;
+    final (codec, resolution, access) = selection();
+    final caps = ref.read(encoderCapabilitiesProvider).value;
+    if (access == ExportAccess.locked || !(caps?.supports60Fps(codec, resolution.edge) ?? false)) return false;
+    ref.read(projectControllerProvider.notifier).setFps(60);
+    return start();
+  }
+
   bool start() {
     if (state.rendering) return false;
     final (codec, resolution, access) = selection();
     if (access == ExportAccess.locked) return false;
     final project = ref.read(projectControllerProvider);
+    final caps = ref.read(encoderCapabilitiesProvider).value;
+    if (project.engine.fps > 30 && caps != null && !caps.supports60Fps(codec, resolution.edge)) return false;
     final (w, h) = resolution.sizeFor(project.formatW, project.formatH);
     final run = ExportRun(
       projectId: project.project.id,

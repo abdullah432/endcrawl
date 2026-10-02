@@ -22,12 +22,17 @@ class NativeVideoEncoder implements VideoEncoder {
     try {
       final raw = await channel.invokeMapMethod<String, Object?>('capabilities');
       final codecs = (raw?['codecs'] as Map?) ?? const {};
+      final codecs60 = raw?['codecs60'] as Map?;
       return EncoderCapabilities(
         {
           for (final c in Codec.values)
             if (codecs[c.name] case final int maxEdge) c: maxEdge,
         },
         freeBytes: raw?['freeBytes'] as int?,
+        maxEdgeAt60: codecs60 == null ? null : {
+          for (final c in Codec.values)
+            if (codecs60[c.name] case final int maxEdge) c: maxEdge,
+        },
       );
     } on MissingPluginException {
       // A platform without the encoder (tests, desktop): no video codecs.
