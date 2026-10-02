@@ -101,26 +101,31 @@ class FrameRenderer implements FrameSource {
     );
 
     RenderObjectToWidgetElement<RenderBox>? root;
+    // Bumped to lay the roll out again from fresh render objects.
+    var generation = 0;
     void mount() {
-      final widget = MediaQuery(
-        data: const MediaQueryData(textScaler: TextScaler.noScaling),
-        child: Directionality(
-          textDirection: TextDirection.ltr,
-          child: SizedBox.fromSize(
-            size: size,
-            child: FittedBox(
-              fit: BoxFit.fill,
-              child: RollFrame(
-                settings: settings,
-                blocks: blocks,
-                geometry: geometry,
-                engine: engine,
-                frame: frame,
-                measurer: measurer,
-                forRender: true,
-                snap: scale.toDouble(),
-                overscan: overscan,
-                sampleSubframes: true,
+      final widget = KeyedSubtree(
+        key: ValueKey(generation),
+        child: MediaQuery(
+          data: const MediaQueryData(textScaler: TextScaler.noScaling),
+          child: Directionality(
+            textDirection: TextDirection.ltr,
+            child: SizedBox.fromSize(
+              size: size,
+              child: FittedBox(
+                fit: BoxFit.fill,
+                child: RollFrame(
+                  settings: settings,
+                  blocks: blocks,
+                  geometry: geometry,
+                  engine: engine,
+                  frame: frame,
+                  measurer: measurer,
+                  forRender: true,
+                  snap: scale.toDouble(),
+                  overscan: overscan,
+                  sampleSubframes: true,
+                ),
               ),
             ),
           ),
@@ -143,12 +148,17 @@ class FrameRenderer implements FrameSource {
     mount();
     flush();
     // The first layout asks for any typeface not yet loaded; lay out again
-    // once they're in, or the text is measured in a fallback font.
+    // once they're in, or the text is measured in a fallback font. A loaded
+    // font only relays out existing text on the app's next frame, which this
+    // offscreen tree never waits for, so the roll is rebuilt from fresh
+    // render objects and measured as it will be drawn.
     try {
       await GoogleFonts.pendingFonts();
     } catch (_) {
       // Offline with nothing cached: the platform fallback is all there is.
     }
+    generation++;
+    mount();
     flush();
 
     final measured = measurer.measure() ?? const RollMeasurements();

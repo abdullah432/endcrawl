@@ -45,7 +45,7 @@ Complete, full-runtime exports used the production `FrameRenderer`, the native H
 
 All timestamps are exactly even (Δt constant to 0.01 ms). There are no repeated or skipped frames during motion; the only irregular steps are the first and last frames of motion. Speeds were measured over 10–12 frame spans to avoid sub-pixel estimator bias. 60 fps preserves the 30 fps runtime exactly (1482/60 = 741/30).
 
-\* A was the first render in a fresh process. Its timing runs 2 frames long because the first measurement sees 18 px more travel than every later one. This reproduces on iPhone and Android, with identical pixels. It is unrelated to judder and tracked separately.
+\* A was the first render in a fresh process, and its timing ran 2 frames long. Flutter relays out text after a font loads only on the app's next frame, which the offscreen renderer never waited for, so the roll was measured with fallback-font line metrics (18 px more travel). The pixels were identical. `FrameRenderer.open` now rebuilds the roll from fresh render objects once fonts are in. Opening the project three times in a fresh process now gives 741 frames / 4845.87 px every time, on both the iPhone and the emulator.
 
 `flutter analyze`: no issues. `flutter test`: **323 passed, 5 skipped**, including a new renderer test. With the fix disabled, that test fails at 1.46× alternation, matching the device; with the fix it passes.
 
