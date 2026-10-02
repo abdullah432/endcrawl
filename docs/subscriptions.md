@@ -31,14 +31,29 @@ a plan is picked. A trial user is Pro. When a trial or Pro ends, nothing is
 deleted: the two most recently edited projects stay editable, the others open
 read-only (they still play and render), and ads come back.
 
-**Store setup still to do** — the app reads trials from the store and shows the
-plain price wherever none is offered, so nothing changes in code once these exist:
+**Google Play setup completed on 2026-10-02.** Both offers are active in all
+175 countries/regions covered by their base plans. Each has one free phase,
+followed by the existing auto-renewing base-plan price. Eligibility is
+*New customer acquisition — never had this subscription* for both offers.
+Because both base plans belong to `lastreel_pro`, changing plans does not grant
+a second trial. The two-project limit controls the library prompt; Settings can
+open the plan picker before the library is full.
+
+The app reads trials from the store and shows the plain price wherever none is
+offered. No billing-code changes or new RevenueCat products were required.
 
 | Store | Where | What |
 | --- | --- | --- |
-| Google Play | Monetize → Subscriptions → `lastreel_pro` → base plan `monthly` → Add offer | Free trial, **7 days**, eligibility *New customer acquisition — never had this subscription* |
-| Google Play | same, base plan `yearly` | Free trial, **14 days**, same eligibility |
-| App Store | the monthly / yearly products → Subscription Prices → Introductory Offers | **Free**, 1 week / 2 weeks, new subscribers |
+| Google Play | `lastreel_pro` → `monthly` → `monthly-trial-7d` | **Active**, 7-day free trial |
+| Google Play | `lastreel_pro` → `yearly` → `yearly-trial-14d` | **Active**, 14-day free trial |
+| App Store | the monthly / yearly products → Subscription Prices → Introductory Offers | **Still to configure**, free 1 week / 2 weeks for new subscribers |
+
+RevenueCat dashboard verification on 2026-10-02 confirmed both products remain
+attached to `pro` and to the `default` offering's `$rc_monthly` / `$rc_annual`
+packages. The SDK selects eligible Play offers automatically. Existing focused
+billing, library, free-plan editing, and trial analytics tests passed (55 tests).
+Real Android license-tester trial purchases, cancellation, expiry, and restore
+remain unverified; dashboard configuration and mocked tests do not prove checkout.
 
 How the app reads them (`revenuecat_entitlement_repository.dart`):
 
@@ -111,7 +126,8 @@ Verified on 2026-09-27:
   auto-renewing base plans. US prices are USD 4.99 and USD 29.99 respectively.
   Both are available in 174 countries/regions with Play-generated regional
   prices. Monthly is Play's backwards-compatible base plan. No trial or offer
-  was added at the time; see "Free trials" above for the offers now needed. Default grace periods are 7 days monthly and 14 days yearly, with
+  was added at the time; see "Free trials" above for the offers activated on
+  2026-10-02. Default grace periods are 7 days monthly and 14 days yearly, with
   automatic account hold and resubscribe enabled.
 - Both RevenueCat product mappings are attached to `pro` and assigned to the
   default offering's monthly/annual packages.
