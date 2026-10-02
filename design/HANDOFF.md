@@ -31,5 +31,6 @@ with `support.js` beside it) and `app-light/CHANGES.md`, the LastReel handoff
 that renamed the app and made ProRes, PNG and 4K Pro-only; then
 `app-light/plan-and-trial-changes.md` with its bundled design
 `app-light/LastReel App Light.html` (open it directly — it adds 1.1a and the
-on-trial 1.1), which cut Free to one project and added Pro free trials. The files above
+on-trial 1.1), which added Pro free trials; its v3 summary at the top sets Free
+to two projects and makes 1.1a a single plan card. The files above
 are the original EndCrawl bundle, kept for history.
