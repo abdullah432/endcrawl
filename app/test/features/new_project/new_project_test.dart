@@ -165,12 +165,13 @@ void main() {
     final app = AppHarness(
       projects: FakeProjectRepository(seed: [
         Project.create(title: 'P0', now: DateTime.utc(2026, 9, 1)),
+        Project.create(title: 'P1', now: DateTime.utc(2026, 9, 2)),
       ]),
     );
     await app.pump(tester);
 
     await tapText(tester, 'New');
-    expect(find.descendant(of: find.byType(BottomSheet), matching: find.text('1 OF 1 PROJECT USED')), findsOneWidget);
+    expect(find.descendant(of: find.byType(BottomSheet), matching: find.text('2 OF 2 PROJECTS USED')), findsOneWidget);
     expect(find.textContaining('Continue with'), findsNothing);
   });
 }

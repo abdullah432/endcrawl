@@ -134,7 +134,7 @@ class ProSheet extends ConsumerWidget {
                 const SizedBox(height: 10),
                 Text(
                   'Free has every block, timing and look tool, with H.264 and HEVC up to 1080p. Pro lifts the '
-                  '${Entitlement.freeProjectLimit == 1 ? 'one' : '${Entitlement.freeProjectLimit}'}-project cap, '
+                  '${numberWord(Entitlement.freeProjectLimit)}-project cap, '
                   'unlocks ProRes, PNG and 4K on every render, and removes ads.',
                   style: t.body,
                 ),

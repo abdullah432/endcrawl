@@ -1,9 +1,10 @@
 import '../../core/result.dart';
+import '../../core/utils/formatting.dart';
 
 /// What the signed-in account is allowed, by plan.
 ///
 /// The whole difference between Free and Pro, in one place: Pro lifts the
-/// one-project cap, removes ads, and renders the master formats (ProRes,
+/// two-project cap, removes ads, and renders the master formats (ProRes,
 /// PNG, 4K) every time — on Free each one takes a rewarded ad. Every block,
 /// timing and look tool is on both plans. A free trial is Pro in full.
 enum Plan { free, pro }
@@ -11,9 +12,12 @@ enum Plan { free, pro }
 enum BillingPeriod { monthly, yearly }
 
 class Entitlement {
-  /// The free plan's project cap — the one number every "1 of 1", meter
+  /// The free plan's project cap — the one number every "2 of 2", meter
   /// and slots-full sheet reads.
-  static const freeProjectLimit = 1;
+  static const freeProjectLimit = 2;
+
+  /// "two projects" — the cap as copy says it.
+  static String get freeProjectsInWords => '${numberWord(freeProjectLimit)} ${freeProjectLimit == 1 ? 'project' : 'projects'}';
 
   final Plan plan;
 
@@ -109,6 +113,6 @@ class PlanOffer {
 /// Returned when an action would add a project beyond the plan's cap. A
 /// sentinel (compared by identity) so the UI can route it to the "slots
 /// full" sheet (1.6) rather than showing it as an error.
-const slotsFull = AppFailure(FailureKind.permission, 'Your free project slot is in use.');
+const slotsFull = AppFailure(FailureKind.permission, 'Your free project slots are in use.');
 
 bool isSlotsFull(AppFailure failure) => identical(failure, slotsFull);

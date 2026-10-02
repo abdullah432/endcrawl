@@ -17,8 +17,6 @@ import '../../export/controllers/export_controller.dart';
 import '../../ads/data/ad_service.dart';
 import '../../ads/widgets/sponsored_slot.dart';
 import '../../plan/controllers/editable_projects.dart';
-import '../../plan/controllers/plan_controller.dart';
-import '../../plan/controllers/trial_offer_controller.dart';
 import '../../plan/widgets/trial_offer_card.dart';
 import '../../project/project_navigation.dart';
 import '../../settings/screens/settings_screen.dart';
@@ -171,9 +169,7 @@ class _ProjectList extends ConsumerWidget {
     final readOnly = ref.watch(readOnlyProjectIdsProvider);
     final showTrialOffer = !view.entitlement.isPro &&
         view.isFull &&
-        !ui.freeingSlot &&
-        !ref.watch(trialOfferHiddenProvider) &&
-        ref.watch(planControllerProvider.select((s) => s.offers.isNotEmpty));
+        !ui.freeingSlot;
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 22),
@@ -213,14 +209,10 @@ class _ProjectList extends ConsumerWidget {
           TrialReminderRow(daysLeft: view.trialDaysLeft!, endsAt: endsAt, limit: Entitlement.freeProjectLimit),
           const SizedBox(height: 14),
         ],
-        // On a full free plan the trial offer takes the ad's place; dismissed,
-        // the ad comes back (1.1a).
-        if (showTrialOffer) ...[
-          const SizedBox(height: 4),
-          FreePlanDivider(used: view.count, limit: view.limit!),
-          const SizedBox(height: 14),
-          TrialOfferCard(limit: view.limit!),
-        ] else
+        // On a full free plan the plan card takes the ad's place (1.1a).
+        if (showTrialOffer)
+          TrialOfferCard(used: view.count, limit: view.limit!)
+        else
           const SponsoredSlot(AdPlacement.library, gap: 14),
       ],
     );

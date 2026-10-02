@@ -13,10 +13,10 @@ import 'plan_meter.dart';
 
 enum SlotsFullChoice { upgrade, freeUp }
 
-/// 1.6 — "+ New" when the free project slot is used.
+/// 1.6 — "+ New" when the free project slots are used.
 ///
 /// Opens with reassurance (nothing was deleted, nothing expires), then
-/// offers a free trial rather than an instant charge; freeing up the slot
+/// offers a free trial rather than an instant charge; freeing up a slot
 /// stays as the no-commitment way out. Where the store has no trial for
 /// this account, the Pro card offers the plan plainly.
 class SlotsFullSheet extends ConsumerWidget {
@@ -25,8 +25,6 @@ class SlotsFullSheet extends ConsumerWidget {
   static Future<SlotsFullChoice?> show(BuildContext context) {
     return showEcSheet<SlotsFullChoice>(context, builder: (_) => const SlotsFullSheet());
   }
-
-  static const _words = ['zero', 'one', 'two', 'three'];
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -37,7 +35,6 @@ class SlotsFullSheet extends ConsumerWidget {
     final monthly = offers.where((o) => o.period == BillingPeriod.monthly && o.hasTrial).firstOrNull;
     final yearly = offers.where((o) => o.period == BillingPeriod.yearly && o.hasTrial).firstOrNull;
     final trial = monthly != null || yearly != null;
-    final word = limit < _words.length ? _words[limit] : '$limit';
     final trials = [
       if (monthly != null) '${monthly.trialDays} days free on monthly (${monthly.price})',
       if (yearly != null) '${yearly.trialDays} days free on yearly (${yearly.price})',
@@ -51,14 +48,14 @@ class SlotsFullSheet extends ConsumerWidget {
           const SizedBox(height: 14),
           EcEyebrow('$limit of $limit ${limit == 1 ? 'project' : 'projects'} used', color: p.accent),
           const SizedBox(height: 8),
-          EcHeadline('The free plan keeps', emphasis: '$word ${limit == 1 ? 'project' : 'projects'}.',
+          EcHeadline('The free plan keeps', emphasis: '${Entitlement.freeProjectsInWords}.',
               style: t.displayL.copyWith(fontSize: 32, height: 1.05)),
           const SizedBox(height: 10),
           Text(
             trial
-                ? 'Nothing was deleted and nothing expires. To start another, free up the slot or try Pro free — '
+                ? 'Nothing was deleted and nothing expires. To start another, free up ${_slot(limit)} or try Pro free — '
                     'you won’t be charged until the trial ends.'
-                : 'Nothing was deleted and nothing expires. To start another, free up the slot or lift the cap.',
+                : 'Nothing was deleted and nothing expires. To start another, free up ${_slot(limit)} or lift the cap.',
             style: t.body.copyWith(fontSize: 13),
           ),
           const SizedBox(height: 18),
@@ -105,7 +102,7 @@ class SlotsFullSheet extends ConsumerWidget {
           ),
           const SizedBox(height: 12),
           EcButton.secondary(
-            label: 'Free up the slot',
+            label: 'Free up ${_slot(limit)}',
             size: EcButtonSize.medium,
             expand: true,
             onPressed: () => Navigator.of(context).pop(SlotsFullChoice.freeUp),
@@ -117,3 +114,5 @@ class SlotsFullSheet extends ConsumerWidget {
     );
   }
 }
+
+String _slot(int limit) => limit == 1 ? 'the slot' : 'a slot';

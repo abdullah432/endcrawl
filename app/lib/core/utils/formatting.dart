@@ -43,3 +43,9 @@ String formatDayMonth(DateTime d) => '${d.day} ${_months[d.month - 1]}';
 
 /// "7 Oct 2026".
 String formatDate(DateTime d) => '${formatDayMonth(d)} ${d.year}';
+
+const _numberWords = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten'];
+
+/// "one", "two" — small counts in sentences ("The free plan keeps two
+/// projects"); digits past ten.
+String numberWord(int n) => n >= 0 && n < _numberWords.length ? _numberWords[n] : '$n';

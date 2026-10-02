@@ -44,8 +44,8 @@ const termsOfService = LegalDocument(
   sections: [
     LegalSection('Your account', 'You need an account to keep projects. Keep your sign-in details to yourself; you are responsible for what happens under your account.'),
     LegalSection('Your content', 'You own the projects and renders you make. We store them only to sync and render them for you.'),
-    LegalSection('Plans', 'The free plan keeps one project, exports H.264 and HEVC up to 1080p, and shows ads. Pro removes the project cap and the ads, and adds ProRes, PNG and 4K. Every block, timing and look tool is on both plans.'),
-    LegalSection('Subscriptions', 'Pro is billed by your app store and renews until you cancel in its subscription settings. Where the store offers a free trial, you are charged only when it ends unless you cancel before then. After Pro ends nothing is deleted: one project stays editable and ads come back.'),
+    LegalSection('Plans', 'The free plan keeps two projects, exports H.264 and HEVC up to 1080p, and shows ads. Pro removes the project cap and the ads, and adds ProRes, PNG and 4K. Every block, timing and look tool is on both plans.'),
+    LegalSection('Subscriptions', 'Pro is billed by your app store and renews until you cancel in its subscription settings. Where the store offers a free trial, you are charged only when it ends unless you cancel before then. After Pro ends nothing is deleted: two projects stay editable and ads come back.'),
     LegalSection('Ending', 'You can delete your account at any time from Settings. We may suspend accounts that abuse the service.'),
   ],
 );

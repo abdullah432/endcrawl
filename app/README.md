@@ -257,15 +257,17 @@ and removes ads. Hitting the limit offers a **free trial** — 7 days monthly,
 - **Trials come from the store.** Each `PlanOffer` carries the trial this
   account would get (`trialDays`, null when none), so every trial label —
   the 1.1a card, 1.6, 6.5, 7.1 — falls back to the plain price for an
-  account that has had one. The library shows the trial card (1.1a) in place
-  of the ad when the free slot is full (✕ hides it for a week), and a
-  countdown while on the trial (1.1).
-- **After a trial or Pro ends, one project stays editable.** Nothing is
-  deleted. The most recently updated project is the editable one;
+  account that has had one. The library shows the plan card (1.1a) in place
+  of the ad when both free slots are used — one "Start free trial" button
+  that opens 6.5, where the plan is picked — and a countdown while on the
+  trial (1.1).
+- **After a trial or Pro ends, two projects stay editable.** Nothing is
+  deleted. The two most recently updated projects are the editable ones;
   `readOnlyProjectIdsProvider` names the rest. They open read-only (play
   and export still work) and `ProjectController` refuses edits at its
   single write path. "Edit this one instead" touches the chosen project to
-  make it the most recent, so the choice needs no storage and holds on
+  make it the most recent (the least recent editable one turns read-only),
+  so the choice needs no storage and holds on
   every device.
 - **One rewarded ad, one Pro render (6.1a).** On Free, Pro options stay
   selectable with a PRO pill. Picking one offers "Watch ad · render once"

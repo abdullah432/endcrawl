@@ -55,7 +55,7 @@ class LibraryView {
   /// The reel number the next project will take.
   int get nextReel => count + 1;
 
-  /// "Reel · 1 of 1 · Free", "Reel · Pro trial · 6 days left",
+  /// "Reel · 2 of 2 · Free", "Reel · Pro trial · 6 days left",
   /// "Reel · 7 · Pro". [countOnTrial] swaps the trial's countdown for the
   /// project count — right after a duplicate (1.7).
   String reelLabel({bool countOnTrial = false}) {
@@ -105,7 +105,8 @@ class LibraryUi extends Notifier<LibraryUiState> {
 final libraryUiProvider = NotifierProvider<LibraryUi, LibraryUiState>(LibraryUi.new);
 
 /// Refused edits to a project the free plan can't edit right now.
-const readOnlyOnFree = AppFailure(FailureKind.permission, 'Read-only on the free plan — one project stays editable.');
+final readOnlyOnFree =
+    AppFailure(FailureKind.permission, 'Read-only on the free plan — ${Entitlement.freeProjectsInWords} stay editable.');
 
 /// Library-level actions. Each one refreshes what it changed, so the screen
 /// never has to remember to invalidate anything.
@@ -166,7 +167,7 @@ class LibraryController {
 
   Future<Result<Project>> rename(String id, String title) async {
     // Renaming touches the project, which would make it the editable one.
-    if (_ref.read(readOnlyProjectIdsProvider).contains(id)) return const Err(readOnlyOnFree);
+    if (_ref.read(readOnlyProjectIdsProvider).contains(id)) return Err(readOnlyOnFree);
     final clean = sanitizeProjectTitle(title);
     final repository = _ref.read(projectRepositoryProvider);
     final loaded = await repository.load(id);

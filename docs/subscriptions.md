@@ -23,11 +23,13 @@ store prices fetched through RevenueCat, not these USD reference prices.
 
 ## Free trials (from 2026-10-01)
 
-The free plan holds **one** project (`Entitlement.freeProjectLimit`). Hitting the
-limit offers a free trial, not a purchase: **7 days on monthly, 14 days on
-yearly** (yearly preselected). A trial user is Pro. When a trial or Pro ends,
-nothing is deleted: the most recently edited project stays editable, the others
-open read-only (they still play and render), and ads come back.
+The free plan holds **two** projects (`Entitlement.freeProjectLimit`; raised from
+one in the v3 handoff). Hitting the limit offers a free trial, not a purchase:
+**7 days on monthly, 14 days on yearly** (yearly preselected). The library's plan
+card (1.1a) has a single "Start free trial" button that opens 6.5, the only place
+a plan is picked. A trial user is Pro. When a trial or Pro ends, nothing is
+deleted: the two most recently edited projects stay editable, the others open
+read-only (they still play and render), and ads come back.
 
 **Store setup still to do** — the app reads trials from the store and shows the
 plain price wherever none is offered, so nothing changes in code once these exist:
@@ -47,15 +49,14 @@ How the app reads them (`revenuecat_entitlement_repository.dart`):
 - A trial shows as the `pro` entitlement with period type `TRIAL`; its expiry is
   the trial end (the "6 days left" countdown). An inactive `pro` means *lapsed*.
 
-Analytics (Google Analytics): `trial_card_shown`, `trial_card_dismissed`,
-`trial_plan_selected{plan}`, `trial_started{plan, source}` (library, slots_full,
+Analytics (Google Analytics): `trial_card_shown`, `trial_plan_selected{plan}`, `trial_started{plan, source}` (library, slots_full,
 paywall, settings), and `trial_converted` / `trial_cancelled` inferred in the app.
 For conversions and cancellations, prefer RevenueCat's Firebase integration, which
 reports them from the store even when the app isn't running.
 
 Test with a Play license tester: start each trial, check the countdown and the
 "Free until …" date, cancel in the Play Store (Pro stays until the trial ends),
-then let it expire and check that one project stays editable.
+then let it expire and check that two projects stay editable.
 
 ## Runtime
 

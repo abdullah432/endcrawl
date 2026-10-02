@@ -46,7 +46,7 @@ void main() {
     testWidgets('is the template picker itself, with the reel count', (tester) async {
       await AppHarness().pump(tester);
 
-      expect(find.text('REEL · 0 OF 1 · FREE'), findsOneWidget);
+      expect(find.text('REEL · 0 OF 2 · FREE'), findsOneWidget);
       expect(find.text('Pick a starting point.'), findsOneWidget);
       expect(find.text('Feature film'), findsOneWidget);
       expect(find.text('Vertical social cut'), findsOneWidget);
@@ -121,29 +121,43 @@ void main() {
   });
 
   group('1.6 slots full', () {
-    final one = [_project('A', day: 1)];
+    final two = [_project('A', day: 1), _project('B', day: 2)];
     final three = [_project('A', day: 1), _project('B', day: 2), _project('C', day: 3)];
 
-    testWidgets('the header counts the one free project', (tester) async {
-      await withProjects(one).pump(tester);
-      expect(find.text('REEL · 1 OF 1 · FREE'), findsOneWidget);
+    testWidgets('the header counts both free projects', (tester) async {
+      await withProjects(two).pump(tester);
+      expect(find.text('REEL · 2 OF 2 · FREE'), findsOneWidget);
     });
 
-    testWidgets('+ New opens the slots-full sheet, offering the trial first', (tester) async {
-      await withProjects(one).pump(tester);
+    testWidgets('with one free project, + New still starts the second', (tester) async {
+      await withProjects([_project('A', day: 1)]).pump(tester);
+      expect(find.text('REEL · 1 OF 2 · FREE'), findsOneWidget);
 
       await tapText(tester, 'New');
 
-      expect(inSheet(find.text('1 OF 1 PROJECT USED')), findsOneWidget);
-      expect(inSheet(find.textContaining('one project.', findRichText: true)), findsOneWidget);
-      expect(find.textContaining('you won’t be charged until the trial ends'), findsOneWidget);
+      expect(find.text('NEW PROJECT · REEL 02'), findsOneWidget);
+      expect(find.text('The free plan keeps'), findsNothing);
+    });
+
+    testWidgets('+ New opens the slots-full sheet, offering the trial first', (tester) async {
+      await withProjects(two).pump(tester);
+
+      await tapText(tester, 'New');
+
+      expect(inSheet(find.text('2 OF 2 PROJECTS USED')), findsOneWidget);
+      expect(inSheet(find.textContaining('two projects.', findRichText: true)), findsOneWidget);
+      expect(
+        find.text('Nothing was deleted and nothing expires. To start another, free up a slot or try Pro free — '
+            'you won’t be charged until the trial ends.'),
+        findsOneWidget,
+      );
       expect(find.text('Try free'), findsOneWidget);
       expect(
         find.text(r'7 days free on monthly ($4.99), 14 days free on yearly ($29.99). Cancel before it ends and pay nothing.'),
         findsOneWidget,
       );
-      expect(find.text('Start free trial'), findsOneWidget);
-      expect(find.text('Free up the slot'), findsOneWidget);
+      expect(inSheet(find.text('Start free trial')), findsOneWidget);
+      expect(find.text('Free up a slot'), findsOneWidget);
       final benefits = [
         'Unlimited projects and render history',
         'ProRes, PNG alpha and 4K exports',
@@ -154,7 +168,7 @@ void main() {
 
     testWidgets('without a trial for this account, the sheet offers the plan plainly', (tester) async {
       await AppHarness(
-        projects: FakeProjectRepository(seed: one),
+        projects: FakeProjectRepository(seed: two),
         plan: FakeEntitlementRepository(const Entitlement.free(lapsed: true), false),
       ).pump(tester);
       await tapText(tester, 'New');
@@ -164,18 +178,18 @@ void main() {
       expect(find.text('Try free'), findsNothing);
     });
 
-    testWidgets('"Free up the slot" returns to the list with delete on each card', (tester) async {
-      await withProjects(one).pump(tester);
+    testWidgets('"Free up a slot" returns to the list with delete on each card', (tester) async {
+      await withProjects(two).pump(tester);
       await tapText(tester, 'New');
 
-      await tapText(tester, 'Free up the slot');
+      await tapText(tester, 'Free up a slot');
 
       expect(find.text('Delete'), findsWidgets);
       expect(find.byTooltip('Project actions'), findsNothing);
     });
 
     testWidgets('"Start free trial" opens the Pro sheet on the yearly trial', (tester) async {
-      await withProjects(one).pump(tester);
+      await withProjects(two).pump(tester);
       await tapText(tester, 'New');
 
       await tapText(tester, 'Start free trial');
@@ -186,7 +200,7 @@ void main() {
       expect(find.text(r'14 days free, then $2.50 a month'), findsOneWidget);
       expect(find.text(r'7 days free, then $4.99/mo'), findsOneWidget);
       expect(find.text('LASTREEL PRO'), findsOneWidget);
-      expect(find.textContaining('one-project cap'), findsOneWidget);
+      expect(find.textContaining('two-project cap'), findsOneWidget);
       for (final (row, free, pro) in const [
         ('Codecs', 'H.264, HEVC', '+ ProRes, PNG'),
         ('Resolution', 'Up to 1080p', 'Up to 4K'),
@@ -197,6 +211,8 @@ void main() {
         }
       }
       expect(inSheet(find.text('Projects')), findsOneWidget);
+      expect(inSheet(find.text('2')), findsOneWidget);
+      expect(inSheet(find.text('Unlimited')), findsOneWidget);
       expect(find.textContaining('Where ads show'), findsNothing);
 
       await tapText(tester, r'7 days free, then $4.99/mo');
@@ -213,39 +229,33 @@ void main() {
     });
   });
 
-  group('1.1a trial offer', () {
-    final one = [_project('The Long Way Down', day: 1)];
+  group('1.1a plan card', () {
+    final two = [_project('The Long Way Down', day: 1), _project('Salt Flats', day: 2)];
 
-    testWidgets('a full free library offers the trial in place of the ad', (tester) async {
-      final app = withProjects(one);
+    testWidgets('a full free library lists both projects, then one plan card in place of the ad', (tester) async {
+      final app = withProjects(two);
       await app.pump(tester);
 
-      expect(find.text('FREE PLAN'), findsOneWidget);
-      expect(find.text('1 OF 1 PROJECT USED'), findsOneWidget);
+      expect(find.text('REEL · 2 OF 2 · FREE'), findsOneWidget);
+      expect(find.byType(ProjectCard), findsNWidgets(2));
       await tester.scrollUntilVisible(find.byType(TrialOfferCard), 200);
-      expect(find.text('PRO · FREE TRIAL'), findsOneWidget);
-      expect(find.textContaining('reel two?', findRichText: true), findsOneWidget);
-      expect(find.text('Your free plan holds one project. Try Pro free to make as many as you like.'), findsOneWidget);
-      for (final chip in ['Unlimited projects', 'ProRes · PNG · 4K', 'No ads']) {
-        expect(find.text(chip), findsOneWidget);
-      }
-      expect(find.text('14 days free'), findsOneWidget);
-      expect(find.text(r'then $29.99/yr'), findsOneWidget);
-      expect(find.text('7 days free'), findsOneWidget);
-      expect(find.text(r'then $4.99/mo'), findsOneWidget);
-      expect(find.text('Start 14-day free trial'), findsOneWidget, reason: 'yearly is preselected');
-      expect(find.text('No charge today · cancel anytime'), findsOneWidget);
+      final card = find.byType(TrialOfferCard);
+      Finder inCard(Finder f) => find.descendant(of: card, matching: f);
+      expect(inCard(find.text('FREE PLAN')), findsOneWidget);
+      expect(inCard(find.text('2 OF 2 PROJECTS')), findsOneWidget);
+      expect(inCard(find.text('Both free projects are in use')), findsOneWidget);
+      expect(inCard(find.text('Try Pro free for unlimited projects, ProRes and 4K exports, and no ads.')), findsOneWidget);
+      expect(inCard(find.byType(InkWell)), findsOneWidget, reason: 'one button, nothing to dismiss');
+      expect(inCard(find.text('Start free trial')), findsOneWidget);
+      expect(inCard(find.textContaining(r'$')), findsNothing, reason: 'no prices in the library');
+      expect(inCard(find.textContaining('days free')), findsNothing);
       expect(find.byType(EcAdSlot), findsNothing);
       expect(app.analytics.names, contains('trial_card_shown'));
-
-      await tapText(tester, '7 days free');
-      expect(find.text('Start 7-day free trial'), findsOneWidget);
-      expect(app.analytics.events.last.$1, 'trial_plan_selected');
-      expect(app.analytics.events.last.$2, {'plan': 'monthly'});
     });
 
-    testWidgets('starting the trial makes the library Pro, counting down', (tester) async {
-      final app = withProjects(one);
+    testWidgets('"Start free trial" opens 6.5 on the yearly trial, and starting it there is from the library',
+        (tester) async {
+      final app = withProjects(two);
       app.plan.purchaseGrants = Entitlement.pro(
         period: BillingPeriod.yearly,
         trialEndsAt: app.now.add(const Duration(days: 14)),
@@ -253,6 +263,8 @@ void main() {
       await app.pump(tester);
       await tester.scrollUntilVisible(find.byType(TrialOfferCard), 200);
 
+      await tapText(tester, 'Start free trial');
+      expect(find.text('LASTREEL PRO'), findsOneWidget);
       await tapText(tester, 'Start 14-day free trial');
 
       expect(app.plan.lastPurchased?.period, BillingPeriod.yearly);
@@ -260,50 +272,33 @@ void main() {
       expect(app.analytics.events.last.$2, {'plan': 'yearly', 'source': 'library'});
       expect(find.byType(TrialOfferCard), findsNothing);
       expect(find.text('REEL · PRO TRIAL · 14 DAYS LEFT'), findsOneWidget);
-      expect(find.text('14d'), findsOneWidget);
+      await tester.scrollUntilVisible(find.text('14d'), 200);
       expect(find.text('Trial ends 7 Oct'), findsOneWidget);
-      expect(find.text('After that, one project stays free.'), findsOneWidget);
+      expect(find.text('After that, two projects stay free.'), findsOneWidget);
       expect(find.byType(EcAdSlot), findsNothing);
     });
 
-    testWidgets('✕ hides the card for a week and the ad returns', (tester) async {
-      final app = withProjects(one);
-      await app.pump(tester);
-      await tester.scrollUntilVisible(find.byType(TrialOfferCard), 200);
-
-      await tester.tap(find.byTooltip('Not now'));
-      await tester.pumpAndSettle();
-
+    testWidgets('one free project is not full: no card, the ad shows', (tester) async {
+      await withProjects([two.first]).pump(tester);
+      await tester.scrollUntilVisible(find.byType(EcAdSlot), 200);
       expect(find.byType(TrialOfferCard), findsNothing);
-      expect(find.byType(EcAdSlot), findsOneWidget);
-      expect(app.session.hiddenUntil, app.now.add(const Duration(days: 7)));
-      expect(app.analytics.names, contains('trial_card_dismissed'));
     });
 
-    testWidgets('a dismissal from over a week ago has lapsed', (tester) async {
-      final app = withProjects(one);
-      app.session.hiddenUntil = app.now.subtract(const Duration(minutes: 1));
-      await app.pump(tester);
-      await tester.scrollUntilVisible(find.byType(TrialOfferCard), 200);
-      expect(find.byType(TrialOfferCard), findsOneWidget);
-    });
-
-    testWidgets('an account that has had its trial sees plain prices', (tester) async {
+    testWidgets('an account that has had its trial is offered the plans plainly', (tester) async {
       await AppHarness(
-        projects: FakeProjectRepository(seed: one),
+        projects: FakeProjectRepository(seed: two),
         plan: FakeEntitlementRepository(const Entitlement.free(lapsed: true), false),
       ).pump(tester);
       await tester.scrollUntilVisible(find.byType(TrialOfferCard), 200);
 
-      expect(find.text('PRO'), findsWidgets);
-      expect(find.text('PRO · FREE TRIAL'), findsNothing);
+      expect(find.text('Go Pro for unlimited projects, ProRes and 4K exports, and no ads.'), findsOneWidget);
+      expect(find.text('Start free trial'), findsNothing);
+      await tapText(tester, 'See Pro plans');
       expect(find.text(r'Start Pro — $29.99/yr'), findsOneWidget);
-      expect(find.text('Cancel anytime'), findsWidgets);
-      expect(find.textContaining('days free'), findsNothing);
     });
 
     testWidgets('on the trial, the countdown counts part days as days', (tester) async {
-      final app = withProjects(one, plan: Entitlement.pro(trialEndsAt: DateTime.utc(2026, 9, 29, 18)));
+      final app = withProjects(two.take(1).toList(), plan: Entitlement.pro(trialEndsAt: DateTime.utc(2026, 9, 29, 18)));
       await app.pump(tester);
       expect(find.text('REEL · PRO TRIAL · 7 DAYS LEFT'), findsOneWidget);
       expect(find.text('Trial ends 29 Sep'), findsOneWidget);
@@ -345,7 +340,7 @@ void main() {
       await openActions(tester);
 
       expect(find.text('The Long Way Down'), findsWidgets);
-      expect(find.text('No free slot left — Pro removes the cap'), findsOneWidget);
+      expect(find.text('Uses your last free slot'), findsOneWidget);
       expect(find.text('Delete project'), findsOneWidget);
     });
 
@@ -407,19 +402,19 @@ void main() {
     });
 
     testWidgets('duplicate is unavailable with no free slot', (tester) async {
-      await openActions(tester);
+      await openActions(tester, projects: [_project('A', day: 1), _project('B', day: 2)]);
       expect(find.text('No free slot left — Pro removes the cap'), findsOneWidget);
     });
   });
 
   group('7.1 settings from the library', () {
     testWidgets('the avatar opens Settings, and signing out returns to the welcome screen', (tester) async {
-      await withProjects([_project('A', day: 1)]).pump(tester);
+      await withProjects([_project('A', day: 1), _project('B', day: 2)]).pump(tester);
 
       await tester.tap(find.bySemanticsLabel('Account').first);
       await tester.pumpAndSettle();
       expect(find.text('Settings'), findsOneWidget);
-      expect(find.text('1 of 1 project · ads on'), findsOneWidget);
+      expect(find.text('2 of 2 projects · ads on'), findsOneWidget);
       expect(find.text('Start free trial'), findsOneWidget);
 
       await tapText(tester, 'Sign out');

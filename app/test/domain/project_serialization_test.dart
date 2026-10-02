@@ -280,12 +280,13 @@ void main() {
   });
 
   group('entitlement', () {
-    test('free keeps one project and shows ads', () {
+    test('free keeps two projects and shows ads', () {
       const free = Entitlement.free();
-      expect(Entitlement.freeProjectLimit, 1);
-      expect(free.canAddProject(0), isTrue);
-      expect(free.canAddProject(1), isFalse);
-      expect(free.slotsLeft(0), 1);
+      expect(Entitlement.freeProjectLimit, 2);
+      expect(Entitlement.freeProjectsInWords, 'two projects');
+      expect(free.canAddProject(1), isTrue);
+      expect(free.canAddProject(2), isFalse);
+      expect(free.slotsLeft(0), 2);
       expect(free.showsAds, isTrue);
     });
 

@@ -21,8 +21,8 @@ Project _project(String title, int day) => Project.create(
     );
 
 void main() {
-  // After a trial ends: three projects, Free again. "Salt Flats" was edited
-  // last, so it's the one that stays editable.
+  // After a trial ends: three projects, Free again. "Salt Flats" and "Night
+  // Shift" were edited last, so those two stay editable.
   final older = _project('The Long Way Down', 1);
   final middle = _project('Night Shift', 2);
   final newest = _project('Salt Flats', 3);
@@ -41,22 +41,22 @@ void main() {
 
   ProviderContainer container(WidgetTester tester) => ProviderScope.containerOf(tester.element(find.byType(Scaffold).first));
 
-  testWidgets('every project stays; only the most recently edited one is editable', (tester) async {
+  testWidgets('every project stays; only the two most recently edited are editable', (tester) async {
     final app = lapsed();
     await app.pump(tester);
 
     expect(find.text('The Long Way Down'), findsOneWidget);
     expect(find.text('Night Shift'), findsOneWidget);
     expect(find.text('Salt Flats'), findsOneWidget);
-    expect(find.text('READ-ONLY'), findsNWidgets(2));
-    expect(container(tester).read(readOnlyProjectIdsProvider), {older.id, middle.id});
+    expect(find.text('READ-ONLY'), findsOneWidget);
+    expect(container(tester).read(readOnlyProjectIdsProvider), {older.id});
     expect(find.text('REEL · 3 · FREE'), findsOneWidget);
   });
 
   testWidgets('a read-only project opens to play and export, but refuses edits', (tester) async {
     final app = lapsed();
     await app.pump(tester);
-    await tapText(tester, 'Night Shift');
+    await tapText(tester, 'The Long Way Down');
     expect(find.byType(EditorScreen), findsOneWidget);
 
     expect(find.text('Read-only on the free plan'), findsOneWidget);
@@ -66,37 +66,40 @@ void main() {
 
     await tester.tap(find.byType(BlockRow).first);
     await tester.pumpAndSettle();
-    expect(find.text('Read-only on the free plan — one project stays editable'), findsOneWidget);
+    expect(find.text('Read-only on the free plan — two projects stay editable'), findsOneWidget);
 
     final controller = container(tester).read(projectControllerProvider.notifier);
     controller.renameProject('Renamed');
     controller.addBlock(const SpacerBlock(id: 'gap'));
     await tester.pump(const Duration(seconds: 3));
-    final stored = app.projects.projects[middle.id]!;
-    expect(stored.title, 'Night Shift');
+    final stored = app.projects.projects[older.id]!;
+    expect(stored.title, 'The Long Way Down');
     expect(stored.blocks, hasLength(1));
-    expect(stored.updatedAt, middle.updatedAt);
+    expect(stored.updatedAt, older.updatedAt);
 
     // Rendering is allowed, and doesn't make it the editable one.
     await controller.recordRender(
       RenderSummary(outcome: RenderOutcome.rendered, codec: 'H.264', width: 1920, height: 1080, at: app.now),
     );
     await tester.pumpAndSettle();
-    expect(app.projects.projects[middle.id]!.lastRender?.outcome, RenderOutcome.rendered);
-    expect(container(tester).read(readOnlyProjectIdsProvider), contains(middle.id));
+    expect(app.projects.projects[older.id]!.lastRender?.outcome, RenderOutcome.rendered);
+    expect(container(tester).read(readOnlyProjectIdsProvider), contains(older.id));
   });
 
   testWidgets('"Edit this one instead" swaps which project is editable', (tester) async {
     final app = lapsed();
     await app.pump(tester);
-    await tapText(tester, 'Night Shift');
+    await tapText(tester, 'The Long Way Down');
 
     await tapText(tester, 'Edit this one instead');
+    expect(find.textContaining('least recently edited project becomes read-only'), findsOneWidget);
     await tapText(tester, 'Edit this one');
 
     expect(find.text('Read-only on the free plan'), findsNothing);
-    expect(container(tester).read(readOnlyProjectIdsProvider), {older.id, newest.id});
-    expect(app.projects.projects[middle.id]!.updatedAt.isAfter(newest.updatedAt), isTrue);
+    expect(find.text('You can edit this project now'), findsOneWidget);
+    // The least recently edited of the editable two takes its place.
+    expect(container(tester).read(readOnlyProjectIdsProvider), {middle.id});
+    expect(app.projects.projects[older.id]!.updatedAt.isAfter(newest.updatedAt), isTrue);
   });
 
   testWidgets('renaming a read-only project from the library is refused', (tester) async {
@@ -109,7 +112,7 @@ void main() {
     await tester.pump();
     await tapText(tester, 'Save');
 
-    expect(find.text('Read-only on the free plan — one project stays editable.'), findsOneWidget);
+    expect(find.text('Read-only on the free plan — two projects stay editable.'), findsOneWidget);
     expect(app.projects.projects[older.id]!.title, 'The Long Way Down');
   });
 

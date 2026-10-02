@@ -7,6 +7,7 @@ import '../../../core/widgets/ec_headline.dart';
 import '../../../core/widgets/ec_sheet.dart';
 import '../../../core/widgets/ec_surfaces.dart';
 import '../../../core/widgets/ec_toast.dart';
+import '../../../domain/models/entitlement.dart';
 import '../../plan/controllers/editable_projects.dart';
 import '../../plan/controllers/plan_controller.dart';
 import '../../plan/screens/pro_sheet.dart';
@@ -34,7 +35,7 @@ class ReadOnlyBanner extends ConsumerWidget {
         tone: EcTone.accent,
         icon: Icons.lock_outline_rounded,
         title: 'Read-only on the free plan',
-        body: 'The free plan keeps one project editable. This one still plays and exports.',
+        body: 'The free plan keeps ${Entitlement.freeProjectsInWords} editable. This one still plays and exports.',
         actions: [
           EcButton.secondary(
             label: 'Edit this one instead',
@@ -63,7 +64,7 @@ class ReadOnlyBanner extends ConsumerWidget {
               EcHeadline('Edit this one', emphasis: 'instead?', style: t.displayM.copyWith(fontSize: 28)),
               const SizedBox(height: 8),
               Text(
-                'The project you can edit now becomes read-only. Nothing is deleted, and you can switch back any time.',
+                'Your least recently edited project becomes read-only. Nothing is deleted, and you can switch back any time.',
                 style: t.body.copyWith(fontSize: 13),
               ),
               const SizedBox(height: 18),
@@ -77,10 +78,10 @@ class ReadOnlyBanner extends ConsumerWidget {
     );
     if (confirmed != true) return;
     await ref.read(projectControllerProvider.notifier).keepEditable();
-    if (context.mounted) showEcToast(context, 'This project is the one you can edit now');
+    if (context.mounted) showEcToast(context, 'You can edit this project now');
   }
 }
 
 /// A row's tap on a read-only project: say why nothing opens.
 void explainReadOnly(BuildContext context) =>
-    showEcToast(context, 'Read-only on the free plan — one project stays editable');
+    showEcToast(context, 'Read-only on the free plan — ${Entitlement.freeProjectsInWords} stay editable');

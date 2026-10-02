@@ -15,7 +15,7 @@ import '../../plan/controllers/plan_controller.dart';
 import '../../plan/screens/pro_sheet.dart';
 
 /// 7.3 — the Pro subscription, and exactly what cancelling means: nothing
-/// is deleted, one project stays editable, and ads come back.
+/// is deleted, the free plan's projects stay editable, and ads come back.
 class SubscriptionScreen extends ConsumerWidget {
   const SubscriptionScreen({super.key});
 
@@ -89,7 +89,7 @@ class SubscriptionScreen extends ConsumerWidget {
             padding: const EdgeInsets.symmetric(horizontal: 6),
             child: Text(
               'Cancel any time in your store settings. Pro stays on until the paid period ends. After that nothing is '
-              'deleted: you keep every project, one can be edited, and ads come back.',
+              'deleted: you keep every project, ${numberWord(Entitlement.freeProjectLimit)} can be edited, and ads come back.',
               style: t.caption.copyWith(height: 1.5),
             ),
           ),

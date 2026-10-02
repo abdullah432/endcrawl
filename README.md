@@ -26,7 +26,7 @@ prototype exported by Claude Design (see [`design/`](design/)).
 
 The app follows the v2 design in [`design/app-light/`](design/app-light/)
 (light, "Aurora Noir"): onboarding with Google and email (Apple is built but switched off); a library
-of numbered reels with a one-project free plan and Pro free trials; templates with editable
+of numbered reels with a two-project free plan and Pro free trials; templates with editable
 contents; the editor with its readability warnings, multi-select and swipe
 actions; 27 block types with paste-and-split and a fast cast editor; timing,
 look and background; export; and settings with account management and
