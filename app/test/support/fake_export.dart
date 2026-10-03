@@ -152,6 +152,9 @@ class FakeAdService implements AdService {
   Future<void> showAppOpen() async => appOpenShown++;
 
   @override
+  bool showingFullScreen = false;
+
+  @override
   Future<RewardOutcome> showRewarded() async {
     rewardedShown++;
     return nextReward;

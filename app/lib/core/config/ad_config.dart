@@ -70,13 +70,9 @@ class AdUnits {
   );
 }
 
-/// When the app-open ad may show: only on returning from the background,
-/// and only after a real break (not a trip to the share sheet or a
-/// permission prompt). How often is AdMob's frequency cap, set per unit in
-/// the console.
+/// The app-open ad shows on every return from the background; how often is
+/// AdMob's frequency cap, set per unit in the console.
 abstract final class AppOpenPolicy {
-  static const minBackground = Duration(seconds: 15);
-
   /// Google discards app-open ads after four hours.
   static const maxAdAge = Duration(hours: 4);
 }

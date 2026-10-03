@@ -48,8 +48,12 @@ abstract interface class AdService {
   Future<RewardOutcome> showRewarded();
 
   /// Shows the app-open ad if one is loaded, and loads the next. Called
-  /// only when the app returns from the background (see AppOpenPolicy).
+  /// only when the app returns from the background.
   Future<void> showAppOpen();
+
+  /// An ad covers the app right now. A render keeps going behind it, even
+  /// though the app is briefly inactive.
+  bool get showingFullScreen;
 
   /// Whether the consent framework asks for an "Ad privacy choices" entry
   /// in settings, and showing it.
@@ -70,6 +74,9 @@ class PlaceholderAdService implements AdService {
 
   @override
   Future<void> showAppOpen() async {}
+
+  @override
+  bool get showingFullScreen => false;
 
   @override
   Future<bool> privacyOptionsRequired() async => false;

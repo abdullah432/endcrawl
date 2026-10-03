@@ -463,6 +463,44 @@ void main() {
       expect(find.text('Save to Files'), findsOneWidget);
     });
 
+    testWidgets('the render keeps going behind our own full-screen ad', (tester) async {
+      await openExport(tester);
+      await tapText(tester, 'Render H.264');
+      await tester.pump(const Duration(milliseconds: 200));
+
+      // On Android the app-open ad's activity makes the app inactive.
+      app.ads.showingFullScreen = true;
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+      final before = app.encoder.appended;
+      await tester.pump(const Duration(seconds: 2));
+      expect(app.encoder.appended, greaterThan(before));
+
+      app.ads.showingFullScreen = false;
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+      await runRender(tester);
+      expect(app.encoder.appended, 48);
+    });
+
+    testWidgets('leaving the app with the ad up still pauses the render', (tester) async {
+      await openExport(tester);
+      await tapText(tester, 'Render H.264');
+      await tester.pump(const Duration(milliseconds: 200));
+
+      app.ads.showingFullScreen = true;
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
+      await tester.pump(const Duration(milliseconds: 100));
+      final before = app.encoder.appended;
+      await tester.pump(const Duration(seconds: 2));
+      expect(app.encoder.appended, before);
+
+      app.ads.showingFullScreen = false;
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+      await runRender(tester);
+      expect(app.encoder.appended, 48);
+    });
+
     testWidgets('a render keeps going with the sheet closed and the library shows it', (tester) async {
       app = AppHarness(projects: FakeProjectRepository(seed: [film()]), frames: FakeFrames(frames: 200));
       await openExport(tester);

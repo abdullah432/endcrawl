@@ -114,6 +114,9 @@ class AdMobAdService implements AdService {
   }
 
   @override
+  bool get showingFullScreen => _fullScreen;
+
+  @override
   Future<void> showAppOpen() async {
     if (_fullScreen || !await _ensureReady()) return;
     final ad = _appOpen;

@@ -10,6 +10,7 @@ import '../../../bootstrap.dart';
 import '../../../core/result.dart';
 import '../../../domain/models/project_settings.dart';
 import '../../../domain/models/render_summary.dart';
+import '../../ads/ads_providers.dart';
 import '../../library/controllers/library_controller.dart';
 import '../../project/controllers/project_controller.dart';
 import '../data/export_destinations.dart';
@@ -330,8 +331,15 @@ class ExportController extends Notifier<ExportState> {
   }
 
   void _watchLifecycle() {
+    // Pause as soon as the app stops being active (iOS allows no GPU work
+    // in the background), except while our own full-screen ad covers it:
+    // on Android that makes the app inactive, and the user is still here.
+    // Truly leaving (hidden) always pauses.
     _lifecycle ??= AppLifecycleListener(
-      onInactive: () => _job?.pause(),
+      onInactive: () {
+        if (!ref.read(adServiceProvider).showingFullScreen) _job?.pause();
+      },
+      onHide: () => _job?.pause(),
       onResume: () => _job?.resume(),
     );
   }

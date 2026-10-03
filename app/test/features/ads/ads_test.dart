@@ -24,7 +24,7 @@ void main() {
       await tester.pump();
     }
 
-    testWidgets('shows on the first return after 15 s away — never on a cold start', (tester) async {
+    testWidgets('shows on a return from the background — never on a cold start', (tester) async {
       final app = AppHarness();
       await app.pump(tester);
       expect(app.ads.appOpenShown, 0, reason: 'never on open');
@@ -33,10 +33,20 @@ void main() {
       expect(app.ads.appOpenShown, 1);
     });
 
-    testWidgets('not after a short trip away (share sheet, a permission prompt)', (tester) async {
+    testWidgets('a short trip away counts too — AdMob\'s cap decides how often', (tester) async {
       final app = AppHarness();
       await app.pump(tester);
-      await leaveAndReturn(tester, app, const Duration(seconds: 10));
+      await leaveAndReturn(tester, app, const Duration(seconds: 1));
+      await leaveAndReturn(tester, app, const Duration(seconds: 1));
+      expect(app.ads.appOpenShown, 2);
+    });
+
+    testWidgets('not when the app was only inactive, never hidden', (tester) async {
+      final app = AppHarness();
+      await app.pump(tester);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+      await tester.pump();
       expect(app.ads.appOpenShown, 0);
     });
 
@@ -47,7 +57,7 @@ void main() {
       expect(app.ads.appOpenShown, 0);
     });
 
-    testWidgets('never over a render in progress', (tester) async {
+    testWidgets('shows on a return mid-render, and the render still finishes', (tester) async {
       final app = AppHarness(
         projects: FakeProjectRepository(seed: [film()]),
         frames: FakeFrames(frames: 400),
@@ -60,13 +70,13 @@ void main() {
       await tester.tap(find.text('Render H.264'));
       await tester.pump(const Duration(milliseconds: 200));
 
-      await leaveAndReturn(tester, app, const Duration(minutes: 2));
-      expect(app.ads.appOpenShown, 0);
+      await leaveAndReturn(tester, app, const Duration(seconds: 3));
+      expect(app.ads.appOpenShown, 1);
 
-      // Let the render finish so no timers outlive the test.
       for (var i = 0; i < 500; i++) {
         await tester.pump(const Duration(milliseconds: 20));
       }
+      expect(app.encoder.appended, 400);
     });
   });
 
