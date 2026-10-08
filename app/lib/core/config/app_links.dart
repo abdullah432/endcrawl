@@ -13,6 +13,15 @@ abstract final class AppLinks {
     'utm_content': 'settings_footer',
   });
 
+  /// COOKOO's case studies, tagged so the site knows the visit came from
+  /// the studio card in Settings.
+  static final cookooCases = Uri.https('cookoo.dev', '/cases', {'from': 'lastreel'});
+  static Uri cookooCase(String slug) => Uri.https('cookoo.dev', '/cases/$slug', {'from': 'lastreel'});
+
+  /// Same backend as the contact form on cookoo.dev.
+  // TODO: confirm the endpoint with the website before release.
+  static final cookooContact = Uri.parse('https://cookoo.dev/api/contact');
+
   /// Answers to common questions, with a way to reach support.
   static final helpCentre = Uri.parse('https://cookoo.dev/lastreel/help');
 

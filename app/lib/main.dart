@@ -1,4 +1,4 @@
-import 'package:clarity_flutter/clarity_flutter.dart';
+import 'core/services/clarity.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -8,6 +8,8 @@ import 'core/config/orientations.dart';
 import 'core/theme/app_theme.dart';
 import 'core/widgets/ec_toast.dart';
 import 'features/ads/widgets/resume_ads.dart';
+import 'features/cookoo/controllers/cookoo_contact_controller.dart';
+import 'features/cookoo/controllers/cookoo_promo_controller.dart';
 import 'features/plan/controllers/trial_analytics.dart';
 import 'features/auth/widgets/auth_gate.dart';
 
@@ -35,6 +37,7 @@ Future<void> main() async {
           firebaseAuthProvider.overrideWithValue(services.auth),
           firestoreProvider.overrideWithValue(services.firestore),
           sessionStoreProvider.overrideWithValue(services.sessionStore),
+          cookooStoreProvider.overrideWithValue(services.cookooStore),
         ],
         child: const LastReelApp(),
       ),
@@ -49,6 +52,7 @@ class LastReelApp extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     ref.watch(analyticsPreferenceSyncProvider);
     ref.watch(trialAnalyticsProvider);
+    ref.watch(cookooContactSyncProvider);
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.dark,
       child: MaterialApp(

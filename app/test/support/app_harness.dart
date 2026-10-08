@@ -1,6 +1,9 @@
 import 'package:lastreel/bootstrap.dart';
 import 'package:lastreel/data/sources/session_store.dart';
 import 'package:lastreel/features/ads/ads_providers.dart';
+import 'package:lastreel/features/cookoo/controllers/cookoo_contact_controller.dart';
+import 'package:lastreel/features/cookoo/controllers/cookoo_promo_controller.dart';
+import 'package:lastreel/features/cookoo/data/cookoo_store.dart';
 import 'package:lastreel/features/export/controllers/export_controller.dart';
 import 'package:lastreel/main.dart';
 import 'package:flutter/material.dart';
@@ -9,6 +12,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'fake_analytics.dart';
 import 'fake_auth_repository.dart';
+import 'fake_cookoo_contact_client.dart';
 import 'fake_entitlement_repository.dart';
 import 'fake_export.dart';
 import 'fake_external_links.dart';
@@ -32,6 +36,8 @@ class AppHarness {
   FakeExportDestinations destinations;
   FakeAdService ads;
   FakeAnalytics analytics;
+  InMemoryCookooStore cookoo;
+  FakeCookooContactClient contact;
   DateTime now;
 
   AppHarness({
@@ -43,6 +49,7 @@ class AppHarness {
     FakeEntitlementRepository? plan,
     FakeVideoEncoder? encoder,
     FakeFrames? frames,
+    InMemoryCookooStore? cookoo,
     DateTime? now,
   })  : auth = auth ?? FakeAuthRepository(initialUser: testUser),
         projects = projects ?? FakeProjectRepository(),
@@ -55,6 +62,8 @@ class AppHarness {
         destinations = FakeExportDestinations(),
         ads = FakeAdService(),
         analytics = FakeAnalytics(),
+        cookoo = cookoo ?? InMemoryCookooStore(),
+        contact = FakeCookooContactClient(),
         now = now ?? DateTime.utc(2026, 9, 23, 12);
 
   /// A signed-out start.
@@ -95,6 +104,8 @@ class AppHarness {
           exportDirectoryProvider.overrideWithValue(() async => '/renders'),
           adServiceProvider.overrideWithValue(ads),
           analyticsProvider.overrideWithValue(analytics),
+          cookooStoreProvider.overrideWithValue(cookoo),
+          cookooContactClientProvider.overrideWithValue(contact),
         ],
         child: const LastReelApp(),
       ),

@@ -18,6 +18,7 @@ import 'data/sources/session_store.dart';
 import 'domain/models/app_user.dart';
 import 'domain/models/entitlement.dart';
 import 'domain/models/user_profile.dart';
+import 'features/cookoo/data/cookoo_store.dart';
 import 'firebase_options.dart';
 
 /// The app's dependency-injection seams.
@@ -126,8 +127,14 @@ class AppServices {
   final FirebaseAuth auth;
   final FirebaseFirestore firestore;
   final SessionStore sessionStore;
+  final CookooStore cookooStore;
 
-  const AppServices({required this.auth, required this.firestore, required this.sessionStore});
+  const AppServices({
+    required this.auth,
+    required this.firestore,
+    required this.sessionStore,
+    required this.cookooStore,
+  });
 }
 
 /// Initialises Firebase and resolves the platform services. Called before
@@ -150,5 +157,6 @@ Future<AppServices> bootstrap() async {
     auth: FirebaseAuth.instance,
     firestore: FirebaseFirestore.instance,
     sessionStore: PreferencesSessionStore(preferences),
+    cookooStore: PreferencesCookooStore(preferences),
   );
 }

@@ -17,6 +17,8 @@ import '../../../domain/models/app_user.dart';
 import '../../../domain/models/canvas_format.dart';
 import '../../../domain/models/entitlement.dart';
 import '../../../domain/models/user_profile.dart';
+import '../../cookoo/controllers/cookoo_promo_controller.dart';
+import '../../cookoo/widgets/cookoo_swiper.dart';
 import '../../library/controllers/library_controller.dart';
 import '../../plan/controllers/plan_controller.dart';
 import '../../plan/screens/pro_sheet.dart';
@@ -51,114 +53,144 @@ class SettingsScreen extends ConsumerWidget {
       if (result case Err(:final failure) when context.mounted) showEcToast(context, failure.message);
     }
 
+    // Rows sit in a 16 px gutter; only the COOKOO swiper runs edge to edge,
+    // so its next slide can peek in.
     return EcScaffold(
       topBar: const EcTopBar(),
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 34),
-      body: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Padding(padding: const EdgeInsets.fromLTRB(4, 0, 4, 18), child: Text('Settings', style: t.displayL.copyWith(fontSize: 48))),
-          if (user != null) _ProfileCard(user: user),
-          const SizedBox(height: 22),
-          const _PlanCard(),
-          const SizedBox(height: 22),
-          EcGroup(label: 'Defaults for new projects', children: [
-            EcGroupRow(
-              title: 'Frame rate',
-              value: formatFps(prefs.defaultFps),
-              onTap: () async {
-                final fps = await EcOptionSheet.show<double>(
-                  context,
+      scrollable: false,
+      padding: EdgeInsets.zero,
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.only(bottom: 34),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _Gutter(children: [
+              Padding(padding: const EdgeInsets.fromLTRB(4, 0, 4, 18), child: Text('Settings', style: t.displayL.copyWith(fontSize: 48))),
+              if (user != null) _ProfileCard(user: user),
+              const SizedBox(height: 22),
+              const _PlanCard(),
+            ]),
+            const CookooPromoBlock(),
+            _Gutter(children: [
+              const SizedBox(height: 22),
+              EcGroup(label: 'Defaults for new projects', children: [
+                EcGroupRow(
                   title: 'Frame rate',
-                  selected: prefs.defaultFps,
-                  options: [for (final f in kFrameRates) EcOption(f, formatFps(f))],
-                );
-                if (fps != null) update((p) => p.copyWith(defaultFps: fps));
-              },
-            ),
-            EcGroupRow(
-              title: 'Canvas',
-              value: CanvasFormat.byId(prefs.defaultFormatId).label,
-              onTap: () async {
-                final id = await EcOptionSheet.show<String>(
-                  context,
+                  value: formatFps(prefs.defaultFps),
+                  onTap: () async {
+                    final fps = await EcOptionSheet.show<double>(
+                      context,
+                      title: 'Frame rate',
+                      selected: prefs.defaultFps,
+                      options: [for (final f in kFrameRates) EcOption(f, formatFps(f))],
+                    );
+                    if (fps != null) update((p) => p.copyWith(defaultFps: fps));
+                  },
+                ),
+                EcGroupRow(
                   title: 'Canvas',
-                  selected: prefs.defaultFormatId,
-                  options: [for (final f in CanvasFormat.picker) EcOption(f.id, f.label, detail: f.sub)],
-                );
-                if (id != null) update((p) => p.copyWith(defaultFormatId: id));
-              },
-            ),
-            EcGroupRow.toggle(
-              title: 'Safe-area guides',
-              value: prefs.safeGuides,
-              onChanged: (v) => update((p) => p.copyWith(safeGuides: v)),
-            ),
-            EcGroupRow.toggle(
-              title: 'Readability warnings',
-              subtitle: 'Flags fast motion and names on screen under 3s',
-              value: prefs.readabilityWarnings,
-              onChanged: (v) => update((p) => p.copyWith(readabilityWarnings: v)),
-            ),
-          ]),
-          const SizedBox(height: 22),
-          EcGroup(label: 'App', children: [
-            // Light is the only theme shipped so far; the palette is a theme
-            // extension, so a dark one drops in here without a rewrite.
-            const EcGroupRow(title: 'Appearance', value: 'Light', chevron: false),
-            EcGroupRow.toggle(title: 'Haptics', value: prefs.haptics, onChanged: (v) => update((p) => p.copyWith(haptics: v))),
-            EcGroupRow.toggle(
-              title: 'Notify when a render finishes',
-              value: prefs.renderNotifications,
-              onChanged: (v) => update((p) => p.copyWith(renderNotifications: v)),
-            ),
-          ]),
-          const SizedBox(height: 22),
-          EcGroup(label: 'Support', children: [
-            EcGroupRow(title: 'Help centre', onTap: () => links.openUrl(AppLinks.helpCentre)),
-            EcGroupRow(
-              title: 'Contact support',
-              onTap: () => links.composeEmail(AppLinks.supportEmail, subject: version == null ? 'LastReel support' : '$version support'),
-            ),
-            EcGroupRow(title: 'Rate LastReel', onTap: settings.rate),
-          ]),
-          const SizedBox(height: 22),
-          EcGroup(label: 'Legal & privacy', children: [
-            EcGroupRow(title: 'Privacy & data', onTap: () => PrivacyScreen.open(context)),
-            EcGroupRow(title: 'Privacy policy', onTap: () => links.openUrl(AppLinks.privacyPolicy)),
-            EcGroupRow(title: 'Terms of service', onTap: () => LegalDocumentScreen.open(context, termsOfService)),
-            EcGroupRow(
-              title: 'Open-source licences',
-              onTap: () => showLicensePage(context: context, applicationName: 'LastReel', applicationVersion: version),
-            ),
-          ]),
-          const SizedBox(height: 22),
-          EcGroup(children: [
-            EcGroupRow(
-              title: 'Sign out',
-              chevron: false,
-              onTap: () async {
-                // No navigation: the auth stream emits null and the gate
-                // swaps the whole tree back to the welcome screen.
-                final result = await settings.signOut();
-                if (result case Err(:final failure) when context.mounted) showEcToast(context, failure.message);
-              },
-            ),
-            EcGroupRow(
-              title: 'Delete account',
-              destructive: true,
-              chevron: false,
-              onTap: () => DeleteAccountScreen.open(context),
-            ),
-          ]),
-          const SizedBox(height: 18),
-          EcGroup(children: [
-            EcGroupRow(title: 'Made by COOKOO', onTap: () => links.openUrl(AppLinks.studio)),
-          ]),
-          const SizedBox(height: 18),
-          if (version != null) Text(version, textAlign: TextAlign.center, style: t.mono.copyWith(fontSize: 10)),
-        ],
+                  value: CanvasFormat.byId(prefs.defaultFormatId).label,
+                  onTap: () async {
+                    final id = await EcOptionSheet.show<String>(
+                      context,
+                      title: 'Canvas',
+                      selected: prefs.defaultFormatId,
+                      options: [for (final f in CanvasFormat.picker) EcOption(f.id, f.label, detail: f.sub)],
+                    );
+                    if (id != null) update((p) => p.copyWith(defaultFormatId: id));
+                  },
+                ),
+                EcGroupRow.toggle(
+                  title: 'Safe-area guides',
+                  value: prefs.safeGuides,
+                  onChanged: (v) => update((p) => p.copyWith(safeGuides: v)),
+                ),
+                EcGroupRow.toggle(
+                  title: 'Readability warnings',
+                  subtitle: 'Flags fast motion and names on screen under 3s',
+                  value: prefs.readabilityWarnings,
+                  onChanged: (v) => update((p) => p.copyWith(readabilityWarnings: v)),
+                ),
+              ]),
+              const SizedBox(height: 22),
+              EcGroup(label: 'App', children: [
+                // Light is the only theme shipped so far; the palette is a theme
+                // extension, so a dark one drops in here without a rewrite.
+                const EcGroupRow(title: 'Appearance', value: 'Light', chevron: false),
+                EcGroupRow.toggle(title: 'Haptics', value: prefs.haptics, onChanged: (v) => update((p) => p.copyWith(haptics: v))),
+                EcGroupRow.toggle(
+                  title: 'Notify when a render finishes',
+                  value: prefs.renderNotifications,
+                  onChanged: (v) => update((p) => p.copyWith(renderNotifications: v)),
+                ),
+              ]),
+              const SizedBox(height: 22),
+              EcGroup(label: 'Support', children: [
+                EcGroupRow(title: 'Help centre', onTap: () => links.openUrl(AppLinks.helpCentre)),
+                EcGroupRow(
+                  title: 'Contact support',
+                  onTap: () => links.composeEmail(AppLinks.supportEmail, subject: version == null ? 'LastReel support' : '$version support'),
+                ),
+                EcGroupRow(title: 'Rate LastReel', onTap: settings.rate),
+              ]),
+              const SizedBox(height: 22),
+              EcGroup(label: 'Legal & privacy', children: [
+                EcGroupRow(title: 'Privacy & data', onTap: () => PrivacyScreen.open(context)),
+                EcGroupRow(title: 'Privacy policy', onTap: () => links.openUrl(AppLinks.privacyPolicy)),
+                EcGroupRow(title: 'Terms of service', onTap: () => LegalDocumentScreen.open(context, termsOfService)),
+                EcGroupRow(
+                  title: 'Open-source licences',
+                  onTap: () => showLicensePage(context: context, applicationName: 'LastReel', applicationVersion: version),
+                ),
+              ]),
+              const SizedBox(height: 22),
+              EcGroup(children: [
+                EcGroupRow(
+                  title: 'Sign out',
+                  chevron: false,
+                  onTap: () async {
+                    // No navigation: the auth stream emits null and the gate
+                    // swaps the whole tree back to the welcome screen.
+                    final result = await settings.signOut();
+                    if (result case Err(:final failure) when context.mounted) showEcToast(context, failure.message);
+                  },
+                ),
+                EcGroupRow(
+                  title: 'Delete account',
+                  destructive: true,
+                  chevron: false,
+                  onTap: () => DeleteAccountScreen.open(context),
+                ),
+              ]),
+              const SizedBox(height: 18),
+              EcGroup(children: [
+                EcGroupRow(title: 'Made by COOKOO', onTap: () => links.openUrl(AppLinks.studio)),
+                EcGroupRow.toggle(
+                  title: 'Show COOKOO studio card',
+                  value: !ref.watch(cookooPromoProvider.select((s) => s.hidden)),
+                  onChanged: ref.read(cookooPromoProvider.notifier).setShown,
+                ),
+              ]),
+              const SizedBox(height: 18),
+              if (version != null) Text(version, textAlign: TextAlign.center, style: t.mono.copyWith(fontSize: 10)),
+            ]),
+          ],
+        ),
       ),
+    );
+  }
+}
+
+/// A run of Settings content inside the 16 px side gutter.
+class _Gutter extends StatelessWidget {
+  final List<Widget> children;
+  const _Gutter({required this.children});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: children),
     );
   }
 }

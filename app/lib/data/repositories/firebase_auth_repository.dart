@@ -1,4 +1,5 @@
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:google_sign_in/google_sign_in.dart';
 
 import '../../core/config/features.dart';
@@ -79,7 +80,11 @@ class FirebaseAuthRepository implements AuthRepository {
       // 7.x: authenticate() returns a non-null account or throws — a user
       // backing out arrives as GoogleSignInException(code: canceled), not
       // as a null account the way the 6.x signIn() API worked.
-      final result = await _auth.signInWithCredential(await _googleCredential());
+      // The web has no native Google sheet (google_sign_in 7.x can't
+      // `authenticate()` there), so Firebase runs its own popup instead.
+      final result = kIsWeb
+          ? await _auth.signInWithPopup(_googleProvider())
+          : await _auth.signInWithCredential(await _googleCredential());
       return _requireUser(result.user);
     });
   }
@@ -118,8 +123,11 @@ class FirebaseAuthRepository implements AuthRepository {
   @override
   Future<Result<AppUser>> linkGoogle() {
     return _guard(() async {
-      final credential = await _googleCredential();
-      await _requireFirebaseUser().linkWithCredential(credential);
+      if (kIsWeb) {
+        await _requireFirebaseUser().linkWithPopup(_googleProvider());
+      } else {
+        await _requireFirebaseUser().linkWithCredential(await _googleCredential());
+      }
       return _reloaded();
     });
   }
@@ -158,6 +166,8 @@ class FirebaseAuthRepository implements AuthRepository {
       switch (currentUser?.primaryMethod) {
         case SignInMethod.apple:
           await user.reauthenticateWithProvider(_appleProvider());
+        case SignInMethod.google when kIsWeb:
+          await user.reauthenticateWithPopup(_googleProvider());
         case SignInMethod.google:
           await user.reauthenticateWithCredential(await _googleCredential());
         case SignInMethod.password || null:
@@ -173,6 +183,9 @@ class FirebaseAuthRepository implements AuthRepository {
     final account = await _google.authenticate();
     return GoogleAuthProvider.credential(idToken: account.authentication.idToken);
   }
+
+  /// Always asks which account, as the native sheet does.
+  GoogleAuthProvider _googleProvider() => GoogleAuthProvider()..setCustomParameters({'prompt': 'select_account'});
 
   AppleAuthProvider _appleProvider() => AppleAuthProvider()
     ..addScope('email')

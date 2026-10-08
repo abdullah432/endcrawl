@@ -1,4 +1,4 @@
-import 'package:clarity_flutter/clarity_flutter.dart';
+import '../services/clarity.dart';
 import 'package:flutter/material.dart';
 
 import '../theme/theme_context.dart';
