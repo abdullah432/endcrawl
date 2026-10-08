@@ -117,6 +117,19 @@ void main() {
   });
 
   group('7.4 privacy & data', () {
+    testWidgets('studio attribution identifies the app and placement', (tester) async {
+      await openSettings(tester);
+      await tapText(tester, 'Made by COOKOO');
+      final uri = app.links.opened.single;
+      expect(uri.host, 'cookoo.dev');
+      expect(uri.queryParameters, {
+        'utm_source': 'lastreel',
+        'utm_medium': 'referral',
+        'utm_campaign': 'made_by_cookoo',
+        'utm_content': 'settings_footer',
+      });
+    });
+
     testWidgets('analytics is on by default; turning it off is saved and stops collection', (tester) async {
       await openSettings(tester);
       await tapText(tester, 'Privacy & data');

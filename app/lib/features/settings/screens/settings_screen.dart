@@ -152,6 +152,10 @@ class SettingsScreen extends ConsumerWidget {
             ),
           ]),
           const SizedBox(height: 18),
+          EcGroup(children: [
+            EcGroupRow(title: 'Made by COOKOO', onTap: () => links.openUrl(AppLinks.studio)),
+          ]),
+          const SizedBox(height: 18),
           if (version != null) Text(version, textAlign: TextAlign.center, style: t.mono.copyWith(fontSize: 10)),
         ],
       ),

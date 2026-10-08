@@ -5,6 +5,14 @@ import 'package:flutter/foundation.dart';
 abstract final class AppLinks {
   static const supportEmail = 'hello@cookoo.dev';
 
+  /// Tagged studio link: native browsers may omit their app referrer.
+  static final studio = Uri.https('cookoo.dev', '/', {
+    'utm_source': 'lastreel',
+    'utm_medium': 'referral',
+    'utm_campaign': 'made_by_cookoo',
+    'utm_content': 'settings_footer',
+  });
+
   /// Answers to common questions, with a way to reach support.
   static final helpCentre = Uri.parse('https://cookoo.dev/lastreel/help');
 
