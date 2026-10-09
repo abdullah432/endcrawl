@@ -16,6 +16,10 @@ enum CookooDelivery {
 
 /// Posts the contact form to cookoo.dev. An interface so tests never touch
 /// the network.
+///
+/// The body is the website form's own: `name`, `email`, `message`,
+/// `budget`, the empty `website` spam trap and a `requestId` that stays the
+/// same across retries.
 abstract interface class CookooContactClient {
   Future<CookooDelivery> send(Map<String, Object?> payload);
 }
@@ -32,11 +36,14 @@ class HttpCookooContactClient implements CookooContactClient {
     try {
       final request = await client.postUrl(endpoint).timeout(timeout);
       request.headers.contentType = ContentType.json;
+      // The API only accepts posts that come from cookoo.dev itself.
+      request.headers.set('Origin', 'https://cookoo.dev');
       request.add(utf8.encode(jsonEncode(payload)));
       final response = await request.close().timeout(timeout);
-      await response.drain<void>();
+      final body = await utf8.decodeStream(response);
       return switch (response.statusCode) {
-        >= 200 && < 300 => CookooDelivery.sent,
+        // As on the site: only `{"ok": true}` counts as sent.
+        >= 200 && < 300 => _ok(body) ? CookooDelivery.sent : CookooDelivery.rejected,
         408 || 429 => CookooDelivery.retry,
         >= 400 && < 500 => CookooDelivery.rejected,
         _ => CookooDelivery.retry,
@@ -53,4 +60,21 @@ class HttpCookooContactClient implements CookooContactClient {
       client.close(force: true);
     }
   }
+
+  static bool _ok(String body) {
+    try {
+      return (jsonDecode(body) as Map)['ok'] == true;
+    } on Object {
+      return false;
+    }
+  }
+}
+
+/// The web build: a page can't set the Origin header the API requires, so
+/// the form points people to email instead.
+class UnavailableCookooContactClient implements CookooContactClient {
+  const UnavailableCookooContactClient();
+
+  @override
+  Future<CookooDelivery> send(Map<String, Object?> payload) async => CookooDelivery.rejected;
 }

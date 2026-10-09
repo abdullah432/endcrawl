@@ -4,6 +4,9 @@ import 'package:lastreel/domain/models/render_summary.dart';
 import 'package:lastreel/features/ads/data/ad_service.dart';
 import 'package:lastreel/features/export/data/video_encoder.dart';
 import 'package:lastreel/features/export/models/export_models.dart';
+import 'package:lastreel/features/export/screens/export_sheet.dart';
+import 'package:lastreel/features/review/review_prompt.dart';
+import 'package:lastreel/features/review/review_prompt_store.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -316,6 +319,20 @@ void main() {
       expect(lastRender()?.codec, 'H.264');
     });
 
+    testWidgets('the progress bar fills to its progress', (tester) async {
+      Future<Size> fillAt(double progress) async {
+        await tester.pumpWidget(Directionality(
+          textDirection: TextDirection.ltr,
+          child: Center(child: SizedBox(width: 300, child: RenderProgressBar(progress))),
+        ));
+        return tester.getSize(find.descendant(of: find.byType(RenderProgressBar), matching: find.byType(DecoratedBox)));
+      }
+
+      expect(await fillAt(0.24), const Size(72, 8));
+      expect(await fillAt(1), const Size(300, 8));
+      expect((await fillAt(0)).width, 0);
+    });
+
     testWidgets('the finished file goes to Photos and the share sheet', (tester) async {
       await openExport(tester);
       await tapText(tester, 'Render H.264');
@@ -551,6 +568,115 @@ void main() {
       expect(exportFileName('The Long Way Down', Codec.hevc), 'The Long Way Down.mp4');
       expect(exportFileName('A/B: "C"?', Codec.prores422), 'AB C.mov');
       expect(exportFileName('  ', Codec.png), 'LastReel render.zip');
+    });
+  });
+
+  group('rating prompt', () {
+    setUp(() => app = AppHarness(projects: FakeProjectRepository(seed: [film()]), review: InMemoryReviewPromptStore()));
+
+    final prompt = find.textContaining('LastReel?', findRichText: true);
+
+    /// A render long enough (48 × 200 ms) to be asked during.
+    Future<void> startLongRender(WidgetTester tester) async {
+      app.encoder.frameTime = const Duration(milliseconds: 200);
+      await tapText(tester, 'Render H.264');
+    }
+
+    Future<void> finish(WidgetTester tester) async {
+      for (var i = 0; i < 60; i++) {
+        await tester.pump(const Duration(milliseconds: 200));
+      }
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('asks once, a few seconds into the first render, over the Rendering sheet', (tester) async {
+      await openExport(tester);
+      await startLongRender(tester);
+      await tester.pump(const Duration(seconds: 2));
+      expect(prompt, findsNothing);
+
+      await tester.pump(const Duration(seconds: 1, milliseconds: 100));
+      await tester.pumpAndSettle();
+      expect(prompt, findsOneWidget);
+      expect(app.review.asked, isTrue);
+      await tapText(tester, 'Not now');
+      expect(prompt, findsNothing);
+      expect(find.text('Keep working · renders in background'), findsOneWidget); // still rendering
+      expect(app.analytics.names, containsAllInOrder(['review_prompt_shown', 'review_prompt_later']));
+
+      // The render carries on; the next one isn't asked again.
+      await finish(tester);
+      await tester.tapAt(const Offset(10, 10)); // close Ready
+      await tester.pumpAndSettle();
+      await tapText(tester, 'Export');
+      await startLongRender(tester);
+      await finish(tester);
+      expect(prompt, findsNothing);
+      expect(app.analytics.names.where((n) => n == 'review_prompt_shown'), hasLength(1));
+    });
+
+    testWidgets('with "Keep working" it asks over the editor', (tester) async {
+      await openExport(tester);
+      await startLongRender(tester);
+      await tapText(tester, 'Keep working · renders in background');
+      await tester.pump(ReviewPromptTrigger.delay);
+      await tester.pumpAndSettle();
+      expect(prompt, findsOneWidget);
+      await finish(tester);
+    });
+
+    testWidgets('a render quicker than the delay asks as it finishes', (tester) async {
+      await openExport(tester);
+      await tapText(tester, 'Render H.264'); // 48 × 20 ms
+      await runRender(tester);
+      expect(prompt, findsOneWidget);
+    });
+
+    testWidgets('waits for a full-screen ad to close', (tester) async {
+      await openExport(tester);
+      await startLongRender(tester);
+      app.ads.showingFullScreen = true;
+      await tester.pump(const Duration(seconds: 4));
+      await tester.pumpAndSettle();
+      expect(prompt, findsNothing);
+      app.ads.showingFullScreen = false;
+      await tester.pump(const Duration(seconds: 2));
+      await tester.pumpAndSettle();
+      expect(prompt, findsOneWidget);
+      await finish(tester);
+    });
+
+    testWidgets('a cancelled render doesn\'t ask, and doesn\'t use up the ask', (tester) async {
+      await openExport(tester);
+      await startLongRender(tester);
+      await tester.pump(const Duration(seconds: 1));
+      await tapText(tester, 'Cancel render');
+      await tester.pump(const Duration(seconds: 4));
+      await tester.pumpAndSettle();
+      expect(prompt, findsNothing);
+      expect(app.review.asked, isFalse);
+    });
+
+    testWidgets('Rate LastReel hands over to the store rating', (tester) async {
+      await openExport(tester);
+      await startLongRender(tester);
+      await tester.pump(ReviewPromptTrigger.delay);
+      await tester.pumpAndSettle();
+      await tapText(tester, 'Rate LastReel');
+      expect(prompt, findsNothing);
+      expect(app.analytics.names, contains('review_prompt_rate'));
+      await finish(tester);
+    });
+
+    testWidgets('a device that was already asked is left alone', (tester) async {
+      app.review.asked = true;
+      await openExport(tester);
+      await startLongRender(tester);
+      await tester.pump(ReviewPromptTrigger.delay);
+      await tester.pumpAndSettle();
+      expect(prompt, findsNothing);
+      expect(app.analytics.names, isNot(contains('review_prompt_shown')));
+      await finish(tester);
     });
   });
 }

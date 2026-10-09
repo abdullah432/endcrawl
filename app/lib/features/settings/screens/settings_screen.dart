@@ -69,9 +69,6 @@ class SettingsScreen extends ConsumerWidget {
               if (user != null) _ProfileCard(user: user),
               const SizedBox(height: 22),
               const _PlanCard(),
-            ]),
-            const CookooPromoBlock(),
-            _Gutter(children: [
               const SizedBox(height: 22),
               EcGroup(label: 'Defaults for new projects', children: [
                 EcGroupRow(
@@ -143,6 +140,9 @@ class SettingsScreen extends ConsumerWidget {
                   onTap: () => showLicensePage(context: context, applicationName: 'LastReel', applicationVersion: version),
                 ),
               ]),
+            ]),
+            const CookooPromoBlock(),
+            _Gutter(children: [
               const SizedBox(height: 22),
               EcGroup(children: [
                 EcGroupRow(

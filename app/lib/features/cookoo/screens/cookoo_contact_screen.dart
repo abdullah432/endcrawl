@@ -1,11 +1,11 @@
 import 'dart:math' as math;
 
-import '../../../core/services/clarity.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../bootstrap.dart';
 import '../../../core/config/app_links.dart';
+import '../../../core/services/clarity.dart';
 import '../../../core/theme/theme_context.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../core/widgets/ec_scaffold.dart';
@@ -94,13 +94,12 @@ class _CookooContactScreenState extends ConsumerState<CookooContactScreen> {
     if (!mounted) return;
     setState(() => _sending = false);
     if (result == CookooDelivery.rejected) {
-      showEcToast(context, "That didn't go through. Check your details and try again.");
+      showEcToast(context, "Your idea couldn't be sent. Please try again or email hello@cookoo.dev.");
       return;
     }
     Navigator.of(context).pushReplacement(
       MaterialPageRoute<void>(
-        builder: (_) =>
-            CookooSentScreen(name: name, email: email, idea: idea, need: _need, queued: result == CookooDelivery.retry),
+        builder: (_) => CookooSentScreen(name: name, email: email, queued: result == CookooDelivery.retry),
       ),
     );
   }

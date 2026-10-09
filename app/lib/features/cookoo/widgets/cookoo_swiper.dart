@@ -11,7 +11,7 @@ import '../screens/cookoo_contact_screen.dart';
 import 'cookoo_promo_card.dart';
 import 'cookoo_style.dart';
 
-/// The COOKOO block in Settings, between the plan card and the first group:
+/// The COOKOO block in Settings, under Legal & privacy and above Sign out:
 /// the swiper, or — once hidden from here — a one-line Undo row for the
 /// rest of the session. Lays itself out edge to edge, so the next slide can
 /// peek in from the right.
@@ -96,19 +96,41 @@ class _CookooSwiperState extends ConsumerState<CookooSwiper> {
   double _slideWidth = CookooPromoCard.width;
   int _index = 0;
 
+  /// Settings' own scroll view. The card sits near the foot of Settings, so
+  /// it only counts as seen once it is scrolled at least halfway into view.
+  ScrollPosition? _scroll;
+  bool _seen = false;
+
   CookooPromoController get _promo => ref.read(cookooPromoProvider.notifier);
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) _promo.viewed(0);
-    });
+    WidgetsBinding.instance.addPostFrameCallback((_) => _checkSeen());
+  }
+
+  void _checkSeen() {
+    if (_seen || !mounted) return;
+    final box = context.findRenderObject() as RenderBox?;
+    if (box == null || !box.hasSize) return;
+    final top = box.localToGlobal(Offset.zero).dy;
+    final half = box.size.height / 2;
+    if (top + half < MediaQuery.sizeOf(context).height && top + half > 0) {
+      _seen = true;
+      _scroll?.removeListener(_checkSeen);
+      _promo.viewed(_index);
+    }
   }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    final scroll = Scrollable.maybeOf(context)?.position;
+    if (scroll != _scroll) {
+      _scroll?.removeListener(_checkSeen);
+      _scroll = scroll;
+      if (!_seen) _scroll?.addListener(_checkSeen);
+    }
     final screen = MediaQuery.sizeOf(context).width;
     // 358 wide with 16 at each side; narrow phones keep the 16 and shrink
     // the card. Each page carries half the 10 px gap on either side.
@@ -123,6 +145,7 @@ class _CookooSwiperState extends ConsumerState<CookooSwiper> {
 
   @override
   void dispose() {
+    _scroll?.removeListener(_checkSeen);
     _pages?.dispose();
     super.dispose();
   }

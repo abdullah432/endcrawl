@@ -32,8 +32,15 @@ void main() {
     await tester.pumpAndSettle();
   }
 
+  Future<void> swipe(WidgetTester tester, double dx) async {
+    await tester.ensureVisible(find.byType(PageView));
+    await tester.pumpAndSettle();
+    await tester.drag(find.byType(PageView), Offset(dx, 0));
+    await tester.pumpAndSettle();
+  }
+
   Future<void> swipeNext(WidgetTester tester) async {
-    await tester.drag(find.byType(PageView), const Offset(-300, 0));
+    await swipe(tester, -300);
     await tester.pumpAndSettle();
   }
 
@@ -62,20 +69,23 @@ void main() {
       null;
 
   group('studio card in Settings', () {
-    testWidgets('sits under the plan card, opens on slide 1 and reports it once', (tester) async {
+    testWidgets('sits under Legal & privacy, opens on slide 1 and reports it once seen', (tester) async {
       await openSettings(tester);
       expect(find.text('FROM THE MAKERS OF LASTREEL'), findsOneWidget);
       expect(find.text('We build apps people use and pay for.'), findsOneWidget);
-      expect(
-        tester.getTopLeft(find.byType(CookooSwiper)).dy,
-        lessThan(tester.getTopLeft(find.text('DEFAULTS FOR NEW PROJECTS')).dy),
-      );
+      final top = tester.getTopLeft(find.byType(CookooSwiper)).dy;
+      expect(top, greaterThan(tester.getTopLeft(find.text('LEGAL & PRIVACY')).dy));
+      expect(top, lessThan(tester.getTopLeft(find.text('Sign out')).dy));
+
+      // Below the fold, it hasn't been seen yet.
+      expect(app.analytics.names, isNot(contains('cookoo_card_view')));
+      await tester.ensureVisible(find.byType(PageView));
+      await tester.pumpAndSettle();
       expect(app.analytics.names.where((n) => n == 'cookoo_card_view'), hasLength(1));
 
       await swipeNext(tester);
       expect(find.bySemanticsLabel(RegExp('Slide 2 of 4')), findsOneWidget);
-      await tester.drag(find.byType(PageView), const Offset(300, 0));
-      await tester.pumpAndSettle();
+      await swipe(tester, 300);
       // Back on slide 1: swiped twice, but slide 1 was already seen.
       expect(app.analytics.names.where((n) => n == 'cookoo_card_swipe'), hasLength(2));
       expect(
@@ -97,6 +107,8 @@ void main() {
 
     testWidgets('Hide is saved at once and can be undone this session', (tester) async {
       await openSettings(tester);
+      await tester.ensureVisible(find.bySemanticsLabel('Hide the COOKOO card'));
+      await tester.pumpAndSettle();
       await tester.tap(find.bySemanticsLabel('Hide the COOKOO card'));
       await tester.pumpAndSettle();
       expect(app.cookoo.promoHidden, isTrue);
@@ -141,16 +153,24 @@ void main() {
 
       await tapText(tester, 'Send my idea');
       final sent = app.contact.sent.single;
-      expect(sent['need'], 'new_app');
-      expect(sent['budget'], '5k_15k');
+      // The website form's own fields, with the app's context in the message.
+      expect(sent.keys, unorderedEquals(['name', 'email', 'message', 'budget', 'website', 'requestId']));
       expect(sent['name'], 'Amira');
       expect(sent['email'], 'amira@mail.com');
-      expect(sent['source'], 'lastreel_settings_s1');
+      expect(sent['budget'], r'$5,000–$15,000');
+      expect(sent['website'], '');
+      expect(sent['message'], startsWith('An app for booking driving lessons\n\n—\nNeed: A new app\n'));
+      expect(sent['message'], contains('Sent from the LastReel app'));
+      expect(sent['message'], contains('slide s1'));
+      expect(
+        sent['requestId'],
+        matches(RegExp(r'^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$')),
+      );
       expect(params('cookoo_contact_submit'), {'need': 'new_app', 'budget': '5k_15k', 'source': 's1'});
 
       expect(find.byType(CookooSentScreen), findsOneWidget);
-      expect(find.text('Got it, Amira.'), findsOneWidget);
-      expect(find.text('YOUR IDEA · A NEW APP'), findsOneWidget);
+      expect(find.textContaining('Amira.', findRichText: true), findsOneWidget);
+      expect(find.textContaining('amira@mail.com within 24 hours'), findsOneWidget);
       await tapText(tester, 'Back to LastReel');
       expect(find.byType(CookooSwiper), findsOneWidget);
     });
@@ -167,11 +187,13 @@ void main() {
       expect(app.contact.sent, isEmpty);
       final queued = jsonDecode(app.cookoo.pendingContacts.single) as Map<String, Object?>;
       expect(queued['email'], 'amira@mail.com');
+      expect(queued['budget'], '');
 
       app.contact.next = CookooDelivery.sent;
       await tester.pump(const Duration(seconds: 31));
       await tester.pumpAndSettle();
-      expect(app.contact.sent.single['email'], 'amira@mail.com');
+      // The retry is the same request, so the site can tell it isn't new.
+      expect(app.contact.sent.single['requestId'], queued['requestId']);
       expect(app.cookoo.pendingContacts, isEmpty);
     });
 

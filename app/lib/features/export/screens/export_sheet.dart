@@ -421,6 +421,32 @@ class _CodecRow extends StatelessWidget {
   }
 }
 
+/// The 8 px render progress bar: a tint track with the gradient fill.
+class RenderProgressBar extends StatelessWidget {
+  final double progress;
+  const RenderProgressBar(this.progress, {super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.palette;
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(EcRadius.pill),
+      child: Container(
+        height: 8,
+        color: p.tint,
+        alignment: Alignment.centerLeft,
+        // heightFactor 1: the Container's alignment loosens the height, and
+        // a childless box would otherwise be 0 tall — an empty-looking bar.
+        child: FractionallySizedBox(
+          widthFactor: progress.clamp(0, 1),
+          heightFactor: 1,
+          child: DecoratedBox(decoration: BoxDecoration(gradient: p.primary)),
+        ),
+      ),
+    );
+  }
+}
+
 /// 6.2 — progress, and on the free plan the one ad, in the wait the
 /// encoder already causes. The render carries on if the sheet closes.
 class _Rendering extends ConsumerWidget {
@@ -508,18 +534,7 @@ class _Rendering extends ConsumerWidget {
                   ],
                 ),
                 const SizedBox(height: 12),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(EcRadius.pill),
-                  child: Container(
-                    height: 8,
-                    color: p.tint,
-                    alignment: Alignment.centerLeft,
-                    child: FractionallySizedBox(
-                      widthFactor: run.progress,
-                      child: DecoratedBox(decoration: BoxDecoration(gradient: p.primary)),
-                    ),
-                  ),
-                ),
+                RenderProgressBar(run.progress),
                 const SizedBox(height: 12),
                 Text(
                   run.frame == 0 ? 'Preparing…' : '${formatAbout(run.secondsLeft)} left',

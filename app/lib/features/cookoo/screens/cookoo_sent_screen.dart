@@ -1,125 +1,119 @@
 import 'dart:math' as math;
 
-import '../../../core/services/clarity.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../bootstrap.dart';
 import '../../../core/config/app_links.dart';
+import '../../../core/services/clarity.dart';
 import '../../../core/theme/theme_context.dart';
 import '../../../core/widgets/ec_scaffold.dart';
 import '../controllers/cookoo_promo_controller.dart';
-import '../models/cookoo_content.dart';
 import '../widgets/cookoo_style.dart';
 
-/// After "Send my idea": a ticket stub of what was sent and what happens
-/// next. The way back to the app comes first, the website second.
+/// After "Send my idea": who has the idea, when they'll hear back, and the
+/// three steps that follow. The way back to the app comes first, the
+/// website second.
 class CookooSentScreen extends ConsumerWidget {
   final String name;
   final String email;
-  final String idea;
-  final CookooNeed need;
 
   /// The phone was offline; the request is saved and sends on reconnect.
   final bool queued;
 
-  const CookooSentScreen({
-    super.key,
-    required this.name,
-    required this.email,
-    required this.idea,
-    required this.need,
-    this.queued = false,
-  });
+  const CookooSentScreen({super.key, required this.name, required this.email, this.queued = false});
 
   static const _steps = [
-    'We read it and ask a few questions',
-    'Free first chat, by call or message',
-    'You get a clear price and plan',
+    'We read your idea and reply by email.',
+    'A short call to understand what you need.',
+    'A scope and estimate before you commit to a build.',
   ];
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final p = context.palette;
-    final body = context.cookooUi(15, height: 1.5, color: p.ink2);
     final foot = math.max(28 - MediaQuery.paddingOf(context).bottom, 8.0);
 
     return EcScaffold(
       scrollable: false,
       padding: EdgeInsets.zero,
       body: SingleChildScrollView(
-        padding: const EdgeInsets.only(top: 20, bottom: 16),
+        padding: const EdgeInsets.fromLTRB(22, 24, 22, 16),
         child: ClarityMask(
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24),
-                child: Column(
-                  children: [
-                    Container(
-                      width: 60,
-                      height: 60,
-                      decoration: BoxDecoration(color: p.ok, shape: BoxShape.circle),
-                      child: Icon(Icons.check, size: 34, color: p.onInk),
-                    ),
-                    const SizedBox(height: 12),
-                    Semantics(
-                      header: true,
-                      child: Text(
-                        'Got it, $name.',
-                        textAlign: TextAlign.center,
-                        style: context.cookooSerif(38, height: 1),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 300),
-                      child: Text.rich(
-                        TextSpan(
-                          children: [
-                            const TextSpan(text: 'We’ll read your idea and reply to '),
-                            TextSpan(
-                              text: email,
-                              style: const TextStyle(fontWeight: FontWeight.w700),
-                            ),
-                            const TextSpan(text: ' within 24 hours.'),
-                          ],
-                        ),
-                        textAlign: TextAlign.center,
-                        style: body,
-                      ),
-                    ),
-                    if (queued) ...[
-                      const SizedBox(height: 8),
-                      Text(
-                        'You’re offline. It sends when you’re back online.',
-                        textAlign: TextAlign.center,
-                        style: context.cookooUi(13, color: p.muted, height: 1.4),
+              Container(
+                width: 50,
+                height: 50,
+                decoration: BoxDecoration(color: p.inkSurface, shape: BoxShape.circle),
+                child: Icon(Icons.check, size: 24, color: p.onInk),
+              ),
+              const SizedBox(height: 18),
+              Semantics(
+                header: true,
+                child: Text.rich(
+                  TextSpan(
+                    children: [
+                      const TextSpan(text: 'Got it, '),
+                      TextSpan(
+                        text: '$name.',
+                        style: context.cookooSerif(46, height: 1.05, color: p.accent),
                       ),
                     ],
-                  ],
+                  ),
+                  style: context.type.displayL.copyWith(fontSize: 46, height: 1.05),
                 ),
               ),
-              const SizedBox(height: 28),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: _Ticket(need: need, idea: idea, steps: _steps),
+              const SizedBox(height: 18),
+              Text(
+                'Your idea is with the COOKOO team. We’ll get back to $email within 24 hours '
+                'to talk about next steps.',
+                style: context.cookooUi(15, height: 1.6, color: p.ink2),
               ),
+              if (queued) ...[
+                const SizedBox(height: 8),
+                Text(
+                  'You’re offline. It sends when you’re back online.',
+                  style: context.cookooUi(13, color: p.muted, height: 1.4),
+                ),
+              ],
+              const SizedBox(height: 26),
+              Divider(height: 1, color: p.line),
+              for (final (i, step) in _steps.indexed) ...[
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 18),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      SizedBox(
+                        width: 34,
+                        child: Padding(
+                          padding: const EdgeInsets.only(top: 2),
+                          child: Text('0${i + 1}', style: context.cookooMono(11, tracking: 0)),
+                        ),
+                      ),
+                      Expanded(child: Text(step, style: context.cookooUi(14.5, height: 1.35))),
+                    ],
+                  ),
+                ),
+                Divider(height: 1, color: p.line),
+              ],
             ],
           ),
         ),
       ),
       bottom: Padding(
-        padding: EdgeInsets.fromLTRB(16, 12, 16, foot),
+        padding: EdgeInsets.fromLTRB(22, 12, 22, foot),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            CookooInkButton(label: 'Back to LastReel', onPressed: () => Navigator.of(context).pop()),
-            const SizedBox(height: 6),
-            CookooTextLink(
-              label: 'While you wait, see our work',
+            _Pill(label: 'Back to LastReel', filled: true, onTap: () => Navigator.of(context).pop()),
+            const SizedBox(height: 8),
+            _Pill(
+              label: 'See our work on cookoo.dev',
+              icon: Icons.arrow_outward,
               onTap: () {
                 ref.read(cookooPromoProvider.notifier).siteOpened('sent');
                 ref.read(externalLinksProvider).openUrl(AppLinks.cookooCases);
@@ -132,117 +126,47 @@ class CookooSentScreen extends ConsumerWidget {
   }
 }
 
-class _Ticket extends StatelessWidget {
-  final CookooNeed need;
-  final String idea;
-  final List<String> steps;
+/// A 46 px pill: solid ink for the way back, outlined white for the site.
+class _Pill extends StatelessWidget {
+  final String label;
+  final bool filled;
+  final IconData? icon;
+  final VoidCallback onTap;
 
-  const _Ticket({required this.need, required this.idea, required this.steps});
+  const _Pill({required this.label, required this.onTap, this.filled = false, this.icon});
 
   @override
   Widget build(BuildContext context) {
     final p = context.palette;
-    return Container(
-      clipBehavior: Clip.antiAlias,
-      decoration: BoxDecoration(
-        color: p.surface,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: p.line2),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+    final fg = filled ? p.onInk : p.ink;
+    return Semantics(
+      button: true,
+      link: icon != null,
+      child: Material(
+        color: filled ? p.inkSurface : p.surface,
+        shape: StadiumBorder(side: filled ? BorderSide.none : BorderSide(color: p.line2)),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          child: SizedBox(
+            height: 46,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Text('YOUR IDEA · ${need.label.toUpperCase()}', style: context.cookooMono(10, tracking: 2)),
-                const SizedBox(height: 8),
-                Text(
-                  idea,
-                  style: context.type.displayM.copyWith(fontSize: 20, height: 1.2, letterSpacing: 0),
-                  maxLines: 5,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-            ),
-          ),
-          _TearLine(notch: p.ground, dash: p.line2),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                for (final (i, step) in steps.indexed) ...[
-                  if (i > 0) const SizedBox(height: 10),
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.only(top: 2),
-                        child: Text('0${i + 1}', style: context.cookooMono(11, tracking: 0)),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(child: Text(step, style: context.cookooUi(14))),
-                    ],
+                Flexible(
+                  child: Text(
+                    label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: context.cookooUi(15, weight: FontWeight.w700, color: fg),
                   ),
-                ],
+                ),
+                if (icon != null) ...[const SizedBox(width: 8), Icon(icon, size: 15, color: p.muted)],
               ],
             ),
           ),
-        ],
+        ),
       ),
     );
   }
-}
-
-/// The dashed tear with a half-circle notch bitten out of each edge.
-class _TearLine extends StatelessWidget {
-  final Color notch;
-  final Color dash;
-  const _TearLine({required this.notch, required this.dash});
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      height: 1.5,
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          Positioned.fill(child: CustomPaint(painter: _DashPainter(dash))),
-          for (final left in [true, false])
-            Positioned(
-              left: left ? -11 : null,
-              right: left ? null : -11,
-              top: -10.25,
-              child: Container(
-                width: 22,
-                height: 22,
-                decoration: BoxDecoration(color: notch, shape: BoxShape.circle),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-}
-
-class _DashPainter extends CustomPainter {
-  final Color color;
-  _DashPainter(this.color);
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = color
-      ..strokeWidth = size.height;
-    final y = size.height / 2;
-    for (var x = 0.0; x < size.width; x += 9) {
-      canvas.drawLine(Offset(x, y), Offset(math.min(x + 5, size.width), y), paint);
-    }
-  }
-
-  @override
-  bool shouldRepaint(_DashPainter old) => old.color != color;
 }

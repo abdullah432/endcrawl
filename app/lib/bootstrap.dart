@@ -19,6 +19,7 @@ import 'domain/models/app_user.dart';
 import 'domain/models/entitlement.dart';
 import 'domain/models/user_profile.dart';
 import 'features/cookoo/data/cookoo_store.dart';
+import 'features/review/review_prompt_store.dart';
 import 'firebase_options.dart';
 
 /// The app's dependency-injection seams.
@@ -128,12 +129,14 @@ class AppServices {
   final FirebaseFirestore firestore;
   final SessionStore sessionStore;
   final CookooStore cookooStore;
+  final ReviewPromptStore reviewPromptStore;
 
   const AppServices({
     required this.auth,
     required this.firestore,
     required this.sessionStore,
     required this.cookooStore,
+    required this.reviewPromptStore,
   });
 }
 
@@ -158,5 +161,6 @@ Future<AppServices> bootstrap() async {
     firestore: FirebaseFirestore.instance,
     sessionStore: PreferencesSessionStore(preferences),
     cookooStore: PreferencesCookooStore(preferences),
+    reviewPromptStore: PreferencesReviewPromptStore(preferences),
   );
 }

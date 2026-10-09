@@ -5,6 +5,8 @@ import 'package:lastreel/features/cookoo/controllers/cookoo_contact_controller.d
 import 'package:lastreel/features/cookoo/controllers/cookoo_promo_controller.dart';
 import 'package:lastreel/features/cookoo/data/cookoo_store.dart';
 import 'package:lastreel/features/export/controllers/export_controller.dart';
+import 'package:lastreel/features/review/review_prompt.dart';
+import 'package:lastreel/features/review/review_prompt_store.dart';
 import 'package:lastreel/main.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -37,6 +39,7 @@ class AppHarness {
   FakeAdService ads;
   FakeAnalytics analytics;
   InMemoryCookooStore cookoo;
+  InMemoryReviewPromptStore review;
   FakeCookooContactClient contact;
   DateTime now;
 
@@ -50,6 +53,7 @@ class AppHarness {
     FakeVideoEncoder? encoder,
     FakeFrames? frames,
     InMemoryCookooStore? cookoo,
+    InMemoryReviewPromptStore? review,
     DateTime? now,
   })  : auth = auth ?? FakeAuthRepository(initialUser: testUser),
         projects = projects ?? FakeProjectRepository(),
@@ -63,6 +67,9 @@ class AppHarness {
         ads = FakeAdService(),
         analytics = FakeAnalytics(),
         cookoo = cookoo ?? InMemoryCookooStore(),
+        // Already asked by default, so the one-time rating prompt doesn't
+        // cover the screen in tests about something else.
+        review = review ?? InMemoryReviewPromptStore(asked: true),
         contact = FakeCookooContactClient(),
         now = now ?? DateTime.utc(2026, 9, 23, 12);
 
@@ -105,6 +112,7 @@ class AppHarness {
           adServiceProvider.overrideWithValue(ads),
           analyticsProvider.overrideWithValue(analytics),
           cookooStoreProvider.overrideWithValue(cookoo),
+          reviewPromptStoreProvider.overrideWithValue(review),
           cookooContactClientProvider.overrideWithValue(contact),
         ],
         child: const LastReelApp(),

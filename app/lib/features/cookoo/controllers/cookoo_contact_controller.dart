@@ -1,8 +1,8 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:math' as math;
-import 'dart:ui' show PlatformDispatcher;
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:package_info_plus/package_info_plus.dart';
@@ -20,7 +20,7 @@ final cookooAppVersionProvider = FutureProvider<String>((ref) async {
 });
 
 final cookooContactClientProvider = Provider<CookooContactClient>(
-  (ref) => HttpCookooContactClient(AppLinks.cookooContact),
+  (ref) => kIsWeb ? const UnavailableCookooContactClient() : HttpCookooContactClient(AppLinks.cookooContact),
 );
 
 /// What the contact form collected.
@@ -128,19 +128,32 @@ class CookooContactController {
   void dispose() => _retry?.cancel();
 
   Map<String, Object?> _payload(CookooContactRequest request) {
-    final locale = PlatformDispatcher.instance.locale;
+    final version = _ref.read(cookooAppVersionProvider).value;
+    // The site's form has no fields for these, so they ride at the end of
+    // the message for whoever reads it.
+    final context = [
+      'Need: ${request.need.label}',
+      'Sent from the LastReel app${version == null ? '' : ' $version'} (Settings, slide ${request.source})',
+    ].join('\n');
     return {
-      'need': request.need.wire,
       'name': request.name,
       'email': request.email,
-      'idea': request.idea,
-      'budget': request.budget.wire,
-      'source': 'lastreel_settings_${request.source}',
-      // Read, not awaited: the form watches it, so it has long resolved.
-      'appVersion': _ref.read(cookooAppVersionProvider).value ?? '',
-      'locale': locale.toLanguageTag(),
-      'country': locale.countryCode ?? '',
+      'message': '${request.idea}\n\n—\n$context',
+      'budget': request.budget == CookooBudget.notSure ? '' : request.budget.label,
+      'website': '',
+      'requestId': _requestId(),
     };
+  }
+
+  /// A random v4 UUID, as the site's `crypto.randomUUID()` makes.
+  static String _requestId() {
+    final random = math.Random.secure();
+    final bytes = List<int>.generate(16, (_) => random.nextInt(256));
+    bytes[6] = (bytes[6] & 0x0f) | 0x40;
+    bytes[8] = (bytes[8] & 0x3f) | 0x80;
+    final hex = bytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join();
+    return '${hex.substring(0, 8)}-${hex.substring(8, 12)}-${hex.substring(12, 16)}-'
+        '${hex.substring(16, 20)}-${hex.substring(20)}';
   }
 }
 

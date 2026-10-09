@@ -5,12 +5,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'bootstrap.dart';
 import 'core/config/orientations.dart';
+import 'core/root_navigator.dart';
 import 'core/theme/app_theme.dart';
 import 'core/widgets/ec_toast.dart';
 import 'features/ads/widgets/resume_ads.dart';
 import 'features/cookoo/controllers/cookoo_contact_controller.dart';
 import 'features/cookoo/controllers/cookoo_promo_controller.dart';
 import 'features/plan/controllers/trial_analytics.dart';
+import 'features/review/review_prompt.dart';
 import 'features/auth/widgets/auth_gate.dart';
 
 Future<void> main() async {
@@ -38,6 +40,7 @@ Future<void> main() async {
           firestoreProvider.overrideWithValue(services.firestore),
           sessionStoreProvider.overrideWithValue(services.sessionStore),
           cookooStoreProvider.overrideWithValue(services.cookooStore),
+          reviewPromptStoreProvider.overrideWithValue(services.reviewPromptStore),
         ],
         child: const LastReelApp(),
       ),
@@ -59,8 +62,9 @@ class LastReelApp extends ConsumerWidget {
         title: 'LastReel',
         debugShowCheckedModeBanner: false,
         theme: buildLastReelTheme(),
+        navigatorKey: rootNavigatorKey,
         navigatorObservers: [EcToastObserver()],
-        builder: (context, child) => ResumeAds(child: child!),
+        builder: (context, child) => ResumeAds(child: ReviewPromptTrigger(child: child!)),
         home: const AuthGate(),
       ),
     );
