@@ -42,7 +42,8 @@ class SettingsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final user = ref.watch(authStateProvider).value;
-    final prefs = (ref.watch(userProfileProvider).value ?? const UserProfile()).preferences;
+    final prefs = (ref.watch(userProfileProvider).value ?? const UserProfile())
+        .preferences;
     final settings = ref.read(settingsControllerProvider);
     final links = ref.read(externalLinksProvider);
     final version = ref.watch(appVersionProvider).value;
@@ -50,12 +51,15 @@ class SettingsScreen extends ConsumerWidget {
 
     void update(Preferences Function(Preferences) change) async {
       final result = await settings.updatePreferences(change);
-      if (result case Err(:final failure) when context.mounted) showEcToast(context, failure.message);
+      if (result case Err(:final failure) when context.mounted) {
+        showEcToast(context, failure.message);
+      }
     }
 
     // Rows sit in a 16 px gutter; only the COOKOO swiper runs edge to edge,
     // so its next slide can peek in.
     return EcScaffold(
+      maxContentWidth: 800,
       topBar: const EcTopBar(),
       scrollable: false,
       padding: EdgeInsets.zero,
@@ -64,116 +68,202 @@ class SettingsScreen extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            _Gutter(children: [
-              Padding(padding: const EdgeInsets.fromLTRB(4, 0, 4, 18), child: Text('Settings', style: t.displayL.copyWith(fontSize: 48))),
-              if (user != null) _ProfileCard(user: user),
-              const SizedBox(height: 22),
-              const _PlanCard(),
-              const SizedBox(height: 22),
-              EcGroup(label: 'Defaults for new projects', children: [
-                EcGroupRow(
-                  title: 'Frame rate',
-                  value: formatFps(prefs.defaultFps),
-                  onTap: () async {
-                    final fps = await EcOptionSheet.show<double>(
-                      context,
+            _Gutter(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(4, 0, 4, 18),
+                  child: Text(
+                    'Settings',
+                    style: t.displayL.copyWith(fontSize: 48),
+                  ),
+                ),
+                if (user != null) _ProfileCard(user: user),
+                const SizedBox(height: 22),
+                const _PlanCard(),
+                const SizedBox(height: 22),
+                EcGroup(
+                  label: 'Defaults for new projects',
+                  children: [
+                    EcGroupRow(
                       title: 'Frame rate',
-                      selected: prefs.defaultFps,
-                      options: [for (final f in kFrameRates) EcOption(f, formatFps(f))],
-                    );
-                    if (fps != null) update((p) => p.copyWith(defaultFps: fps));
-                  },
-                ),
-                EcGroupRow(
-                  title: 'Canvas',
-                  value: CanvasFormat.byId(prefs.defaultFormatId).label,
-                  onTap: () async {
-                    final id = await EcOptionSheet.show<String>(
-                      context,
+                      value: formatFps(prefs.defaultFps),
+                      onTap: () async {
+                        final fps = await EcOptionSheet.show<double>(
+                          context,
+                          title: 'Frame rate',
+                          selected: prefs.defaultFps,
+                          options: [
+                            for (final f in kFrameRates)
+                              EcOption(f, formatFps(f)),
+                          ],
+                        );
+                        if (fps != null) {
+                          update((p) => p.copyWith(defaultFps: fps));
+                        }
+                      },
+                    ),
+                    EcGroupRow(
                       title: 'Canvas',
-                      selected: prefs.defaultFormatId,
-                      options: [for (final f in CanvasFormat.picker) EcOption(f.id, f.label, detail: f.sub)],
-                    );
-                    if (id != null) update((p) => p.copyWith(defaultFormatId: id));
-                  },
+                      value: CanvasFormat.byId(prefs.defaultFormatId).label,
+                      onTap: () async {
+                        final id = await EcOptionSheet.show<String>(
+                          context,
+                          title: 'Canvas',
+                          selected: prefs.defaultFormatId,
+                          options: [
+                            for (final f in CanvasFormat.picker)
+                              EcOption(f.id, f.label, detail: f.sub),
+                          ],
+                        );
+                        if (id != null) {
+                          update((p) => p.copyWith(defaultFormatId: id));
+                        }
+                      },
+                    ),
+                    EcGroupRow.toggle(
+                      title: 'Safe-area guides',
+                      value: prefs.safeGuides,
+                      onChanged: (v) =>
+                          update((p) => p.copyWith(safeGuides: v)),
+                    ),
+                    EcGroupRow.toggle(
+                      title: 'Readability warnings',
+                      subtitle:
+                          'Flags fast motion and names on screen under 3s',
+                      value: prefs.readabilityWarnings,
+                      onChanged: (v) =>
+                          update((p) => p.copyWith(readabilityWarnings: v)),
+                    ),
+                  ],
                 ),
-                EcGroupRow.toggle(
-                  title: 'Safe-area guides',
-                  value: prefs.safeGuides,
-                  onChanged: (v) => update((p) => p.copyWith(safeGuides: v)),
+                const SizedBox(height: 22),
+                EcGroup(
+                  label: 'App',
+                  children: [
+                    // Light is the only theme shipped so far; the palette is a theme
+                    // extension, so a dark one drops in here without a rewrite.
+                    const EcGroupRow(
+                      title: 'Appearance',
+                      value: 'Light',
+                      chevron: false,
+                    ),
+                    EcGroupRow.toggle(
+                      title: 'Haptics',
+                      value: prefs.haptics,
+                      onChanged: (v) => update((p) => p.copyWith(haptics: v)),
+                    ),
+                    EcGroupRow.toggle(
+                      title: 'Notify when a render finishes',
+                      value: prefs.renderNotifications,
+                      onChanged: (v) =>
+                          update((p) => p.copyWith(renderNotifications: v)),
+                    ),
+                  ],
                 ),
-                EcGroupRow.toggle(
-                  title: 'Readability warnings',
-                  subtitle: 'Flags fast motion and names on screen under 3s',
-                  value: prefs.readabilityWarnings,
-                  onChanged: (v) => update((p) => p.copyWith(readabilityWarnings: v)),
+                const SizedBox(height: 22),
+                EcGroup(
+                  label: 'Support',
+                  children: [
+                    EcGroupRow(
+                      title: 'Help centre',
+                      onTap: () => links.openUrl(AppLinks.helpCentre),
+                    ),
+                    EcGroupRow(
+                      title: 'Contact support',
+                      onTap: () => links.composeEmail(
+                        AppLinks.supportEmail,
+                        subject: version == null
+                            ? 'LastReel support'
+                            : '$version support',
+                      ),
+                    ),
+                    EcGroupRow(title: 'Rate LastReel', onTap: settings.rate),
+                  ],
                 ),
-              ]),
-              const SizedBox(height: 22),
-              EcGroup(label: 'App', children: [
-                // Light is the only theme shipped so far; the palette is a theme
-                // extension, so a dark one drops in here without a rewrite.
-                const EcGroupRow(title: 'Appearance', value: 'Light', chevron: false),
-                EcGroupRow.toggle(title: 'Haptics', value: prefs.haptics, onChanged: (v) => update((p) => p.copyWith(haptics: v))),
-                EcGroupRow.toggle(
-                  title: 'Notify when a render finishes',
-                  value: prefs.renderNotifications,
-                  onChanged: (v) => update((p) => p.copyWith(renderNotifications: v)),
+                const SizedBox(height: 22),
+                EcGroup(
+                  label: 'Legal & privacy',
+                  children: [
+                    EcGroupRow(
+                      title: 'Privacy & data',
+                      onTap: () => PrivacyScreen.open(context),
+                    ),
+                    EcGroupRow(
+                      title: 'Privacy policy',
+                      onTap: () => links.openUrl(AppLinks.privacyPolicy),
+                    ),
+                    EcGroupRow(
+                      title: 'Terms of service',
+                      onTap: () =>
+                          LegalDocumentScreen.open(context, termsOfService),
+                    ),
+                    EcGroupRow(
+                      title: 'Open-source licences',
+                      onTap: () => showLicensePage(
+                        context: context,
+                        applicationName: 'LastReel',
+                        applicationVersion: version,
+                      ),
+                    ),
+                  ],
                 ),
-              ]),
-              const SizedBox(height: 22),
-              EcGroup(label: 'Support', children: [
-                EcGroupRow(title: 'Help centre', onTap: () => links.openUrl(AppLinks.helpCentre)),
-                EcGroupRow(
-                  title: 'Contact support',
-                  onTap: () => links.composeEmail(AppLinks.supportEmail, subject: version == null ? 'LastReel support' : '$version support'),
-                ),
-                EcGroupRow(title: 'Rate LastReel', onTap: settings.rate),
-              ]),
-              const SizedBox(height: 22),
-              EcGroup(label: 'Legal & privacy', children: [
-                EcGroupRow(title: 'Privacy & data', onTap: () => PrivacyScreen.open(context)),
-                EcGroupRow(title: 'Privacy policy', onTap: () => links.openUrl(AppLinks.privacyPolicy)),
-                EcGroupRow(title: 'Terms of service', onTap: () => LegalDocumentScreen.open(context, termsOfService)),
-                EcGroupRow(
-                  title: 'Open-source licences',
-                  onTap: () => showLicensePage(context: context, applicationName: 'LastReel', applicationVersion: version),
-                ),
-              ]),
-            ]),
+              ],
+            ),
             const CookooPromoBlock(),
-            _Gutter(children: [
-              const SizedBox(height: 22),
-              EcGroup(children: [
-                EcGroupRow(
-                  title: 'Sign out',
-                  chevron: false,
-                  onTap: () async {
-                    // No navigation: the auth stream emits null and the gate
-                    // swaps the whole tree back to the welcome screen.
-                    final result = await settings.signOut();
-                    if (result case Err(:final failure) when context.mounted) showEcToast(context, failure.message);
-                  },
+            _Gutter(
+              children: [
+                const SizedBox(height: 22),
+                EcGroup(
+                  children: [
+                    EcGroupRow(
+                      title: 'Sign out',
+                      chevron: false,
+                      onTap: () async {
+                        // No navigation: the auth stream emits null and the gate
+                        // swaps the whole tree back to the welcome screen.
+                        final result = await settings.signOut();
+                        if (result case Err(
+                          :final failure,
+                        ) when context.mounted) {
+                          showEcToast(context, failure.message);
+                        }
+                      },
+                    ),
+                    EcGroupRow(
+                      title: 'Delete account',
+                      destructive: true,
+                      chevron: false,
+                      onTap: () => DeleteAccountScreen.open(context),
+                    ),
+                  ],
                 ),
-                EcGroupRow(
-                  title: 'Delete account',
-                  destructive: true,
-                  chevron: false,
-                  onTap: () => DeleteAccountScreen.open(context),
+                const SizedBox(height: 18),
+                EcGroup(
+                  children: [
+                    EcGroupRow(
+                      title: 'Made by COOKOO',
+                      onTap: () => links.openUrl(AppLinks.studio),
+                    ),
+                    EcGroupRow.toggle(
+                      title: 'Show COOKOO studio card',
+                      value: !ref.watch(
+                        cookooPromoProvider.select((s) => s.hidden),
+                      ),
+                      onChanged: ref
+                          .read(cookooPromoProvider.notifier)
+                          .setShown,
+                    ),
+                  ],
                 ),
-              ]),
-              const SizedBox(height: 18),
-              EcGroup(children: [
-                EcGroupRow(title: 'Made by COOKOO', onTap: () => links.openUrl(AppLinks.studio)),
-                EcGroupRow.toggle(
-                  title: 'Show COOKOO studio card',
-                  value: !ref.watch(cookooPromoProvider.select((s) => s.hidden)),
-                  onChanged: ref.read(cookooPromoProvider.notifier).setShown,
-                ),
-              ]),
-              const SizedBox(height: 18),
-              if (version != null) Text(version, textAlign: TextAlign.center, style: t.mono.copyWith(fontSize: 10)),
-            ]),
+                const SizedBox(height: 18),
+                if (version != null)
+                  Text(
+                    version,
+                    textAlign: TextAlign.center,
+                    style: t.mono.copyWith(fontSize: 10),
+                  ),
+              ],
+            ),
           ],
         ),
       ),
@@ -190,7 +280,10 @@ class _Gutter extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: children),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: children,
+      ),
     );
   }
 }
@@ -217,14 +310,28 @@ class _ProfileCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(user.label, style: t.titleM.copyWith(fontSize: 16.5), maxLines: 1, overflow: TextOverflow.ellipsis),
+                Text(
+                  user.label,
+                  style: t.titleM.copyWith(fontSize: 16.5),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
                 if (user.email != null && user.email != user.label) ...[
                   const SizedBox(height: 2),
-                  Text(user.email!, style: t.bodyS.copyWith(color: p.muted), maxLines: 1, overflow: TextOverflow.ellipsis),
+                  Text(
+                    user.email!,
+                    style: t.bodyS.copyWith(color: p.muted),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ],
                 if (method != null) ...[
                   const SizedBox(height: 7),
-                  EcStatusPill(method == SignInMethod.password ? 'Signed in with email' : 'Signed in with ${method.label}'),
+                  EcStatusPill(
+                    method == SignInMethod.password
+                        ? 'Signed in with email'
+                        : 'Signed in with ${method.label}',
+                  ),
                 ],
               ],
             ),
@@ -243,7 +350,8 @@ class _PlanCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final p = context.palette;
     final t = context.type;
-    final entitlement = ref.watch(entitlementProvider).value ?? const Entitlement.free();
+    final entitlement =
+        ref.watch(entitlementProvider).value ?? const Entitlement.free();
     final count = ref.watch(projectSummariesProvider).value?.length ?? 0;
     final plan = ref.watch(planControllerProvider);
     final limit = entitlement.projectLimit;
@@ -254,7 +362,14 @@ class _PlanCard extends ConsumerWidget {
         color: p.surface,
         border: Border.all(color: p.accentLine),
         borderRadius: BorderRadius.circular(EcRadius.group),
-        boxShadow: const [BoxShadow(color: Color(0x800C6EC8), offset: Offset(0, 14), blurRadius: 30, spreadRadius: -22)],
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x800C6EC8),
+            offset: Offset(0, 14),
+            blurRadius: 30,
+            spreadRadius: -22,
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -264,17 +379,20 @@ class _PlanCard extends ConsumerWidget {
             textBaseline: TextBaseline.alphabetic,
             children: [
               Expanded(
-                child: Text(entitlement.isPro ? 'LastReel Pro' : 'Free plan',
-                    style: t.titleM.copyWith(fontSize: 15.5, fontWeight: FontWeight.w700)),
+                child: Text(
+                  entitlement.isPro ? 'LastReel Pro' : 'Free plan',
+                  style: t.titleM.copyWith(
+                    fontSize: 15.5,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
               ),
-              Text(
-                switch ((entitlement.trialEndsAt, limit)) {
-                  (final ends?, _) => 'Pro trial · ends ${formatDayMonth(ends)}',
-                  (_, null) => '${plural(count, 'project')} · no ads',
-                  (_, final limit?) => '$count of ${plural(limit, 'project')} · ads on',
-                },
-                style: t.mono.copyWith(fontSize: 10),
-              ),
+              Text(switch ((entitlement.trialEndsAt, limit)) {
+                (final ends?, _) => 'Pro trial · ends ${formatDayMonth(ends)}',
+                (_, null) => '${plural(count, 'project')} · no ads',
+                (_, final limit?) =>
+                  '$count of ${plural(limit, 'project')} · ads on',
+              }, style: t.mono.copyWith(fontSize: 10)),
             ],
           ),
           if (limit != null) ...[
@@ -285,9 +403,12 @@ class _PlanCard extends ConsumerWidget {
               children: [
                 Expanded(
                   child: EcButton(
-                    label: plan.offers.any((o) => o.hasTrial) ? 'Start free trial' : 'Upgrade to Pro',
+                    label: plan.offers.any((o) => o.hasTrial)
+                        ? 'Start free trial'
+                        : 'Upgrade to Pro',
                     size: EcButtonSize.medium,
-                    onPressed: () => ProSheet.show(context, source: PlanSource.settings),
+                    onPressed: () =>
+                        ProSheet.show(context, source: PlanSource.settings),
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -298,9 +419,15 @@ class _PlanCard extends ConsumerWidget {
                   onPressed: plan.busy
                       ? null
                       : () async {
-                          await ref.read(planControllerProvider.notifier).restore();
-                          final message = ref.read(planControllerProvider).message;
-                          if (message != null && context.mounted) showEcToast(context, message);
+                          await ref
+                              .read(planControllerProvider.notifier)
+                              .restore();
+                          final message = ref
+                              .read(planControllerProvider)
+                              .message;
+                          if (message != null && context.mounted) {
+                            showEcToast(context, message);
+                          }
                         },
                 ),
               ],
@@ -314,7 +441,10 @@ class _PlanCard extends ConsumerWidget {
     if (!entitlement.isPro) return card;
     return Semantics(
       button: true,
-      child: GestureDetector(onTap: () => SubscriptionScreen.open(context), child: card),
+      child: GestureDetector(
+        onTap: () => SubscriptionScreen.open(context),
+        child: card,
+      ),
     );
   }
 }

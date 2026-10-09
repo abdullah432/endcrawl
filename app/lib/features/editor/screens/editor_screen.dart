@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/config/orientations.dart';
@@ -10,11 +9,11 @@ import '../../project/controllers/project_controller.dart';
 import '../controllers/editor_ui_controller.dart';
 import '../widgets/block_list.dart';
 import '../widgets/editor_dock.dart';
-import '../widgets/landscape_monitor.dart';
 import '../widgets/read_only_banner.dart';
 import '../widgets/readability_banner.dart';
 import '../widgets/scrub_bar.dart';
 import '../widgets/status_line.dart';
+import '../widgets/adaptive_editor.dart';
 import '../widgets/transport_bar.dart';
 
 /// 3.1 — the hub. Monitor on top, blocks below, four actions in a dock.
@@ -36,7 +35,7 @@ class _EditorScreenState extends ConsumerState<EditorScreen> {
   void initState() {
     super.initState();
     _project = ref.read(projectControllerProvider.notifier);
-    SystemChrome.setPreferredOrientations(kEditorOrientations);
+    EcOrientationPolicy.editor(true);
 
     // A debounced autosave is a lost edit if the app is backgrounded mid
     // debounce, so a pause flushes whatever is pending immediately.
@@ -49,7 +48,7 @@ class _EditorScreenState extends ConsumerState<EditorScreen> {
   @override
   void dispose() {
     _lifecycle?.dispose();
-    SystemChrome.setPreferredOrientations(kPortraitOnly);
+    EcOrientationPolicy.editor(false);
     super.dispose();
   }
 
@@ -68,11 +67,7 @@ class _EditorScreenState extends ConsumerState<EditorScreen> {
   Widget build(BuildContext context) {
     return PopScope(
       onPopInvokedWithResult: (didPop, _) => _handlePop(didPop),
-      child: OrientationBuilder(
-        builder: (context, orientation) => orientation == Orientation.landscape
-            ? const Scaffold(backgroundColor: Colors.black, body: LandscapeMonitor())
-            : const _PortraitEditor(),
-      ),
+      child: const AdaptiveEditor(mobile: _PortraitEditor()),
     );
   }
 }
@@ -86,7 +81,9 @@ class _PortraitEditor extends ConsumerWidget {
     final t = context.type;
     final project = ref.watch(projectControllerProvider);
     final controller = ref.read(projectControllerProvider.notifier);
-    final selectMode = ref.watch(editorUiControllerProvider.select((s) => s.selectMode));
+    final selectMode = ref.watch(
+      editorUiControllerProvider.select((s) => s.selectMode),
+    );
 
     return Scaffold(
       backgroundColor: p.ground,
@@ -120,15 +117,33 @@ class _PortraitEditor extends ConsumerWidget {
                             ),
                           ),
                           const SizedBox(width: 8),
-                          _HistoryButton(icon: Icons.undo_rounded, tooltip: 'Undo', onPressed: controller.canUndo ? controller.undo : null),
+                          _HistoryButton(
+                            icon: Icons.undo_rounded,
+                            tooltip: 'Undo',
+                            onPressed: controller.canUndo
+                                ? controller.undo
+                                : null,
+                          ),
                           const SizedBox(width: 4),
-                          _HistoryButton(icon: Icons.redo_rounded, tooltip: 'Redo', onPressed: controller.canRedo ? controller.redo : null),
+                          _HistoryButton(
+                            icon: Icons.redo_rounded,
+                            tooltip: 'Redo',
+                            onPressed: controller.canRedo
+                                ? controller.redo
+                                : null,
+                          ),
                         ],
                       ),
                     ),
                   ),
                   const SizedBox(height: 4),
-                  const SizedBox(height: 220, child: ColoredBox(color: Colors.black, child: MonitorView())),
+                  const SizedBox(
+                    height: 220,
+                    child: ColoredBox(
+                      color: Colors.black,
+                      child: MonitorView(),
+                    ),
+                  ),
                   Padding(
                     padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
                     child: Column(
@@ -153,7 +168,9 @@ class _PortraitEditor extends ConsumerWidget {
                 bottom: 18 + MediaQuery.paddingOf(context).bottom,
                 child: AnimatedSwitcher(
                   duration: const Duration(milliseconds: 200),
-                  child: selectMode ? const BulkBar(key: ValueKey('bulk')) : const EditorDock(key: ValueKey('dock')),
+                  child: selectMode
+                      ? const BulkBar(key: ValueKey('bulk'))
+                      : const EditorDock(key: ValueKey('dock')),
                 ),
               ),
             ],
@@ -171,14 +188,28 @@ class _HistoryButton extends StatelessWidget {
   final String tooltip;
   final VoidCallback? onPressed;
 
-  const _HistoryButton({required this.icon, required this.tooltip, required this.onPressed});
+  const _HistoryButton({
+    required this.icon,
+    required this.tooltip,
+    required this.onPressed,
+  });
 
   @override
   Widget build(BuildContext context) {
-    if (onPressed != null) return EcCircleButton.glass(icon: icon, tooltip: tooltip, onPressed: onPressed);
+    if (onPressed != null) {
+      return EcCircleButton.glass(
+        icon: icon,
+        tooltip: tooltip,
+        onPressed: onPressed,
+      );
+    }
     return Tooltip(
       message: tooltip,
-      child: SizedBox(width: 40, height: 40, child: Icon(icon, size: 20, color: context.palette.faint)),
+      child: SizedBox(
+        width: 40,
+        height: 40,
+        child: Icon(icon, size: 20, color: context.palette.faint),
+      ),
     );
   }
 }

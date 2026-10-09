@@ -1,3 +1,4 @@
+import 'package:lastreel/features/export/models/export_artifact.dart';
 import 'dart:ui' as ui;
 
 import 'package:flutter/widgets.dart';
@@ -34,7 +35,11 @@ class FakeVideoEncoder implements VideoEncoder {
   });
 
   /// What an Android phone offers: no ProRes, and HEVC only to 1920.
-  static const android = EncoderCapabilities({Codec.h264: 3840, Codec.hevc: 1920, Codec.png: 8192});
+  static const android = EncoderCapabilities({
+    Codec.h264: 3840,
+    Codec.hevc: 1920,
+    Codec.png: 8192,
+  });
 
   FakeVideoEncoder({
     this.caps = everything,
@@ -63,7 +68,8 @@ class _FakeSession implements EncodeSession {
   @override
   Future<void> append(ui.Image frame, int index) async {
     await Future<void>.delayed(_encoder.frameTime);
-    if (_encoder.failWith case final failure? when index >= _encoder.failAtFrame) {
+    if (_encoder.failWith case final failure?
+        when index >= _encoder.failAtFrame) {
       _encoder.failWith = null;
       throw failure;
     }
@@ -73,7 +79,8 @@ class _FakeSession implements EncodeSession {
   }
 
   @override
-  Future<EncodedFile> finish() async => EncodedFile(_spec.outputPath, _frames * 1000);
+  Future<EncodedFile> finish() async =>
+      EncodedFile(_spec.outputPath, _frames * 1000);
 
   @override
   Future<void> cancel() async => _encoder.cancelled++;
@@ -90,7 +97,9 @@ class FakeFrameSource implements FrameSource {
   @override
   Future<ui.Image> render(int index) async {
     final recorder = ui.PictureRecorder();
-    ui.Canvas(recorder).drawRect(const ui.Rect.fromLTWH(0, 0, 2, 2), ui.Paint());
+    ui.Canvas(
+      recorder,
+    ).drawRect(const ui.Rect.fromLTWH(0, 0, 2, 2), ui.Paint());
     return recorder.endRecording().toImageSync(2, 2);
   }
 
@@ -118,18 +127,22 @@ class FakeFrames {
 }
 
 class FakeExportDestinations implements ExportDestinations {
+  @override
+  bool canShare(ExportArtifact artifact) => true;
+  @override
+  Future<Result<void>> download(ExportArtifact artifact) => share(artifact);
   final List<String> shared = [];
   final List<String> savedToPhotos = [];
 
   @override
-  Future<Result<void>> saveToPhotos(String path) async {
-    savedToPhotos.add(path);
+  Future<Result<void>> saveToPhotos(ExportArtifact artifact) async {
+    savedToPhotos.add(artifact.location);
     return const Ok(null);
   }
 
   @override
-  Future<Result<void>> share(String path, {ui.Rect? origin}) async {
-    shared.add(path);
+  Future<Result<void>> share(ExportArtifact artifact, {ui.Rect? origin}) async {
+    shared.add(artifact.location);
     return const Ok(null);
   }
 }
@@ -140,13 +153,18 @@ class FakeAdService implements AdService {
   int rewardedShown = 0;
   bool privacyRequired;
 
-  FakeAdService({this.nextReward = RewardOutcome.earned, this.privacyRequired = false});
+  FakeAdService({
+    this.nextReward = RewardOutcome.earned,
+    this.privacyRequired = false,
+  });
 
   int appOpenShown = 0;
 
   @override
-  Widget nativeAd(AdPlacement placement, {required Widget Function(Widget creative) framed}) =>
-      const PlaceholderAdService().nativeAd(placement, framed: framed);
+  Widget nativeAd(
+    AdPlacement placement, {
+    required Widget Function(Widget creative) framed,
+  }) => const PlaceholderAdService().nativeAd(placement, framed: framed);
 
   @override
   Future<void> showAppOpen() async => appOpenShown++;

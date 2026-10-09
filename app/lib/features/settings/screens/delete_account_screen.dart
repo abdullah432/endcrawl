@@ -24,13 +24,15 @@ import '../controllers/account_controller.dart';
 class DeleteAccountScreen extends ConsumerStatefulWidget {
   const DeleteAccountScreen({super.key});
 
-  static Future<void> open(BuildContext context) =>
-      Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const DeleteAccountScreen()));
+  static Future<void> open(BuildContext context) => Navigator.of(
+    context,
+  ).push(MaterialPageRoute<void>(builder: (_) => const DeleteAccountScreen()));
 
   static const confirmWord = 'DELETE';
 
   @override
-  ConsumerState<DeleteAccountScreen> createState() => _DeleteAccountScreenState();
+  ConsumerState<DeleteAccountScreen> createState() =>
+      _DeleteAccountScreenState();
 }
 
 class _DeleteAccountScreenState extends ConsumerState<DeleteAccountScreen> {
@@ -75,39 +77,55 @@ class _DeleteAccountScreenState extends ConsumerState<DeleteAccountScreen> {
     final t = context.type;
     final user = ref.watch(authStateProvider).value;
     final summaries = ref.watch(projectSummariesProvider).value ?? const [];
-    final renders = summaries.where((s) => s.lastRender?.outcome == RenderOutcome.rendered).length;
+    final renders = summaries
+        .where((s) => s.lastRender?.outcome == RenderOutcome.rendered)
+        .length;
     final needsPassword = user?.primaryMethod == SignInMethod.password;
     final typed = _confirm.text.trim() == DeleteAccountScreen.confirmWord;
-    final ready = typed && (!needsPassword || _password.text.isNotEmpty) && !_busy;
+    final ready =
+        typed && (!needsPassword || _password.text.isNotEmpty) && !_busy;
 
     Widget item(String text) => Padding(
-          padding: const EdgeInsets.only(bottom: 6),
-          child: Text('–  $text', style: t.body.copyWith(color: p.ink2)),
-        );
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Text('–  $text', style: t.body.copyWith(color: p.ink2)),
+    );
 
     return EcScaffold(
+      maxContentWidth: 800,
       topBar: const EcTopBar(),
       padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(caps('Delete account'), style: t.eyebrow.copyWith(color: p.warn)),
+          Text(
+            caps('Delete account'),
+            style: t.eyebrow.copyWith(color: p.warn),
+          ),
           const SizedBox(height: 8),
-          EcHeadline('Delete your account and ', emphasis: 'everything in it?', style: t.displayM),
+          EcHeadline(
+            'Delete your account and ',
+            emphasis: 'everything in it?',
+            style: t.displayM,
+          ),
           const SizedBox(height: 16),
-          item('${plural(summaries.length, 'project')} and ${plural(renders, 'render')}'),
+          item(
+            '${plural(summaries.length, 'project')} and ${plural(renders, 'render')}',
+          ),
           item('Profile, email and sign-in methods'),
           item('Settings and preferences'),
           const SizedBox(height: 12),
           EcNotice(
             tone: EcTone.warn,
             title: 'Deleting doesn’t cancel a subscription.',
-            body: 'Your store handles billing. Cancel Pro in your store subscriptions first.',
+            body:
+                'Your store handles billing. Cancel Pro in your store subscriptions first.',
             actions: [
               EcButton.text(
                 label: 'Open subscriptions ›',
                 size: EcButtonSize.small,
-                onPressed: () => ref.read(externalLinksProvider).openUrl(AppLinks.manageSubscriptions),
+                onPressed: () => ref
+                    .read(externalLinksProvider)
+                    .openUrl(AppLinks.manageSubscriptions),
               ),
             ],
           ),
@@ -140,7 +158,10 @@ class _DeleteAccountScreenState extends ConsumerState<DeleteAccountScreen> {
             onPressed: ready ? () => _delete(needsPassword) : null,
           ),
           const SizedBox(height: 6),
-          EcButton.secondary(label: 'Keep my account', onPressed: _busy ? null : () => Navigator.of(context).maybePop()),
+          EcButton.secondary(
+            label: 'Keep my account',
+            onPressed: _busy ? null : () => Navigator.of(context).maybePop(),
+          ),
           const SizedBox(height: 12),
           Text(
             'This can’t be undone. Backups are purged within 30 days.',

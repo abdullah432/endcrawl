@@ -24,15 +24,18 @@ import '../controllers/account_controller.dart';
 class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
 
-  static Future<void> open(BuildContext context) =>
-      Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const ProfileScreen()));
+  static Future<void> open(BuildContext context) => Navigator.of(
+    context,
+  ).push(MaterialPageRoute<void>(builder: (_) => const ProfileScreen()));
 
   @override
   ConsumerState<ProfileScreen> createState() => _ProfileScreenState();
 }
 
 class _ProfileScreenState extends ConsumerState<ProfileScreen> {
-  late final _name = TextEditingController(text: ref.read(authStateProvider).value?.displayName ?? '');
+  late final _name = TextEditingController(
+    text: ref.read(authStateProvider).value?.displayName ?? '',
+  );
   bool _saving = false;
 
   @override
@@ -41,7 +44,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     super.dispose();
   }
 
-  bool _changed(AppUser user) => _name.text.trim().isNotEmpty && _name.text.trim() != (user.displayName ?? '').trim();
+  bool _changed(AppUser user) =>
+      _name.text.trim().isNotEmpty &&
+      _name.text.trim() != (user.displayName ?? '').trim();
 
   Future<void> _save() async {
     setState(() => _saving = true);
@@ -64,13 +69,17 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     final t = context.type;
 
     return EcScaffold(
+      maxContentWidth: 800,
       topBar: EcTopBar(
         title: 'Profile',
         trailing: TextButton(
           onPressed: _changed(user) && !_saving ? _save : null,
           style: TextButton.styleFrom(
             foregroundColor: p.accent,
-            textStyle: t.bodyS.copyWith(fontSize: 14, fontWeight: FontWeight.w600),
+            textStyle: t.bodyS.copyWith(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+            ),
           ),
           child: const Text('Save'),
         ),
@@ -79,13 +88,16 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Center(child: EcAvatar(initials: user.initials, size: 84, gradient: true)),
+          Center(
+            child: EcAvatar(initials: user.initials, size: 84, gradient: true),
+          ),
           const SizedBox(height: 8),
           Center(
             child: EcButton.text(
               label: 'Change photo',
               size: EcButtonSize.small,
-              onPressed: () => showEcToast(context, 'Profile photos are coming soon'),
+              onPressed: () =>
+                  showEcToast(context, 'Profile photos are coming soon'),
             ),
           ),
           const SizedBox(height: 14),
@@ -109,22 +121,38 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               ),
               child: Row(
                 children: [
-                  Expanded(child: Text(user.email!, maxLines: 1, overflow: TextOverflow.ellipsis, style: t.bodyL.copyWith(color: p.ink2))),
-                  if (user.isEmailVerified) const EcStatusPill('Verified', tone: EcTone.ok),
+                  Expanded(
+                    child: Text(
+                      user.email!,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: t.bodyL.copyWith(color: p.ink2),
+                    ),
+                  ),
+                  if (user.isEmailVerified)
+                    const EcStatusPill('Verified', tone: EcTone.ok),
                 ],
               ),
             ),
           ],
           const SizedBox(height: 22),
-          EcGroup(label: 'Sign-in methods', children: [
-            for (final method in SignInMethod.values)
-              if (method != SignInMethod.apple || Features.appleSignIn || user.methods.contains(method))
-                _MethodRow(user: user, method: method),
-          ]),
+          EcGroup(
+            label: 'Sign-in methods',
+            children: [
+              for (final method in SignInMethod.values)
+                if (method != SignInMethod.apple ||
+                    Features.appleSignIn ||
+                    user.methods.contains(method))
+                  _MethodRow(user: user, method: method),
+            ],
+          ),
           const SizedBox(height: 10),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 6),
-            child: Text(lastSignInMethod.message, style: t.caption.copyWith(height: 1.5)),
+            child: Text(
+              lastSignInMethod.message,
+              style: t.caption.copyWith(height: 1.5),
+            ),
           ),
         ],
       ),
@@ -159,8 +187,13 @@ class _MethodRow extends ConsumerWidget {
     Future<void> onTap() async {
       if (!connected) {
         if (method == SignInMethod.password) {
-          final done = await _PasswordSetupSheet.show(context, email: user.email);
-          if (done == true && context.mounted) showEcToast(context, 'Email & password connected');
+          final done = await _PasswordSetupSheet.show(
+            context,
+            email: user.email,
+          );
+          if (done == true && context.mounted) {
+            showEcToast(context, 'Email & password connected');
+          }
           return;
         }
         await report(account.connect(method), '${method.label} connected');
@@ -177,7 +210,10 @@ class _MethodRow extends ConsumerWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text('You’ll sign in with ${user.methods.where((m) => m != method).map((m) => m.label).join(' or ')} instead.', style: t.body),
+              Text(
+                'You’ll sign in with ${user.methods.where((m) => m != method).map((m) => m.label).join(' or ')} instead.',
+                style: t.body,
+              ),
               const SizedBox(height: 18),
               EcButton(
                 label: 'Disconnect',
@@ -188,7 +224,12 @@ class _MethodRow extends ConsumerWidget {
           ),
         ),
       );
-      if (confirm == true && context.mounted) await report(account.disconnect(method), '${method.label} disconnected');
+      if (confirm == true && context.mounted) {
+        await report(
+          account.disconnect(method),
+          '${method.label} disconnected',
+        );
+      }
     }
 
     final subtitle = switch (method) {
@@ -204,8 +245,14 @@ class _MethodRow extends ConsumerWidget {
       onTap: onTap,
       trailing: connected
           ? const EcStatusPill('Connected', tone: EcTone.ok)
-          : Text(method == SignInMethod.password ? 'Set up ›' : 'Connect',
-              style: t.bodyS.copyWith(fontSize: 13, fontWeight: FontWeight.w600, color: p.accent)),
+          : Text(
+              method == SignInMethod.password ? 'Set up ›' : 'Connect',
+              style: t.bodyS.copyWith(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: p.accent,
+              ),
+            ),
     );
   }
 }
@@ -216,10 +263,14 @@ class _PasswordSetupSheet extends ConsumerStatefulWidget {
   const _PasswordSetupSheet({this.email});
 
   static Future<bool?> show(BuildContext context, {String? email}) =>
-      showEcSheet<bool>(context, builder: (_) => _PasswordSetupSheet(email: email));
+      showEcSheet<bool>(
+        context,
+        builder: (_) => _PasswordSetupSheet(email: email),
+      );
 
   @override
-  ConsumerState<_PasswordSetupSheet> createState() => _PasswordSetupSheetState();
+  ConsumerState<_PasswordSetupSheet> createState() =>
+      _PasswordSetupSheetState();
 }
 
 class _PasswordSetupSheetState extends ConsumerState<_PasswordSetupSheet> {
@@ -242,7 +293,11 @@ class _PasswordSetupSheetState extends ConsumerState<_PasswordSetupSheet> {
     });
     final result = await ref
         .read(accountControllerProvider)
-        .connect(SignInMethod.password, email: _email.text, password: _password.text);
+        .connect(
+          SignInMethod.password,
+          email: _email.text,
+          password: _password.text,
+        );
     if (!mounted) return;
     switch (result) {
       case Ok():
@@ -257,7 +312,9 @@ class _PasswordSetupSheetState extends ConsumerState<_PasswordSetupSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final ok = _email.text.contains('@') && PasswordPolicy.isAcceptable(_password.text);
+    final ok =
+        _email.text.contains('@') &&
+        PasswordPolicy.isAcceptable(_password.text);
     return EcSheet(
       title: 'Email & password',
       child: Column(
@@ -271,11 +328,21 @@ class _PasswordSetupSheetState extends ConsumerState<_PasswordSetupSheet> {
             onChanged: (_) => setState(() {}),
           ),
           const SizedBox(height: 14),
-          EcPasswordField(controller: _password, isNewPassword: true, error: _error, onChanged: (_) => setState(() {})),
+          EcPasswordField(
+            controller: _password,
+            isNewPassword: true,
+            error: _error,
+            onChanged: (_) => setState(() {}),
+          ),
           const SizedBox(height: 10),
-          for (final rule in PasswordPolicy.rules) EcCheckItem(label: rule.label, met: rule.test(_password.text)),
+          for (final rule in PasswordPolicy.rules)
+            EcCheckItem(label: rule.label, met: rule.test(_password.text)),
           const SizedBox(height: 18),
-          EcButton(label: 'Connect', busy: _busy, onPressed: ok && !_busy ? _submit : null),
+          EcButton(
+            label: 'Connect',
+            busy: _busy,
+            onPressed: ok && !_busy ? _submit : null,
+          ),
         ],
       ),
     );

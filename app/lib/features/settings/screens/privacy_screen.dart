@@ -19,21 +19,26 @@ import 'delete_account_screen.dart';
 class PrivacyScreen extends ConsumerWidget {
   const PrivacyScreen({super.key});
 
-  static Future<void> open(BuildContext context) =>
-      Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const PrivacyScreen()));
+  static Future<void> open(BuildContext context) => Navigator.of(
+    context,
+  ).push(MaterialPageRoute<void>(builder: (_) => const PrivacyScreen()));
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final t = context.type;
-    final prefs = (ref.watch(userProfileProvider).value ?? const UserProfile()).preferences;
+    final prefs = (ref.watch(userProfileProvider).value ?? const UserProfile())
+        .preferences;
     final settings = ref.read(settingsControllerProvider);
 
     void update(Preferences Function(Preferences) change) async {
       final result = await settings.updatePreferences(change);
-      if (result case Err(:final failure) when context.mounted) showEcToast(context, failure.message);
+      if (result case Err(:final failure) when context.mounted) {
+        showEcToast(context, failure.message);
+      }
     }
 
     return EcScaffold(
+      maxContentWidth: 800,
       topBar: const EcTopBar(title: 'Privacy & data'),
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 34),
       body: Column(
@@ -41,51 +46,87 @@ class PrivacyScreen extends ConsumerWidget {
         children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(4, 0, 4, 18),
-            child: EcHeadline('What we keep, and ', emphasis: 'what you control.', style: t.displayM),
+            child: EcHeadline(
+              'What we keep, and ',
+              emphasis: 'what you control.',
+              style: t.displayM,
+            ),
           ),
-          const EcGroup(label: 'Stored with your account', children: [
-            EcGroupRow(title: 'Account', subtitle: 'Name, email and sign-in method', chevron: false),
-            EcGroupRow(title: 'Projects & renders', subtitle: 'Synced so they survive a new phone', chevron: false),
-            EcGroupRow(title: 'Purchases', subtitle: 'Your store handles payment; RevenueCat manages plan status.', chevron: false),
-            EcGroupRow(
-              title: 'Session insights',
-              subtitle: 'Microsoft Clarity records how screens are used. Emails and passwords are hidden.',
-              chevron: false,
-            ),
-          ]),
-          const SizedBox(height: 22),
-          EcGroup(label: 'Your choices', children: [
-            EcGroupRow.toggle(
-              title: 'Usage analytics',
-              subtitle: 'Google Analytics, on by default',
-              value: prefs.usageAnalytics,
-              onChanged: (v) => update((p) => p.copyWith(usageAnalytics: v)),
-            ),
-            EcGroupRow.toggle(
-              title: 'Personalised ads',
-              subtitle: 'Free still shows ads, just not based on your activity',
-              value: prefs.personalisedAds,
-              onChanged: (v) => update((p) => p.copyWith(personalisedAds: v)),
-            ),
-            // Where the law asks for it (EEA, UK), the consent choices made
-            // on first ad can be revisited here.
-            if (ref.watch(adPrivacyOptionsRequiredProvider).value ?? false)
+          const EcGroup(
+            label: 'Stored with your account',
+            children: [
               EcGroupRow(
-                title: 'Ad privacy choices',
-                subtitle: 'Review the consent you gave for ads',
-                onTap: () => ref.read(adServiceProvider).showPrivacyOptions(),
+                title: 'Account',
+                subtitle: 'Name, email and sign-in method',
+                chevron: false,
               ),
-          ]),
+              EcGroupRow(
+                title: 'Projects & renders',
+                subtitle: 'Synced so they survive a new phone',
+                chevron: false,
+              ),
+              EcGroupRow(
+                title: 'Purchases',
+                subtitle:
+                    'Your store handles payment; RevenueCat manages plan status.',
+                chevron: false,
+              ),
+              EcGroupRow(
+                title: 'Session insights',
+                subtitle:
+                    'Microsoft Clarity records how screens are used. Emails and passwords are hidden.',
+                chevron: false,
+              ),
+            ],
+          ),
           const SizedBox(height: 22),
-          EcGroup(children: [
-            EcGroupRow(
-              title: 'Download my data',
-              subtitle: 'A .zip of projects and account info',
-              onTap: () => showEcToast(context, 'Data export is coming soon'),
-            ),
-            EcGroupRow(title: 'Privacy policy', onTap: () => ref.read(externalLinksProvider).openUrl(AppLinks.privacyPolicy)),
-            EcGroupRow(title: 'Delete account', destructive: true, onTap: () => DeleteAccountScreen.open(context)),
-          ]),
+          EcGroup(
+            label: 'Your choices',
+            children: [
+              EcGroupRow.toggle(
+                title: 'Usage analytics',
+                subtitle: 'Google Analytics, on by default',
+                value: prefs.usageAnalytics,
+                onChanged: (v) => update((p) => p.copyWith(usageAnalytics: v)),
+              ),
+              EcGroupRow.toggle(
+                title: 'Personalised ads',
+                subtitle:
+                    'Free still shows ads, just not based on your activity',
+                value: prefs.personalisedAds,
+                onChanged: (v) => update((p) => p.copyWith(personalisedAds: v)),
+              ),
+              // Where the law asks for it (EEA, UK), the consent choices made
+              // on first ad can be revisited here.
+              if (ref.watch(adPrivacyOptionsRequiredProvider).value ?? false)
+                EcGroupRow(
+                  title: 'Ad privacy choices',
+                  subtitle: 'Review the consent you gave for ads',
+                  onTap: () => ref.read(adServiceProvider).showPrivacyOptions(),
+                ),
+            ],
+          ),
+          const SizedBox(height: 22),
+          EcGroup(
+            children: [
+              EcGroupRow(
+                title: 'Download my data',
+                subtitle: 'A .zip of projects and account info',
+                onTap: () => showEcToast(context, 'Data export is coming soon'),
+              ),
+              EcGroupRow(
+                title: 'Privacy policy',
+                onTap: () => ref
+                    .read(externalLinksProvider)
+                    .openUrl(AppLinks.privacyPolicy),
+              ),
+              EcGroupRow(
+                title: 'Delete account',
+                destructive: true,
+                onTap: () => DeleteAccountScreen.open(context),
+              ),
+            ],
+          ),
         ],
       ),
     );

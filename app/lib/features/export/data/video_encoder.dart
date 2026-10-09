@@ -1,6 +1,8 @@
 import 'dart:ui' as ui;
 
 import '../models/export_models.dart';
+import '../models/export_artifact.dart';
+import 'package:path/path.dart' as p;
 
 /// What to encode: the codec, the picture, and where the file goes.
 class EncodeSpec {
@@ -36,13 +38,15 @@ class EncoderCapabilities {
 
   /// Free space where renders are written, in bytes; null when unknown.
   final int? freeBytes;
+
   /// 60 fps limits can be lower than the ordinary 30 fps limits on Android.
   /// Null is the older capability protocol, which has no separate rate limit.
   final Map<Codec, int>? maxEdgeAt60;
 
   const EncoderCapabilities(this.maxEdge, {this.freeBytes, this.maxEdgeAt60});
 
-  bool supports60Fps(Codec codec, int edge) => ((maxEdgeAt60 ?? maxEdge)[codec] ?? 0) >= edge;
+  bool supports60Fps(Codec codec, int edge) =>
+      ((maxEdgeAt60 ?? maxEdge)[codec] ?? 0) >= edge;
 
   bool supports(Codec codec) => maxEdge.containsKey(codec);
 
@@ -50,7 +54,11 @@ class EncoderCapabilities {
 
   /// The output sizes [codec] can be made at here.
   Iterable<ExportResolution> resolutionsFor(Codec codec, {double fps = 30}) =>
-      ExportResolution.values.where((r) => ((fps > 30 ? maxEdgeAt60 ?? maxEdge : maxEdge)[codec] ?? 0) >= r.edge);
+      ExportResolution.values.where(
+        (r) =>
+            ((fps > 30 ? maxEdgeAt60 ?? maxEdge : maxEdge)[codec] ?? 0) >=
+            r.edge,
+      );
 }
 
 /// Turns rendered frames into a file. Implemented natively for video
@@ -80,6 +88,17 @@ class EncodedFile {
   final String path;
   final int bytes;
   const EncodedFile(this.path, this.bytes);
+  ExportArtifact get artifact => ExportArtifact(
+    location: path,
+    filename: p.basename(path),
+    bytes: bytes,
+    mimeType: path.endsWith('.zip')
+        ? 'application/zip'
+        : path.endsWith('.mov')
+        ? 'video/quicktime'
+        : 'video/mp4',
+    browser: path.startsWith('browser-export'),
+  );
 }
 
 /// Why an encode stopped, in words the failed screen (6.3) can show.
@@ -89,7 +108,8 @@ class EncoderException implements Exception {
 
   const EncoderException(this.kind, this.message);
 
-  const EncoderException.outOfSpace() : this(EncoderFailureKind.outOfSpace, 'Not enough free space.');
+  const EncoderException.outOfSpace()
+    : this(EncoderFailureKind.outOfSpace, 'Not enough free space.');
 
   @override
   String toString() => 'EncoderException($kind): $message';
@@ -108,7 +128,10 @@ class RoutingVideoEncoder implements VideoEncoder {
     return EncoderCapabilities(
       {...v.maxEdge, ...i.maxEdge},
       freeBytes: v.freeBytes ?? i.freeBytes,
-      maxEdgeAt60: {...(v.maxEdgeAt60 ?? v.maxEdge), ...(i.maxEdgeAt60 ?? i.maxEdge)},
+      maxEdgeAt60: {
+        ...(v.maxEdgeAt60 ?? v.maxEdge),
+        ...(i.maxEdgeAt60 ?? i.maxEdge),
+      },
     );
   }
 

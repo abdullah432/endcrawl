@@ -41,6 +41,7 @@ class LibraryScreen extends ConsumerWidget {
     final view = ref.watch(libraryViewProvider);
 
     return EcScaffold(
+      maxContentWidth: 1440,
       scrollable: false,
       padding: EdgeInsets.zero,
       body: Column(
@@ -49,13 +50,21 @@ class LibraryScreen extends ConsumerWidget {
           _Header(view: view.value),
           Expanded(
             child: switch (view) {
-              AsyncValue(:final value?) when value.items.isEmpty => _EmptyLibrary(view: value),
+              AsyncValue(:final value?) when value.items.isEmpty =>
+                _EmptyLibrary(view: value),
               AsyncValue(:final value?) => _ProjectList(view: value),
               AsyncError(:final error) => _ErrorState(
-                  message: error is AppFailure ? error.message : 'Could not open your projects.',
-                  onRetry: () => ref.invalidate(projectSummariesProvider),
+                message: error is AppFailure
+                    ? error.message
+                    : 'Could not open your projects.',
+                onRetry: () => ref.invalidate(projectSummariesProvider),
+              ),
+              _ => const Center(
+                child: SizedBox.square(
+                  dimension: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
                 ),
-              _ => const Center(child: SizedBox.square(dimension: 20, child: CircularProgressIndicator(strokeWidth: 2))),
+              ),
             },
           ),
         ],
@@ -75,7 +84,9 @@ class _Header extends ConsumerWidget {
     final user = ref.watch(authStateProvider).value;
     final view = this.view;
     final full = view?.isFull ?? false;
-    final justDuplicated = ref.watch(libraryUiProvider.select((ui) => ui.highlightedId != null));
+    final justDuplicated = ref.watch(
+      libraryUiProvider.select((ui) => ui.highlightedId != null),
+    );
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 6, 20, 20),
@@ -86,7 +97,8 @@ class _Header extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                if (view != null) EcEyebrow(view.reelLabel(countOnTrial: justDuplicated)),
+                if (view != null)
+                  EcEyebrow(view.reelLabel(countOnTrial: justDuplicated)),
                 const SizedBox(height: 8),
                 Text('Projects', style: t.displayXL),
               ],
@@ -95,7 +107,9 @@ class _Header extends ConsumerWidget {
           if (user != null)
             EcAvatar(
               initials: user.initials,
-              onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const SettingsScreen())),
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(builder: (_) => const SettingsScreen()),
+              ),
             ),
           // No "+ New" on the empty library: the template list below is the
           // way in.
@@ -103,9 +117,15 @@ class _Header extends ConsumerWidget {
             const SizedBox(width: 8),
             EcButton(
               label: 'New',
-              variant: full ? EcButtonVariant.secondary : EcButtonVariant.primary,
+              variant: full
+                  ? EcButtonVariant.secondary
+                  : EcButtonVariant.primary,
               size: EcButtonSize.medium,
-              leading: Icon(Icons.add_rounded, size: 18, color: full ? p.ink2 : p.onInk),
+              leading: Icon(
+                Icons.add_rounded,
+                size: 18,
+                color: full ? p.ink2 : p.onInk,
+              ),
               onPressed: () => _startNew(context, view),
             ),
           ],
@@ -119,7 +139,10 @@ class _Header extends ConsumerWidget {
       handleSlotsFull(context);
       return;
     }
-    NewProjectSheet.show(context, slotLabel: 'Reel ${view.nextReel.toString().padLeft(2, '0')}');
+    NewProjectSheet.show(
+      context,
+      slotLabel: 'Reel ${view.nextReel.toString().padLeft(2, '0')}',
+    );
   }
 }
 
@@ -138,9 +161,18 @@ class _EmptyLibrary extends ConsumerWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Pick a starting point.', style: t.displayS.copyWith(fontStyle: FontStyle.italic, height: 1.1)),
+              Text(
+                'Pick a starting point.',
+                style: t.displayS.copyWith(
+                  fontStyle: FontStyle.italic,
+                  height: 1.1,
+                ),
+              ),
               const SizedBox(height: 6),
-              Text('Change anything later. Every project stays here until you delete it.', style: t.bodyS.copyWith(color: context.palette.muted)),
+              Text(
+                'Change anything later. Every project stays here until you delete it.',
+                style: t.bodyS.copyWith(color: context.palette.muted),
+              ),
             ],
           ),
         ),
@@ -167,9 +199,8 @@ class _ProjectList extends ConsumerWidget {
       ...view.items.where((i) => i.summary.id != ui.highlightedId),
     ];
     final readOnly = ref.watch(readOnlyProjectIdsProvider);
-    final showTrialOffer = !view.entitlement.isPro &&
-        view.isFull &&
-        !ui.freeingSlot;
+    final showTrialOffer =
+        !view.entitlement.isPro && view.isFull && !ui.freeingSlot;
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 22),
@@ -184,29 +215,56 @@ class _ProjectList extends ConsumerWidget {
               EcButton.secondary(
                 label: 'Done',
                 size: EcButtonSize.small,
-                onPressed: () => ref.read(libraryUiProvider.notifier).setFreeingSlot(false),
+                onPressed: () =>
+                    ref.read(libraryUiProvider.notifier).setFreeingSlot(false),
               ),
             ],
           ),
           const SizedBox(height: 14),
         ],
-        for (final (i, item) in items.indexed) ...[
-          ProjectCard(
-            item: item,
-            now: now,
-            frameHeight: i == 0 ? 150 : 120,
-            highlighted: item.summary.id == ui.highlightedId,
-            onOpen: () => actions.open(item),
-            onMore: () => actions.more(item),
-            onRename: () => actions.rename(item),
-            onDelete: ui.freeingSlot ? () => actions.delete(item) : null,
-            renderProgress: ref.watch(renderProgressProvider(item.summary.id)),
-            readOnly: readOnly.contains(item.summary.id),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final wide = MediaQuery.sizeOf(context).width >= 600;
+            final columns = wide
+                ? ((constraints.maxWidth + 16) / 336).floor().clamp(1, 4)
+                : 1;
+            final width = (constraints.maxWidth - 16 * (columns - 1)) / columns;
+            return Wrap(
+              spacing: 16,
+              runSpacing: 16,
+              children: [
+                for (final (i, item) in items.indexed)
+                  SizedBox(
+                    width: width,
+                    child: ProjectCard(
+                      item: item,
+                      now: now,
+                      frameHeight: wide || i == 0 ? 150 : 120,
+                      highlighted: item.summary.id == ui.highlightedId,
+                      onOpen: () => actions.open(item),
+                      onMore: () => actions.more(item),
+                      onRename: () => actions.rename(item),
+                      onDelete: ui.freeingSlot
+                          ? () => actions.delete(item)
+                          : null,
+                      renderProgress: ref.watch(
+                        renderProgressProvider(item.summary.id),
+                      ),
+                      readOnly: readOnly.contains(item.summary.id),
+                    ),
+                  ),
+              ],
+            );
+          },
+        ),
+        const SizedBox(height: 14),
+        if (view.entitlement.trialEndsAt case final endsAt?
+            when view.trialDaysLeft != null) ...[
+          TrialReminderRow(
+            daysLeft: view.trialDaysLeft!,
+            endsAt: endsAt,
+            limit: Entitlement.freeProjectLimit,
           ),
-          const SizedBox(height: 14),
-        ],
-        if (view.entitlement.trialEndsAt case final endsAt? when view.trialDaysLeft != null) ...[
-          TrialReminderRow(daysLeft: view.trialDaysLeft!, endsAt: endsAt, limit: Entitlement.freeProjectLimit),
           const SizedBox(height: 14),
         ],
         // On a full free plan the plan card takes the ad's place (1.1a).
@@ -237,7 +295,11 @@ class _LibraryActions {
   }
 
   Future<void> more(LibraryItem item) async {
-    final action = await ProjectActionsSheet.show(context, item.summary, slotsLeft: view.slotsLeft);
+    final action = await ProjectActionsSheet.show(
+      context,
+      item.summary,
+      slotsLeft: view.slotsLeft,
+    );
     if (!context.mounted) return;
     switch (action) {
       case ProjectAction.open:
@@ -285,7 +347,9 @@ class _LibraryActions {
     final title = await RenameSheet.show(context, item.summary.title);
     if (title == null || !context.mounted) return;
     final result = await _library.rename(item.summary.id, title);
-    if (result case Err(:final failure) when context.mounted) showEcToast(context, failure.message);
+    if (result case Err(:final failure) when context.mounted) {
+      showEcToast(context, failure.message);
+    }
   }
 
   Future<void> delete(LibraryItem item) async {
@@ -297,7 +361,12 @@ class _LibraryActions {
     switch (result) {
       case Ok(value: final deleted?):
         ref.read(libraryUiProvider.notifier).setFreeingSlot(false);
-        showEcToast(context, 'Deleted “${deleted.title}”', actionLabel: 'Undo', onAction: () => library.restore(deleted));
+        showEcToast(
+          context,
+          'Deleted “${deleted.title}”',
+          actionLabel: 'Undo',
+          onAction: () => library.restore(deleted),
+        );
       case Ok():
         ref.read(libraryUiProvider.notifier).setFreeingSlot(false);
         showEcToast(context, 'Deleted “${item.summary.title}”');
@@ -321,9 +390,17 @@ class _ErrorState extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(message, textAlign: TextAlign.center, style: context.type.body),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: context.type.body,
+            ),
             const SizedBox(height: 16),
-            EcButton.secondary(label: 'Try again', size: EcButtonSize.medium, onPressed: onRetry),
+            EcButton.secondary(
+              label: 'Try again',
+              size: EcButtonSize.medium,
+              onPressed: onRetry,
+            ),
           ],
         ),
       ),

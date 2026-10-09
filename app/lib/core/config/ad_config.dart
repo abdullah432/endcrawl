@@ -29,8 +29,9 @@ class AdUnits {
 
   /// The units for this build and platform, or null where there are none
   /// (a release build on a platform without real units yet shows no ads).
-  static AdUnits? get current =>
-      forBuild(platform: defaultTargetPlatform, releaseMode: kReleaseMode);
+  static AdUnits? get current => kIsWeb
+      ? null
+      : forBuild(platform: defaultTargetPlatform, releaseMode: kReleaseMode);
 
   @visibleForTesting
   static AdUnits? forBuild({

@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/config/orientations.dart';
@@ -20,7 +19,8 @@ import 'status_line.dart';
 /// mode, not a project setting: the chrome is frosted glass on black and
 /// fades two seconds after the last touch; a tap brings it back.
 class LandscapeMonitor extends ConsumerStatefulWidget {
-  const LandscapeMonitor({super.key});
+  final VoidCallback? onExit;
+  const LandscapeMonitor({super.key, this.onExit});
 
   @override
   ConsumerState<LandscapeMonitor> createState() => _LandscapeMonitorState();
@@ -56,7 +56,11 @@ class _LandscapeMonitorState extends ConsumerState<LandscapeMonitor> {
   /// while the phone is still sideways.
   void _exit() {
     ref.read(playbackControllerProvider.notifier).pause();
-    SystemChrome.setPreferredOrientations(kPortraitOnly);
+    if (widget.onExit != null) {
+      widget.onExit!();
+    } else {
+      EcOrientationPolicy.exitPhoneReview();
+    }
   }
 
   @override
@@ -64,7 +68,9 @@ class _LandscapeMonitorState extends ConsumerState<LandscapeMonitor> {
     final p = context.palette;
     final t = context.type;
     final project = ref.watch(projectControllerProvider);
-    final playing = ref.watch(playbackControllerProvider.select((s) => s.playing));
+    final playing = ref.watch(
+      playbackControllerProvider.select((s) => s.playing),
+    );
     final frame = ref.watch(playbackControllerProvider.select((s) => s.frame));
     final playback = ref.read(playbackControllerProvider.notifier);
 
@@ -90,12 +96,23 @@ class _LandscapeMonitorState extends ConsumerState<LandscapeMonitor> {
                         children: [
                           Flexible(
                             child: _Frost(
-                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-                              child: StatusLine(project: project, onBlack: true),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 14,
+                                vertical: 7,
+                              ),
+                              child: StatusLine(
+                                project: project,
+                                onBlack: true,
+                              ),
                             ),
                           ),
                           const SizedBox(width: 16),
-                          Text(caps('Rotate back to edit'), style: t.eyebrow.copyWith(color: Colors.white.withValues(alpha: .7))),
+                          Text(
+                            caps('Rotate back to edit'),
+                            style: t.eyebrow.copyWith(
+                              color: Colors.white.withValues(alpha: .7),
+                            ),
+                          ),
                         ],
                       ),
                       const Spacer(),
@@ -114,10 +131,19 @@ class _LandscapeMonitorState extends ConsumerState<LandscapeMonitor> {
                                   child: Ink(
                                     width: 40,
                                     height: 40,
-                                    decoration: BoxDecoration(shape: BoxShape.circle, gradient: p.primary),
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      gradient: p.primary,
+                                    ),
                                     child: InkWell(
                                       onTap: playback.togglePlay,
-                                      child: Icon(playing ? Icons.pause_rounded : Icons.play_arrow_rounded, color: p.onInk, size: 20),
+                                      child: Icon(
+                                        playing
+                                            ? Icons.pause_rounded
+                                            : Icons.play_arrow_rounded,
+                                        color: p.onInk,
+                                        size: 20,
+                                      ),
                                     ),
                                   ),
                                 ),
@@ -125,8 +151,13 @@ class _LandscapeMonitorState extends ConsumerState<LandscapeMonitor> {
                               const SizedBox(width: 16),
                               SizedBox(
                                 width: 104,
-                                child: Text(formatTimecode(frame, project.engine.fps),
-                                    style: t.mono.copyWith(fontSize: 13, color: Colors.white)),
+                                child: Text(
+                                  formatTimecode(frame, project.engine.fps),
+                                  style: t.mono.copyWith(
+                                    fontSize: 13,
+                                    color: Colors.white,
+                                  ),
+                                ),
                               ),
                               const Expanded(child: ScrubTrack(onBlack: true)),
                               const SizedBox(width: 16),
@@ -134,11 +165,18 @@ class _LandscapeMonitorState extends ConsumerState<LandscapeMonitor> {
                                 onPressed: _exit,
                                 style: TextButton.styleFrom(
                                   foregroundColor: Colors.white,
-                                  backgroundColor: Colors.white.withValues(alpha: .16),
+                                  backgroundColor: Colors.white.withValues(
+                                    alpha: .16,
+                                  ),
                                   minimumSize: const Size(0, 36),
-                                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                  ),
                                   shape: const StadiumBorder(),
-                                  textStyle: t.bodyS.copyWith(fontSize: 12, fontWeight: FontWeight.w600),
+                                  textStyle: t.bodyS.copyWith(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                  ),
                                 ),
                                 child: const Text('Exit'),
                               ),

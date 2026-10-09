@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
+import '../models/export_artifact.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path/path.dart' show basename;
 
@@ -37,16 +39,23 @@ class ExportSheet extends ConsumerWidget {
 
   static Future<void> show(BuildContext context) async {
     final container = ProviderScope.containerOf(context, listen: false);
-    await showEcSheet<void>(context, builder: (_) => const ExportSheet());
+    await showEcSheet<void>(
+      context,
+      panel: true,
+      builder: (_) => const ExportSheet(),
+    );
     // A delivered file is done with; a failure stays, to be resumed.
-    if (container.read(exportControllerProvider).run?.phase == ExportPhase.done) {
+    if (container.read(exportControllerProvider).run?.phase ==
+        ExportPhase.done) {
       container.read(exportControllerProvider.notifier).dismiss();
     }
   }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final projectId = ref.watch(projectControllerProvider.select((s) => s.project.id));
+    final projectId = ref.watch(
+      projectControllerProvider.select((s) => s.project.id),
+    );
     final run = ref.watch(exportControllerProvider.select((s) => s.run));
     final mine = run != null && run.projectId == projectId;
 
@@ -54,7 +63,9 @@ class ExportSheet extends ConsumerWidget {
       ExportPhase.running => _Rendering(run: run!),
       ExportPhase.failed => _Failed(run: run!),
       ExportPhase.done => _Ready(run: run!),
-      null => _Settings(busyWith: run?.phase == ExportPhase.running ? run!.projectTitle : null),
+      null => _Settings(
+        busyWith: run?.phase == ExportPhase.running ? run!.projectTitle : null,
+      ),
     };
   }
 }
@@ -74,17 +85,51 @@ class _Settings extends ConsumerWidget {
     final export = ref.watch(exportControllerProvider);
     final controller = ref.read(exportControllerProvider.notifier);
     final e = project.engine;
-    final device = ref.watch(encoderCapabilitiesProvider).value;
+    final capabilities = ref.watch(encoderCapabilitiesProvider);
+    if (!capabilities.hasValue) {
+      return EcSheet(
+        title: 'Export',
+        child: capabilities.hasError
+            ? const Text(
+                'Could not check export support. Close this panel and try again.',
+              )
+            : const Center(child: CircularProgressIndicator()),
+      );
+    }
+    final device = capabilities.value;
+    if (device == null || device.codecs.isEmpty) {
+      return const EcSheet(
+        title: 'Export',
+        child: Text('This device has no supported export formats.'),
+      );
+    }
+
     final codec = export.codecFor(project.settings, device);
     final resolutions = export.resolutionsFor(codec, device, fps: e.fps);
     final isPro = ref.watch(entitlementProvider).value?.isPro ?? false;
-    final resolution = export.resolutionFor(project.formatW, project.formatH, codec, device, isPro: isPro, fps: e.fps);
-    final access = export.accessFor(project.project.id, codec, resolution, isPro: isPro);
+    final resolution = export.resolutionFor(
+      project.formatW,
+      project.formatH,
+      codec,
+      device,
+      isPro: isPro,
+      fps: e.fps,
+    );
+    final access = export.accessFor(
+      project.project.id,
+      codec,
+      resolution,
+      isPro: isPro,
+    );
     final (w, h) = resolution.sizeFor(project.formatW, project.formatH);
     final seconds = e.totalFrames / e.fps;
     final transparent = project.settings.background == MonitorBackground.alpha;
-    final prefer60 = e.judderRisk && e.fps < 60 && (device?.supports60Fps(codec, resolution.edge) ?? false);
-    final unsupportedRate = e.fps > 30 && device != null && !device.supports60Fps(codec, resolution.edge);
+    final prefer60 =
+        e.judderRisk &&
+        e.fps < 60 &&
+        device.supports60Fps(codec, resolution.edge);
+    final unsupportedRate =
+        e.fps > 30 && !device.supports60Fps(codec, resolution.edge);
 
     final facts = [
       ('Format', '${project.formatW} × ${project.formatH}'),
@@ -110,35 +155,68 @@ class _Settings extends ConsumerWidget {
               padding: const EdgeInsets.symmetric(horizontal: 4),
               child: Row(
                 children: [
-                  Expanded(child: Text('Estimated render', style: t.bodyS.copyWith(fontSize: 12, color: p.muted))),
-                  Text(formatAbout(estimateRenderSeconds(w, h, seconds)), style: t.mono.copyWith(fontSize: 12, color: p.ink)),
+                  Expanded(
+                    child: Text(
+                      'Estimated render',
+                      style: t.bodyS.copyWith(fontSize: 12, color: p.muted),
+                    ),
+                  ),
+                  Text(
+                    formatAbout(estimateRenderSeconds(w, h, seconds)),
+                    style: t.mono.copyWith(fontSize: 12, color: p.ink),
+                  ),
                 ],
               ),
             ),
             const SizedBox(height: 10),
             if (busyWith != null) ...[
-              Text('Rendering “$busyWith” — one render at a time.', textAlign: TextAlign.center, style: t.caption),
+              Text(
+                'Rendering “$busyWith” — one render at a time.',
+                textAlign: TextAlign.center,
+                style: t.caption,
+              ),
               const SizedBox(height: 8),
             ],
             if (access == ExportAccess.locked) ...[
               EcButton(
                 label: '▶  Watch ad · render once',
-                onPressed: busyWith != null ? null : () => _unlockWithAd(context, ref, _proLabel(codec, resolution)),
+                onPressed: busyWith != null
+                    ? null
+                    : () => _unlockWithAd(
+                        context,
+                        ref,
+                        _proLabel(codec, resolution),
+                      ),
               ),
               const SizedBox(height: 8),
-              EcButton.secondary(label: 'Go Pro · every render, no ads', onPressed: () => ProSheet.show(context)),
+              EcButton.secondary(
+                label: 'Go Pro · every render, no ads',
+                onPressed: () => ProSheet.show(context),
+              ),
             ] else ...[
               if (prefer60) ...[
-                Text('60 fps keeps the same runtime and scroll speed.', textAlign: TextAlign.center, style: t.caption),
+                Text(
+                  '60 fps keeps the same runtime and scroll speed.',
+                  textAlign: TextAlign.center,
+                  style: t.caption,
+                ),
                 const SizedBox(height: 8),
                 EcButton(
                   label: 'Render ${codec.label} · 60 fps',
                   onPressed: busyWith != null ? null : controller.startAt60Fps,
                 ),
                 const SizedBox(height: 8),
-                EcButton.secondary(label: 'Render current ${formatFps(e.fps)}', onPressed: busyWith != null ? null : controller.start),
+                EcButton.secondary(
+                  label: 'Render current ${formatFps(e.fps)}',
+                  onPressed: busyWith != null ? null : controller.start,
+                ),
               ] else
-                EcButton(label: 'Render ${codec.label}', onPressed: busyWith != null || unsupportedRate ? null : controller.start),
+                EcButton(
+                  label: 'Render ${codec.label}',
+                  onPressed: busyWith != null || unsupportedRate
+                      ? null
+                      : controller.start,
+                ),
             ],
           ],
         ),
@@ -158,12 +236,17 @@ class _Settings extends ConsumerWidget {
               children: [
                 Row(
                   children: [
-                    Expanded(child: Text(caps('Locked for this render'), style: t.section)),
+                    Expanded(
+                      child: Text(
+                        caps('Locked for this render'),
+                        style: t.section,
+                      ),
+                    ),
                     EcButton.text(
                       label: 'Edit',
                       size: EcButtonSize.small,
                       onPressed: () {
-                        Navigator.of(context).pop();
+                        closeEcSheet(context);
                         TimingSheet.show(context);
                       },
                     ),
@@ -179,9 +262,19 @@ class _Settings extends ConsumerWidget {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(label, style: t.caption.copyWith(fontSize: 10.5)),
+                            Text(
+                              label,
+                              style: t.caption.copyWith(fontSize: 10.5),
+                            ),
                             const SizedBox(height: 2),
-                            Text(value, style: t.mono.copyWith(fontSize: 13, color: p.ink, fontWeight: FontWeight.w500)),
+                            Text(
+                              value,
+                              style: t.mono.copyWith(
+                                fontSize: 13,
+                                color: p.ink,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
                           ],
                         ),
                       ),
@@ -196,48 +289,65 @@ class _Settings extends ConsumerWidget {
               tone: EcTone.warn,
               title: 'This device cannot export this frame rate',
               body: 'Use 30 fps and a slower scroll for smoother motion.',
-              actions: [EcButton.secondary(label: 'Use 30 fps · same runtime', onPressed: () => ref.read(projectControllerProvider.notifier).setFps(30))],
+              actions: [
+                EcButton.secondary(
+                  label: 'Use 30 fps · same runtime',
+                  onPressed: () =>
+                      ref.read(projectControllerProvider.notifier).setFps(30),
+                ),
+              ],
             ),
             const SizedBox(height: 10),
           ],
-          EcGroup(children: [
-            EcGroupRow.toggle(
-              title: 'Motion blur',
-              subtitle: 'A film-style 180° shutter. Softens moving text; it does not remove judder.',
-              value: project.settings.motionSmoothing,
-              onChanged: ref.read(projectControllerProvider.notifier).setMotionSmoothing,
-            ),
-          ]),
+          EcGroup(
+            children: [
+              EcGroupRow.toggle(
+                title: 'Motion blur',
+                subtitle:
+                    'A film-style 180° shutter. Softens moving text; it does not remove judder.',
+                value: project.settings.motionSmoothing,
+                onChanged: ref
+                    .read(projectControllerProvider.notifier)
+                    .setMotionSmoothing,
+              ),
+            ],
+          ),
           if (e.judderRisk || !e.readable) ...[
             const SizedBox(height: 10),
             EcNotice(
               tone: EcTone.warn,
-              title: e.judderRisk ? 'Fast motion may strobe' : 'Names pass too quickly',
-              body: 'Text moves ${formatPpf(e.ppf)} px per frame at ${formatFps(e.fps)}. '
+              title: e.judderRisk
+                  ? 'Fast motion may strobe'
+                  : 'Names pass too quickly',
+              body:
+                  'Text moves ${formatPpf(e.ppf)} px per frame at ${formatFps(e.fps)}. '
                   'A whole-pixel speed does not guarantee smooth playback. '
                   'Try a slower roll or a higher frame rate.',
               actions: [
-                if (e.judderRisk && e.fps < 60 && (device?.supports60Fps(codec, resolution.edge) ?? false))
+                if (e.judderRisk &&
+                    e.fps < 60 &&
+                    device.supports60Fps(codec, resolution.edge))
                   EcButton.secondary(
                     label: 'Use 60 fps · same runtime',
                     size: EcButtonSize.small,
-                    onPressed: () => ref.read(projectControllerProvider.notifier).setFps(60),
+                    onPressed: () =>
+                        ref.read(projectControllerProvider.notifier).setFps(60),
                   ),
                 if (timingFixes(e, count: 1) case [(final ppf, final frames)])
                   EcButton.secondary(
                     label: 'Use ${formatClock(frames / e.fps)} · $ppf px/f',
                     size: EcButtonSize.small,
-                    onPressed: () => ref.read(projectControllerProvider.notifier).applySnap(ppf),
+                    onPressed: () => ref
+                        .read(projectControllerProvider.notifier)
+                        .applySnap(ppf),
                   ),
               ],
             ),
           ],
           const SizedBox(height: 14),
           const EcSectionLabel('Codec'),
-          EcGroup(children: [
-            if (device == null)
-              const EcGroupRow(title: 'Checking what this device can encode…', chevron: false)
-            else
+          EcGroup(
+            children: [
               for (final c in device.codecs)
                 _CodecRow(
                   codec: c,
@@ -248,13 +358,15 @@ class _Settings extends ConsumerWidget {
                   size: '≈ ${formatBytes(estimateBytes(c, w, h, seconds))}',
                   onTap: () => controller.setCodec(c),
                 ),
-          ]),
+            ],
+          ),
           if (transparent && !codec.alpha) ...[
             const SizedBox(height: 10),
             EcNotice(
               tone: EcTone.warn,
               title: '${codec.label} has no alpha',
-              body: 'The transparent background will render as black. ProRes 4444 or PNG keep it.',
+              body:
+                  'The transparent background will render as black. ProRes 4444 or PNG keep it.',
             ),
           ],
           const SizedBox(height: 14),
@@ -271,7 +383,11 @@ class _Settings extends ConsumerWidget {
           ),
           if ((w, h) != (project.formatW, project.formatH)) ...[
             const SizedBox(height: 8),
-            Text('$w × $h', textAlign: TextAlign.center, style: t.mono.copyWith(fontSize: 11)),
+            Text(
+              '$w × $h',
+              textAlign: TextAlign.center,
+              style: t.mono.copyWith(fontSize: 11),
+            ),
           ],
         ],
       ),
@@ -280,13 +396,15 @@ class _Settings extends ConsumerWidget {
 }
 
 /// What a Pro pick unlocks, as the ad and the card name it.
-String _proLabel(Codec codec, ExportResolution resolution) => switch ((codec.isPro, resolution.isPro)) {
+String _proLabel(Codec codec, ExportResolution resolution) =>
+    switch ((codec.isPro, resolution.isPro)) {
       (true, true) => '${codec.label} in ${resolution.label}',
       (true, false) => codec.label,
       _ => resolution.label,
     };
 
-String _proTitle(Codec codec, ExportResolution resolution) => switch ((codec.isPro, resolution.isPro)) {
+String _proTitle(Codec codec, ExportResolution resolution) =>
+    switch ((codec.isPro, resolution.isPro)) {
       (true, true) => '${codec.label} and ${resolution.label} are Pro',
       (true, false) => '${codec.label} is a Pro codec',
       _ => '${resolution.label} is a Pro resolution',
@@ -294,7 +412,11 @@ String _proTitle(Codec codec, ExportResolution resolution) => switch ((codec.isP
 
 /// Watches one rewarded ad (6.1a) and, if it's watched through, renders
 /// with the chosen Pro settings. Closing it early unlocks nothing.
-Future<void> _unlockWithAd(BuildContext context, WidgetRef ref, String unlocking) async {
+Future<void> _unlockWithAd(
+  BuildContext context,
+  WidgetRef ref,
+  String unlocking,
+) async {
   final controller = ref.read(exportControllerProvider.notifier);
   final outcome = await RewardedAdScreen.show(context, unlocking: unlocking);
   if (!context.mounted) return;
@@ -305,7 +427,10 @@ Future<void> _unlockWithAd(BuildContext context, WidgetRef ref, String unlocking
     case RewardOutcome.closedEarly:
       showEcToast(context, 'Ad closed early — nothing unlocked');
     case RewardOutcome.unavailable:
-      showEcToast(context, 'No ad available right now — try again in a moment, or go Pro');
+      showEcToast(
+        context,
+        'No ad available right now — try again in a moment, or go Pro',
+      );
   }
 }
 
@@ -332,7 +457,10 @@ class _ProPickCard extends StatelessWidget {
           Container(
             width: 30,
             height: 30,
-            decoration: BoxDecoration(gradient: p.primary, shape: BoxShape.circle),
+            decoration: BoxDecoration(
+              gradient: p.primary,
+              shape: BoxShape.circle,
+            ),
             child: Icon(Icons.play_arrow_rounded, size: 16, color: p.onInk),
           ),
           const SizedBox(width: 12),
@@ -344,7 +472,11 @@ class _ProPickCard extends StatelessWidget {
                 const SizedBox(height: 3),
                 Text(
                   'Watch a 30-second ad to use it for this render. Each ad unlocks one render.',
-                  style: t.bodyS.copyWith(fontSize: 12, color: p.ink2, height: 1.45),
+                  style: t.bodyS.copyWith(
+                    fontSize: 12,
+                    color: p.ink2,
+                    height: 1.45,
+                  ),
                 ),
               ],
             ),
@@ -391,9 +523,13 @@ class _CodecRow extends StatelessWidget {
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   gradient: selected ? p.primary : null,
-                  border: selected ? null : Border.all(color: p.line2, width: 1.5),
+                  border: selected
+                      ? null
+                      : Border.all(color: p.line2, width: 1.5),
                 ),
-                child: selected ? Icon(Icons.check_rounded, size: 14, color: p.onInk) : null,
+                child: selected
+                    ? Icon(Icons.check_rounded, size: 14, color: p.onInk)
+                    : null,
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -402,9 +538,20 @@ class _CodecRow extends StatelessWidget {
                   children: [
                     Row(
                       children: [
-                        Flexible(child: Text(codec.label, style: t.titleS.copyWith(fontSize: 13.5))),
-                        if (showPro && codec.isPro) ...[const SizedBox(width: 6), const EcGradientPill('Pro')],
-                        if (codec.alpha) ...[const SizedBox(width: 6), const EcStatusPill('Alpha', tone: EcTone.accent)],
+                        Flexible(
+                          child: Text(
+                            codec.label,
+                            style: t.titleS.copyWith(fontSize: 13.5),
+                          ),
+                        ),
+                        if (showPro && codec.isPro) ...[
+                          const SizedBox(width: 6),
+                          const EcGradientPill('Pro'),
+                        ],
+                        if (codec.alpha) ...[
+                          const SizedBox(width: 6),
+                          const EcStatusPill('Alpha', tone: EcTone.accent),
+                        ],
                       ],
                     ),
                     const SizedBox(height: 2),
@@ -465,12 +612,14 @@ class _Rendering extends ConsumerWidget {
         padding: const EdgeInsets.fromLTRB(20, 16, 20, 14),
         child: Row(
           children: [
-            Expanded(child: EcHeadline('Rendering', emphasis: '…', style: t.displayM)),
+            Expanded(
+              child: EcHeadline('Rendering', emphasis: '…', style: t.displayM),
+            ),
             EcCircleButton.tint(
               icon: Icons.close_rounded,
               size: 34,
               tooltip: 'Close',
-              onPressed: () => Navigator.of(context).maybePop(),
+              onPressed: () => closeEcSheet(context),
             ),
           ],
         ),
@@ -483,7 +632,7 @@ class _Rendering extends ConsumerWidget {
           children: [
             EcButton.secondary(
               label: 'Keep working · renders in background',
-              onPressed: () => Navigator.of(context).maybePop(),
+              onPressed: () => closeEcSheet(context),
             ),
             const SizedBox(height: 4),
             EcButton.text(label: 'Cancel render', onPressed: controller.cancel),
@@ -510,13 +659,19 @@ class _Rendering extends ConsumerWidget {
                       height: 50,
                       alignment: Alignment.center,
                       padding: const EdgeInsets.symmetric(horizontal: 6),
-                      decoration: BoxDecoration(color: p.monitor, borderRadius: BorderRadius.circular(8)),
+                      decoration: BoxDecoration(
+                        color: p.monitor,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
                       child: Text(
                         run.projectTitle.toUpperCase(),
                         maxLines: 2,
                         textAlign: TextAlign.center,
                         overflow: TextOverflow.ellipsis,
-                        style: t.pill.copyWith(fontSize: 7, color: Colors.white.withValues(alpha: .85)),
+                        style: t.pill.copyWith(
+                          fontSize: 7,
+                          color: Colors.white.withValues(alpha: .85),
+                        ),
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -524,20 +679,31 @@ class _Rendering extends ConsumerWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('${run.codec.label} · ${run.width} × ${run.height}', style: t.titleS.copyWith(fontSize: 13.5)),
+                          Text(
+                            '${run.codec.label} · ${run.width} × ${run.height}',
+                            style: t.titleS.copyWith(fontSize: 13.5),
+                          ),
                           const SizedBox(height: 3),
-                          Text('frame ${run.frame} / ${run.totalFrames}', style: t.mono.copyWith(fontSize: 10.5)),
+                          Text(
+                            'frame ${run.frame} / ${run.totalFrames}',
+                            style: t.mono.copyWith(fontSize: 10.5),
+                          ),
                         ],
                       ),
                     ),
-                    Text('$pct%', style: t.displayM.copyWith(fontSize: 34, color: p.accent)),
+                    Text(
+                      '$pct%',
+                      style: t.displayM.copyWith(fontSize: 34, color: p.accent),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 12),
                 RenderProgressBar(run.progress),
                 const SizedBox(height: 12),
                 Text(
-                  run.frame == 0 ? 'Preparing…' : '${formatAbout(run.secondsLeft)} left',
+                  run.frame == 0
+                      ? 'Preparing…'
+                      : '${formatAbout(run.secondsLeft)} left',
                   style: t.mono.copyWith(fontSize: 10.5),
                 ),
               ],
@@ -568,14 +734,18 @@ class _Failed extends ConsumerWidget {
     final controller = ref.read(exportControllerProvider.notifier);
     final pct = (run.progress * 100).floor();
     final noSpace = run.failure == EncoderFailureKind.outOfSpace;
-    final canLower = run.width > ExportResolution.hd.edge || run.height > ExportResolution.hd.edge;
+    final canLower =
+        run.width > ExportResolution.hd.edge ||
+        run.height > ExportResolution.hd.edge;
 
     final (headline, emphasis, body) = noSpace
         ? (
             'Not enough ',
             'free space.',
-            'The file needs about ${formatBytes(run.neededBytes ?? run.bytes)}. '
-                '${canLower ? 'Free up space or drop to 1920' : 'Free up space'}, then try again.',
+            kIsWeb
+                ? '${run.failureMessage ?? 'Browser storage is full.'} Try a lower resolution or free some space.'
+                : 'The file needs about ${formatBytes(run.neededBytes ?? run.bytes)}. '
+                      '${canLower ? 'Free up space or drop to 1920' : 'Free up space'}, then try again.',
           )
         : (
             'The render ',
@@ -595,15 +765,28 @@ class _Failed extends ConsumerWidget {
           children: [
             Row(
               children: [
-                Expanded(child: EcButton(label: 'Try again', onPressed: controller.retry)),
+                Expanded(
+                  child: EcButton(
+                    label: 'Try again',
+                    onPressed: controller.retry,
+                  ),
+                ),
                 if (canLower) ...[
                   const SizedBox(width: 8),
-                  Expanded(child: EcButton.secondary(label: 'Lower resolution', onPressed: controller.retryAtLowerResolution)),
+                  Expanded(
+                    child: EcButton.secondary(
+                      label: 'Lower resolution',
+                      onPressed: controller.retryAtLowerResolution,
+                    ),
+                  ),
                 ],
               ],
             ),
             const SizedBox(height: 4),
-            EcButton.text(label: 'Back to settings', onPressed: controller.dismiss),
+            EcButton.text(
+              label: 'Back to settings',
+              onPressed: controller.dismiss,
+            ),
           ],
         ),
       ),
@@ -614,15 +797,28 @@ class _Failed extends ConsumerWidget {
             width: 52,
             height: 52,
             alignment: Alignment.center,
-            decoration: BoxDecoration(color: p.warnWash, shape: BoxShape.circle),
+            decoration: BoxDecoration(
+              color: p.warnWash,
+              shape: BoxShape.circle,
+            ),
             child: Icon(Icons.priority_high_rounded, color: p.warn, size: 26),
           ),
           const SizedBox(height: 16),
-          Text(caps('Stopped at $pct%'), style: t.eyebrow.copyWith(color: p.warn)),
+          Text(
+            caps('Stopped at $pct%'),
+            style: t.eyebrow.copyWith(color: p.warn),
+          ),
           const SizedBox(height: 8),
-          EcHeadline(headline, emphasis: emphasis, style: t.displayM.copyWith(fontSize: 32)),
+          EcHeadline(
+            headline,
+            emphasis: emphasis,
+            style: t.displayM.copyWith(fontSize: 32),
+          ),
           const SizedBox(height: 10),
-          Text(body, style: t.body.copyWith(fontSize: 13, color: p.ink2, height: 1.5)),
+          Text(
+            body,
+            style: t.body.copyWith(fontSize: 13, color: p.ink2, height: 1.5),
+          ),
         ],
       ),
     );
@@ -640,6 +836,14 @@ class _Ready extends ConsumerWidget {
     final t = context.type;
     final destinations = ref.read(exportDestinationsProvider);
     final path = run.outputPath!;
+    final artifact =
+        run.artifact ??
+        ExportArtifact(
+          location: path,
+          filename: basename(path),
+          mimeType: 'video/mp4',
+          bytes: run.fileBytes ?? 0,
+        );
     final facts = [
       run.codec.label,
       '${run.width} × ${run.height}',
@@ -676,39 +880,77 @@ class _Ready extends ConsumerWidget {
               decoration: BoxDecoration(
                 color: p.ok,
                 shape: BoxShape.circle,
-                boxShadow: [BoxShadow(color: p.ok.withValues(alpha: .7), offset: const Offset(0, 12), blurRadius: 28, spreadRadius: -10)],
+                boxShadow: [
+                  BoxShadow(
+                    color: p.ok.withValues(alpha: .7),
+                    offset: const Offset(0, 12),
+                    blurRadius: 28,
+                    spreadRadius: -10,
+                  ),
+                ],
               ),
               child: Icon(Icons.check_rounded, color: p.onInk, size: 28),
             ),
           ),
           const SizedBox(height: 16),
-          EcHeadline('Ready', emphasis: '.', style: t.displayM.copyWith(fontSize: 34), textAlign: TextAlign.center),
+          EcHeadline(
+            'Ready',
+            emphasis: '.',
+            style: t.displayM.copyWith(fontSize: 34),
+            textAlign: TextAlign.center,
+          ),
           const SizedBox(height: 8),
-          Text(facts, textAlign: TextAlign.center, style: t.mono.copyWith(fontSize: 11)),
+          Text(
+            facts,
+            textAlign: TextAlign.center,
+            style: t.mono.copyWith(fontSize: 11),
+          ),
           const SizedBox(height: 20),
-          EcGroup(children: [
-            EcGroupRow(
-              title: 'Save to Files',
-              subtitle: basename(path),
-              onTap: () => deliver(destinations.share(path, origin: origin())),
-            ),
-            // Photos holds video; an image sequence goes to Files.
-            if (run.codec != Codec.png)
+          EcGroup(
+            children: [
               EcGroupRow(
-                title: 'Save to Photos',
-                onTap: () => deliver(destinations.saveToPhotos(path), done: 'Saved to Photos'),
+                title: kIsWeb ? 'Download' : 'Save to Files',
+                subtitle: basename(path),
+                onTap: () => deliver(
+                  kIsWeb
+                      ? destinations.download(artifact)
+                      : destinations.share(artifact, origin: origin()),
+                ),
               ),
-            EcGroupRow(
-              title: 'Send to Frame.io',
-              chevron: false,
-              trailing: const EcStatusPill('Soon'),
-              onTap: () => showEcToast(context, 'Frame.io is coming soon — share the file for now'),
-            ),
-            EcGroupRow(title: 'Share sheet', onTap: () => deliver(destinations.share(path, origin: origin()))),
-          ]),
+              // Photos holds video; an image sequence goes to Files.
+              if (!kIsWeb && run.codec != Codec.png)
+                EcGroupRow(
+                  title: 'Save to Photos',
+                  onTap: () => deliver(
+                    destinations.saveToPhotos(artifact),
+                    done: 'Saved to Photos',
+                  ),
+                ),
+              if (!kIsWeb)
+                EcGroupRow(
+                  title: 'Send to Frame.io',
+                  chevron: false,
+                  trailing: const EcStatusPill('Soon'),
+                  onTap: () => showEcToast(
+                    context,
+                    'Frame.io is coming soon — share the file for now',
+                  ),
+                ),
+              if (destinations.canShare(artifact))
+                EcGroupRow(
+                  title: 'Share sheet',
+                  onTap: () =>
+                      deliver(destinations.share(artifact, origin: origin())),
+                ),
+            ],
+          ),
           // The file has saved by the time this shows; the ad sits below
           // every destination and never stands between the user and them.
-          const SponsoredSlot(AdPlacement.exportComplete, hideLabel: 'Remove ads', gap: 20),
+          const SponsoredSlot(
+            AdPlacement.exportComplete,
+            hideLabel: 'Remove ads',
+            gap: 20,
+          ),
         ],
       ),
     );

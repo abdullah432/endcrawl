@@ -1,4 +1,5 @@
 import 'dart:math';
+import 'export_artifact.dart';
 
 /// The codecs on 6.1, the ones this device can make. H.264 and HEVC are
 /// free; the masters (ProRes, PNG) are Pro — or one render per rewarded ad.
@@ -6,7 +7,13 @@ enum Codec {
   h264('H.264', 'Universal review copy', 12, 'mp4'),
   hevc('HEVC', 'Smaller file, same picture', 9, 'mp4'),
   prores422('ProRes 422 HQ', 'Edit-friendly master', 154, 'mov'),
-  prores4444('ProRes 4444', 'Master with transparency', 220, 'mov', alpha: true),
+  prores4444(
+    'ProRes 4444',
+    'Master with transparency',
+    220,
+    'mov',
+    alpha: true,
+  ),
   png('PNG sequence', 'One image per frame', 139, 'zip', alpha: true);
 
   final String label;
@@ -19,7 +26,13 @@ enum Codec {
   final String extension;
   final bool alpha;
 
-  const Codec(this.label, this.description, this.mbpsAtHd, this.extension, {this.alpha = false});
+  const Codec(
+    this.label,
+    this.description,
+    this.mbpsAtHd,
+    this.extension, {
+    this.alpha = false,
+  });
 
   /// Needs Pro, or a render unlocked by a rewarded ad (6.1a).
   bool get isPro => this == prores422 || this == prores4444 || this == png;
@@ -46,29 +59,40 @@ enum ExportResolution {
   bool get isPro => this == uhd;
 
   /// The option nearest a canvas's own long edge, among [options].
-  static ExportResolution nearest(int canvasW, int canvasH, [Iterable<ExportResolution> options = values]) {
+  static ExportResolution nearest(
+    int canvasW,
+    int canvasH, [
+    Iterable<ExportResolution> options = values,
+  ]) {
     final long = max(canvasW, canvasH);
-    return options.reduce((a, b) => (a.edge - long).abs() <= (b.edge - long).abs() ? a : b);
+    return options.reduce(
+      (a, b) => (a.edge - long).abs() <= (b.edge - long).abs() ? a : b,
+    );
   }
 
   /// Output pixels for a canvas, kept even as encoders require.
   (int, int) sizeFor(int canvasW, int canvasH) {
     int even(double v) => max(2, (v / 2).round() * 2);
-    return canvasW >= canvasH ? (edge, even(canvasH * edge / canvasW)) : (even(canvasW * edge / canvasH), edge);
+    return canvasW >= canvasH
+        ? (edge, even(canvasH * edge / canvasW))
+        : (even(canvasW * edge / canvasH), edge);
   }
 }
 
 double _pixelRatio(int w, int h) => (w * h) / (1920 * 1080);
 
 /// The bit rate an encode targets, in bits per second.
-int bitsPerSecond(Codec codec, int w, int h) => (codec.mbpsAtHd * _pixelRatio(w, h) * 1e6).round();
+int bitsPerSecond(Codec codec, int w, int h) =>
+    (codec.mbpsAtHd * _pixelRatio(w, h) * 1e6).round();
 
 /// Estimated file size in bytes.
-double estimateBytes(Codec codec, int w, int h, double seconds) => bitsPerSecond(codec, w, h) * seconds / 8;
+double estimateBytes(Codec codec, int w, int h, double seconds) =>
+    bitsPerSecond(codec, w, h) * seconds / 8;
 
 /// Estimated wall-clock render time, in seconds — a first guess until the
 /// render measures its own pace.
-double estimateRenderSeconds(int w, int h, double seconds) => seconds * _pixelRatio(w, h) * 1.1;
+double estimateRenderSeconds(int w, int h, double seconds) =>
+    seconds * _pixelRatio(w, h) * 1.1;
 
 /// The frame rate as a fraction: whole rates over 1, NTSC rates (23.976,
 /// 29.97, 59.94) exactly over 1001.
@@ -113,10 +137,16 @@ class ProRenderPass {
   final Codec codec;
   final ExportResolution resolution;
 
-  const ProRenderPass({required this.projectId, required this.codec, required this.resolution});
+  const ProRenderPass({
+    required this.projectId,
+    required this.codec,
+    required this.resolution,
+  });
 
   bool covers(String projectId, Codec codec, ExportResolution resolution) =>
-      projectId == this.projectId && codec == this.codec && resolution.edge <= this.resolution.edge;
+      projectId == this.projectId &&
+      codec == this.codec &&
+      resolution.edge <= this.resolution.edge;
 }
 
 /// Whether a render with the chosen settings can start.
@@ -166,6 +196,7 @@ class ExportRun {
 
   /// The finished file and its real size (6.4).
   final String? outputPath;
+  final ExportArtifact? artifact;
   final int? fileBytes;
 
   /// Rendered on a pass from a rewarded ad, spent when this succeeds.
@@ -186,17 +217,21 @@ class ExportRun {
     this.failureMessage,
     this.neededBytes,
     this.outputPath,
+    this.artifact,
     this.fileBytes,
     this.onPass = false,
   });
 
-  double get progress => totalFrames == 0 ? 0 : (frame / totalFrames).clamp(0.0, 1.0);
+  double get progress =>
+      totalFrames == 0 ? 0 : (frame / totalFrames).clamp(0.0, 1.0);
   double get seconds => totalFrames / fps;
 
   /// The estimate before the file exists.
   double get bytes => estimateBytes(codec, width, height, seconds);
 
-  double get secondsLeft => measuredSecondsLeft ?? estimateRenderSeconds(width, height, seconds) * (1 - progress);
+  double get secondsLeft =>
+      measuredSecondsLeft ??
+      estimateRenderSeconds(width, height, seconds) * (1 - progress);
 
   ExportRun copyWith({
     int? frame,
@@ -207,24 +242,25 @@ class ExportRun {
     String? failureMessage,
     double? neededBytes,
     String? outputPath,
+    ExportArtifact? artifact,
     int? fileBytes,
-  }) =>
-      ExportRun(
-        projectId: projectId,
-        projectTitle: projectTitle,
-        codec: codec,
-        width: width,
-        height: height,
-        fps: fps,
-        totalFrames: totalFrames ?? this.totalFrames,
-        frame: frame ?? this.frame,
-        phase: phase ?? this.phase,
-        measuredSecondsLeft: measuredSecondsLeft ?? this.measuredSecondsLeft,
-        failure: failure ?? this.failure,
-        failureMessage: failureMessage ?? this.failureMessage,
-        neededBytes: neededBytes ?? this.neededBytes,
-        outputPath: outputPath ?? this.outputPath,
-        fileBytes: fileBytes ?? this.fileBytes,
-        onPass: onPass,
-      );
+  }) => ExportRun(
+    projectId: projectId,
+    projectTitle: projectTitle,
+    codec: codec,
+    width: width,
+    height: height,
+    fps: fps,
+    totalFrames: totalFrames ?? this.totalFrames,
+    frame: frame ?? this.frame,
+    phase: phase ?? this.phase,
+    measuredSecondsLeft: measuredSecondsLeft ?? this.measuredSecondsLeft,
+    failure: failure ?? this.failure,
+    failureMessage: failureMessage ?? this.failureMessage,
+    neededBytes: neededBytes ?? this.neededBytes,
+    outputPath: outputPath ?? this.outputPath,
+    artifact: artifact ?? this.artifact,
+    fileBytes: fileBytes ?? this.fileBytes,
+    onPass: onPass,
+  );
 }

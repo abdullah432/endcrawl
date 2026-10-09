@@ -1,4 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_functions/cloud_functions.dart';
+import 'package:flutter/foundation.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -10,6 +12,7 @@ import 'core/config/billing_config.dart';
 import 'data/repositories/revenuecat_entitlement_repository.dart';
 import 'data/repositories/auth_repository.dart';
 import 'data/repositories/entitlement_repository.dart';
+import 'data/repositories/web_entitlement_repository.dart';
 import 'data/repositories/firebase_auth_repository.dart';
 import 'data/repositories/firestore_project_repository.dart';
 import 'data/repositories/project_repository.dart';
@@ -30,7 +33,9 @@ import 'firebase_options.dart';
 
 /// Platform services, seeded at startup so nothing has to resolve them async.
 final firebaseAuthProvider = Provider<FirebaseAuth>((ref) {
-  throw StateError('firebaseAuthProvider was not overridden — see bootstrap().');
+  throw StateError(
+    'firebaseAuthProvider was not overridden — see bootstrap().',
+  );
 });
 
 final firestoreProvider = Provider<FirebaseFirestore>((ref) {
@@ -38,14 +43,18 @@ final firestoreProvider = Provider<FirebaseFirestore>((ref) {
 });
 
 final sessionStoreProvider = Provider<SessionStore>((ref) {
-  throw StateError('sessionStoreProvider was not overridden — see bootstrap().');
+  throw StateError(
+    'sessionStoreProvider was not overridden — see bootstrap().',
+  );
 });
 
 /// "Now", injectable so cooldowns and relative times are testable.
 final clockProvider = Provider<DateTime Function()>((ref) => DateTime.now);
 
 /// Leaving the app — Mail, links, the App Store. Overridden in tests.
-final externalLinksProvider = Provider<ExternalLinks>((ref) => const UrlLauncherLinks());
+final externalLinksProvider = Provider<ExternalLinks>(
+  (ref) => const UrlLauncherLinks(),
+);
 
 final authRepositoryProvider = Provider<AuthRepository>((ref) {
   return FirebaseAuthRepository(auth: ref.watch(firebaseAuthProvider));
@@ -76,9 +85,13 @@ final projectRepositoryProvider = Provider<ProjectRepository>((ref) {
 
 /// The profile store for a given account. A family so a flow that has just
 /// created an account can write to it before the auth stream has caught up.
-final userProfileRepositoryForProvider = Provider.family<UserProfileRepository, String>((ref, uid) {
-  return FirestoreUserProfileRepository(ref.watch(firestoreProvider), uid: uid);
-});
+final userProfileRepositoryForProvider =
+    Provider.family<UserProfileRepository, String>((ref, uid) {
+      return FirestoreUserProfileRepository(
+        ref.watch(firestoreProvider),
+        uid: uid,
+      );
+    });
 
 /// The signed-in account's profile store.
 final userProfileRepositoryProvider = Provider<UserProfileRepository>((ref) {
@@ -92,16 +105,22 @@ final userProfileProvider = StreamProvider<UserProfile>((ref) {
 });
 
 /// Google Analytics. Overridden in tests.
-final analyticsProvider = Provider<AppAnalytics>((ref) => const FirebaseAppAnalytics());
+final analyticsProvider = Provider<AppAnalytics>(
+  (ref) => const FirebaseAppAnalytics(),
+);
 
 /// Applies the account's "Usage analytics" choice to Google Analytics
 /// whenever it changes. Watched from the app root; signed out, the profile
 /// is the default one, so collection stays on.
 final analyticsPreferenceSyncProvider = Provider<void>((ref) {
   ref.listen(
-    userProfileProvider.select((profile) => profile.value?.preferences.usageAnalytics),
+    userProfileProvider.select(
+      (profile) => profile.value?.preferences.usageAnalytics,
+    ),
     (_, enabled) {
-      if (enabled != null) ref.read(analyticsProvider).setCollectionEnabled(enabled);
+      if (enabled != null) {
+        ref.read(analyticsProvider).setCollectionEnabled(enabled);
+      }
     },
     fireImmediately: true,
   );
@@ -109,9 +128,26 @@ final analyticsPreferenceSyncProvider = Provider<void>((ref) {
 
 /// One SDK owner for the lifetime of the app, with immediate account isolation.
 final entitlementRepositoryProvider = Provider<EntitlementRepository>((ref) {
+  if (kIsWeb) {
+    final uid = ref.watch(currentUidProvider);
+    if (uid == null) return const FreeEntitlementRepository();
+    final repository = WebEntitlementRepository(
+      uid: uid,
+      firestore: ref.watch(firestoreProvider),
+      functions: FirebaseFunctions.instance,
+    );
+    ref.onDispose(repository.dispose);
+    return repository;
+  }
   if (BillingConfig.apiKey.isEmpty) return const FreeEntitlementRepository();
-  final repository = RevenueCatEntitlementRepository(apiKey: BillingConfig.apiKey);
-  ref.listen(currentUidProvider, (_, uid) => repository.setUser(uid), fireImmediately: true);
+  final repository = RevenueCatEntitlementRepository(
+    apiKey: BillingConfig.apiKey,
+  );
+  ref.listen(
+    currentUidProvider,
+    (_, uid) => repository.setUser(uid),
+    fireImmediately: true,
+  );
   ref.onDispose(repository.dispose);
   return repository;
 });

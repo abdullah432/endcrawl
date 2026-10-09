@@ -32,7 +32,9 @@ class VerifyEmailScreen extends ConsumerStatefulWidget {
 class _VerifyEmailScreenState extends ConsumerState<VerifyEmailScreen> {
   static const _pollEvery = Duration(seconds: 8);
 
-  late final AppLifecycleListener _lifecycle = AppLifecycleListener(onResume: _check);
+  late final AppLifecycleListener _lifecycle = AppLifecycleListener(
+    onResume: _check,
+  );
   Timer? _poll;
 
   @override
@@ -42,7 +44,8 @@ class _VerifyEmailScreenState extends ConsumerState<VerifyEmailScreen> {
     _poll = Timer.periodic(_pollEvery, (_) => _check());
   }
 
-  void _check() => ref.read(authControllerProvider.notifier).checkVerification();
+  void _check() =>
+      ref.read(authControllerProvider.notifier).checkVerification();
 
   @override
   void dispose() {
@@ -60,6 +63,7 @@ class _VerifyEmailScreenState extends ConsumerState<VerifyEmailScreen> {
     final cooling = controller.verificationCooldownLeft() > Duration.zero;
 
     return EcScaffold(
+      maxContentWidth: 480,
       padding: const EdgeInsets.fromLTRB(24, 40, 24, 30),
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -73,20 +77,32 @@ class _VerifyEmailScreenState extends ConsumerState<VerifyEmailScreen> {
                 shape: BoxShape.circle,
                 border: Border.all(color: p.accentLine),
               ),
-              child: Icon(Icons.mail_outline_rounded, size: 34, color: p.accent),
+              child: Icon(
+                Icons.mail_outline_rounded,
+                size: 34,
+                color: p.accent,
+              ),
             ),
           ),
           const SizedBox(height: 22),
           Center(child: EcEyebrow('One last step', color: p.accent)),
           const SizedBox(height: 14),
-          EcHeadline('Check your', emphasis: 'inbox.', textAlign: TextAlign.center, style: t.displayL.copyWith(fontSize: 44)),
+          EcHeadline(
+            'Check your',
+            emphasis: 'inbox.',
+            textAlign: TextAlign.center,
+            style: t.displayL.copyWith(fontSize: 44),
+          ),
           const SizedBox(height: 14),
           Text.rich(
             TextSpan(
               style: t.body,
               children: [
                 const TextSpan(text: 'We sent a verification link to '),
-                TextSpan(text: widget.user.email ?? 'your email', style: TextStyle(fontWeight: FontWeight.w600, color: p.ink)),
+                TextSpan(
+                  text: widget.user.email ?? 'your email',
+                  style: TextStyle(fontWeight: FontWeight.w600, color: p.ink),
+                ),
                 const TextSpan(text: '. Tap it to finish setting up.'),
               ],
             ),
@@ -95,12 +111,21 @@ class _VerifyEmailScreenState extends ConsumerState<VerifyEmailScreen> {
           const Spacer(),
           const SizedBox(height: 24),
           AuthErrorBanner(form.formError),
-          EcButton(label: 'Open Mail', onPressed: () => ref.read(externalLinksProvider).openMailApp()),
+          EcButton(
+            label: 'Open Mail',
+            onPressed: () => ref.read(externalLinksProvider).openMailApp(),
+          ),
           const SizedBox(height: 10),
           if (cooling)
             SizedBox(
               height: 54,
-              child: Center(child: ResendCountdown(remaining: controller.verificationCooldownLeft, onResend: null, label: 'Resend link')),
+              child: Center(
+                child: ResendCountdown(
+                  remaining: controller.verificationCooldownLeft,
+                  onResend: null,
+                  label: 'Resend link',
+                ),
+              ),
             )
           else
             EcButton.secondary(

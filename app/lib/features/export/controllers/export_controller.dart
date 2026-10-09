@@ -1,10 +1,9 @@
 import 'dart:async';
-import 'dart:io';
 
 import 'package:flutter/widgets.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path/path.dart' as p;
-import 'package:path_provider/path_provider.dart';
 
 import '../../../bootstrap.dart';
 import '../../../core/result.dart';
@@ -13,8 +12,10 @@ import '../../../domain/models/render_summary.dart';
 import '../../ads/ads_providers.dart';
 import '../../library/controllers/library_controller.dart';
 import '../../project/controllers/project_controller.dart';
+import '../../plan/controllers/web_access.dart';
 import '../data/export_destinations.dart';
-import '../data/native_video_encoder.dart';
+import '../data/platform_video_encoder.dart';
+import '../data/output_sink.dart';
 import '../data/png_sequence_encoder.dart';
 import '../data/video_encoder.dart';
 import '../models/export_models.dart';
@@ -22,7 +23,10 @@ import '../render/frame_renderer.dart';
 import '../render/frame_source.dart';
 
 final videoEncoderProvider = Provider<VideoEncoder>(
-  (ref) => const RoutingVideoEncoder(video: NativeVideoEncoder(), images: PngSequenceEncoder()),
+  (ref) => const RoutingVideoEncoder(
+    video: NativeVideoEncoder(),
+    images: PngSequenceEncoder(),
+  ),
 );
 
 /// What this device can encode — 6.1 offers only these.
@@ -30,19 +34,19 @@ final encoderCapabilitiesProvider = FutureProvider<EncoderCapabilities>(
   (ref) => ref.watch(videoEncoderProvider).capabilities(),
 );
 
-final frameSourceFactoryProvider = Provider<FrameSourceFactory>((ref) => FrameRenderer.open);
+final frameSourceFactoryProvider = Provider<FrameSourceFactory>(
+  (ref) => FrameRenderer.open,
+);
 
-final exportDestinationsProvider = Provider<ExportDestinations>((ref) => const PlatformExportDestinations());
+final exportDestinationsProvider = Provider<ExportDestinations>(
+  (ref) => const PlatformExportDestinations(),
+);
 
 /// Where renders are written: the cache, which the OS may clear, since a
 /// render is handed on to Photos, Files or another app straight away.
-final exportDirectoryProvider = Provider<Future<String> Function()>((ref) {
-  return () async {
-    final dir = Directory(p.join((await getTemporaryDirectory()).path, 'renders'));
-    await dir.create(recursive: true);
-    return dir.path;
-  };
-});
+final exportDirectoryProvider = Provider<Future<String> Function()>(
+  (ref) => exportOutputDirectory,
+);
 
 class ExportState {
   /// The codec picked on 6.1; until one is, the background decides —
@@ -66,41 +70,74 @@ class ExportState {
         if (available.contains(c)) return c;
       }
     }
-    return available.contains(Codec.h264) ? Codec.h264 : available.first;
+    return available.contains(Codec.h264)
+        ? Codec.h264
+        : available.firstOrNull ?? Codec.h264;
   }
 
   /// The sizes [codec] can be made at on this device.
-  List<ExportResolution> resolutionsFor(Codec codec, EncoderCapabilities? caps, {double fps = 30}) {
-    final options = caps?.resolutionsFor(codec, fps: fps).toList() ?? ExportResolution.values;
+  List<ExportResolution> resolutionsFor(
+    Codec codec,
+    EncoderCapabilities? caps, {
+    double fps = 30,
+  }) {
+    final options =
+        caps?.resolutionsFor(codec, fps: fps).toList() ??
+        ExportResolution.values;
     return options.isEmpty ? const [ExportResolution.small] : options;
   }
 
   /// The size picked, or the one nearest the canvas — among the free sizes
   /// on the free plan, so a 4K canvas doesn't open on a Pro option.
-  ExportResolution resolutionFor(int canvasW, int canvasH, Codec codec, EncoderCapabilities? caps, {bool isPro = true, double fps = 30}) {
+  ExportResolution resolutionFor(
+    int canvasW,
+    int canvasH,
+    Codec codec,
+    EncoderCapabilities? caps, {
+    bool isPro = true,
+    double fps = 30,
+  }) {
     final options = resolutionsFor(codec, caps, fps: fps);
     if (resolution case final r? when options.contains(r)) return r;
     final free = options.where((r) => !r.isPro);
-    return ExportResolution.nearest(canvasW, canvasH, isPro || free.isEmpty ? options : free);
+    return ExportResolution.nearest(
+      canvasW,
+      canvasH,
+      isPro || free.isEmpty ? options : free,
+    );
   }
 
   /// Whether these settings can render now (6.1).
-  ExportAccess accessFor(String projectId, Codec codec, ExportResolution resolution, {required bool isPro}) {
-    if (isPro || (!codec.isPro && !resolution.isPro)) return ExportAccess.included;
-    return pass?.covers(projectId, codec, resolution) ?? false ? ExportAccess.unlocked : ExportAccess.locked;
+  ExportAccess accessFor(
+    String projectId,
+    Codec codec,
+    ExportResolution resolution, {
+    required bool isPro,
+  }) {
+    if (isPro || (!codec.isPro && !resolution.isPro)) {
+      return ExportAccess.included;
+    }
+    return pass?.covers(projectId, codec, resolution) ?? false
+        ? ExportAccess.unlocked
+        : ExportAccess.locked;
   }
 
   bool get rendering => run?.phase == ExportPhase.running;
 
-  ExportState copyWith({Codec? codec, ExportResolution? resolution, ProRenderPass? pass, bool clearPass = false}) =>
-      ExportState(
-        codec: codec ?? this.codec,
-        resolution: resolution ?? this.resolution,
-        run: run,
-        pass: clearPass ? null : pass ?? this.pass,
-      );
+  ExportState copyWith({
+    Codec? codec,
+    ExportResolution? resolution,
+    ProRenderPass? pass,
+    bool clearPass = false,
+  }) => ExportState(
+    codec: codec ?? this.codec,
+    resolution: resolution ?? this.resolution,
+    run: run,
+    pass: clearPass ? null : pass ?? this.pass,
+  );
 
-  ExportState withRun(ExportRun? run) => ExportState(codec: codec, resolution: resolution, run: run, pass: pass);
+  ExportState withRun(ExportRun? run) =>
+      ExportState(codec: codec, resolution: resolution, run: run, pass: pass);
 }
 
 /// Renders the open project (6.1–6.4) for real: each frame is drawn
@@ -112,19 +149,35 @@ class ExportState {
 /// writes its outcome to the project so the library's pill is true.
 class ExportController extends Notifier<ExportState> {
   _Job? _job;
+  String? _completedOutput;
   AppLifecycleListener? _lifecycle;
 
   @override
   ExportState build() {
+    ref.listen(currentUidProvider, (previous, next) {
+      if (previous != next) {
+        cancel();
+        dismiss();
+        state = const ExportState();
+      }
+    });
+    ref.listen(webAccessAllowedProvider, (_, allowed) {
+      if (!allowed) cancel();
+    });
     ref.onDispose(() {
       _job?.cancel();
       _lifecycle?.dispose();
+      final location = _completedOutput;
+      if (location != null) {
+        unawaited(releaseExportOutput(location).catchError((_) {}));
+      }
     });
     return const ExportState();
   }
 
   void setCodec(Codec c) => state = state.copyWith(codec: c);
-  void setResolution(ExportResolution r) => state = state.copyWith(resolution: r);
+  void setResolution(ExportResolution r) =>
+      state = state.copyWith(resolution: r);
 
   bool get _isPro => ref.read(entitlementProvider).value?.isPro ?? false;
 
@@ -134,8 +187,19 @@ class ExportController extends Notifier<ExportState> {
     final project = ref.read(projectControllerProvider);
     final caps = ref.read(encoderCapabilitiesProvider).value;
     final codec = state.codecFor(project.settings, caps);
-    final resolution = state.resolutionFor(project.formatW, project.formatH, codec, caps, isPro: _isPro, fps: project.engine.fps);
-    return (codec, resolution, state.accessFor(project.project.id, codec, resolution, isPro: _isPro));
+    final resolution = state.resolutionFor(
+      project.formatW,
+      project.formatH,
+      codec,
+      caps,
+      isPro: _isPro,
+      fps: project.engine.fps,
+    );
+    return (
+      codec,
+      resolution,
+      state.accessFor(project.project.id, codec, resolution, isPro: _isPro),
+    );
   }
 
   /// Grants one Pro render with the current settings — the reward for
@@ -143,28 +207,48 @@ class ExportController extends Notifier<ExportState> {
   void grantPass() {
     final project = ref.read(projectControllerProvider);
     final (codec, resolution, _) = selection();
-    state = state.copyWith(pass: ProRenderPass(projectId: project.project.id, codec: codec, resolution: resolution));
+    state = state.copyWith(
+      pass: ProRenderPass(
+        projectId: project.project.id,
+        codec: codec,
+        resolution: resolution,
+      ),
+    );
   }
 
   /// Starts rendering the open project with the chosen settings. Refuses
   /// Pro settings on the free plan without a pass — the gate is here, not
   /// just a hidden button.
   bool startAt60Fps() {
-    if (state.rendering) return false;
+    if (!ref.read(webAccessAllowedProvider) || state.rendering) return false;
     final (codec, resolution, access) = selection();
     final caps = ref.read(encoderCapabilitiesProvider).value;
-    if (access == ExportAccess.locked || !(caps?.supports60Fps(codec, resolution.edge) ?? false)) return false;
+    if (access == ExportAccess.locked ||
+        !(caps?.supports60Fps(codec, resolution.edge) ?? false)) {
+      return false;
+    }
     ref.read(projectControllerProvider.notifier).setFps(60);
     return start();
   }
 
   bool start() {
+    if (!ref.read(webAccessAllowedProvider)) return false;
     if (state.rendering) return false;
     final (codec, resolution, access) = selection();
     if (access == ExportAccess.locked) return false;
     final project = ref.read(projectControllerProvider);
     final caps = ref.read(encoderCapabilitiesProvider).value;
-    if (project.engine.fps > 30 && caps != null && !caps.supports60Fps(codec, resolution.edge)) return false;
+    if (project.engine.fps > 30 &&
+        caps != null &&
+        !caps.supports60Fps(codec, resolution.edge)) {
+      return false;
+    }
+    if (caps == null || !caps.supports(codec)) return false;
+    final previous = state.run?.outputPath;
+    _completedOutput = null;
+    if (previous != null) {
+      unawaited(releaseExportOutput(previous).catchError((_) {}));
+    }
     final (w, h) = resolution.sizeFor(project.formatW, project.formatH);
     final run = ExportRun(
       projectId: project.project.id,
@@ -194,7 +278,12 @@ class ExportController extends Notifier<ExportState> {
   /// still covered by the pass.
   void retryAtLowerResolution() {
     if (state.run?.phase != ExportPhase.failed) return;
-    setResolution(ExportResolution.hd);
+    final run = state.run!;
+    setResolution(
+      kIsWeb && run.width <= 1920 && run.height <= 1920
+          ? ExportResolution.small
+          : ExportResolution.hd,
+    );
     start();
   }
 
@@ -210,6 +299,11 @@ class ExportController extends Notifier<ExportState> {
   /// Clears a finished or failed render, back to 6.1.
   void dismiss() {
     if (state.rendering) return;
+    final artifact = _completedOutput;
+    _completedOutput = null;
+    if (artifact != null) {
+      unawaited(releaseExportOutput(artifact).catchError((_) {}));
+    }
     state = state.withRun(null);
   }
 
@@ -237,14 +331,18 @@ class ExportController extends Notifier<ExportState> {
       final dir = await ref.read(exportDirectoryProvider)();
       final path = p.join(dir, exportFileName(run.projectTitle, run.codec));
 
-      session = await ref.read(videoEncoderProvider).start(EncodeSpec(
-        codec: run.codec,
-        width: run.width,
-        height: run.height,
-        fps: run.fps,
-        bitsPerSecond: bitsPerSecond(run.codec, run.width, run.height),
-        outputPath: path,
-      ));
+      session = await ref
+          .read(videoEncoderProvider)
+          .start(
+            EncodeSpec(
+              codec: run.codec,
+              width: run.width,
+              height: run.height,
+              fps: run.fps,
+              bitsPerSecond: bitsPerSecond(run.codec, run.width, run.height),
+              outputPath: path,
+            ),
+          );
 
       final pace = Stopwatch()..start();
       var shown = Duration.zero;
@@ -255,7 +353,7 @@ class ExportController extends Notifier<ExportState> {
           pace.start();
         }
         if (job.cancelled) {
-          await session.cancel();
+          await _discard(session);
           return;
         }
 
@@ -269,7 +367,7 @@ class ExportController extends Notifier<ExportState> {
             pace.start();
           }
           if (job.cancelled) {
-            await session.cancel();
+            await _discard(session);
             return;
           }
           await session.append(image, i);
@@ -278,42 +376,83 @@ class ExportController extends Notifier<ExportState> {
         }
 
         written = i + 1;
-        if (pace.elapsed - shown >= const Duration(milliseconds: 100) || written == source.frameCount) {
+        if (pace.elapsed - shown >= const Duration(milliseconds: 100) ||
+            written == source.frameCount) {
           shown = pace.elapsed;
           // The pace settles after a few frames; until then keep the estimate.
-          final left = written < 8 ? null : pace.elapsed.inMicroseconds / written * (source.frameCount - written) / 1e6;
-          _update(job, run = run.copyWith(frame: written, measuredSecondsLeft: left));
+          final left = written < 8
+              ? null
+              : pace.elapsed.inMicroseconds /
+                    written *
+                    (source.frameCount - written) /
+                    1e6;
+          _update(
+            job,
+            run = run.copyWith(frame: written, measuredSecondsLeft: left),
+          );
         }
       }
       if (job.cancelled) {
-        await session.cancel();
+        await _discard(session);
         return;
       }
 
       final out = await session.finish();
       session = null;
-      _finish(job, run.copyWith(phase: ExportPhase.done, frame: run.totalFrames, outputPath: out.path, fileBytes: out.bytes));
+      if (job.cancelled) {
+        await releaseExportOutput(out.path);
+        return;
+      }
+      _completedOutput = out.path;
+      _finish(
+        job,
+        run.copyWith(
+          phase: ExportPhase.done,
+          frame: run.totalFrames,
+          outputPath: out.path,
+          fileBytes: out.bytes,
+          artifact: out.artifact,
+        ),
+      );
     } on EncoderException catch (e) {
-      await session?.cancel();
-      _finish(job, run.copyWith(
-        phase: ExportPhase.failed,
-        frame: written,
-        failure: e.kind,
-        failureMessage: e.message,
-        neededBytes: e.kind == EncoderFailureKind.outOfSpace ? run.bytes : null,
-      ));
+      await _discard(session);
+      _finish(
+        job,
+        run.copyWith(
+          phase: ExportPhase.failed,
+          frame: written,
+          failure: e.kind,
+          failureMessage: e.message,
+          neededBytes: e.kind == EncoderFailureKind.outOfSpace
+              ? run.bytes
+              : null,
+        ),
+      );
     } catch (e, s) {
-      await session?.cancel();
-      FlutterError.reportError(FlutterErrorDetails(exception: e, stack: s, library: 'export'));
-      _finish(job, run.copyWith(
-        phase: ExportPhase.failed,
-        frame: written,
-        failure: EncoderFailureKind.failed,
-        failureMessage: 'The render stopped unexpectedly.',
-      ));
+      await _discard(session);
+      FlutterError.reportError(
+        FlutterErrorDetails(exception: e, stack: s, library: 'export'),
+      );
+      _finish(
+        job,
+        run.copyWith(
+          phase: ExportPhase.failed,
+          frame: written,
+          failure: EncoderFailureKind.failed,
+          failureMessage: 'The render stopped unexpectedly.',
+        ),
+      );
     } finally {
       source?.dispose();
       if (identical(_job, job) && !state.rendering) _stopWatchingLifecycle();
+    }
+  }
+
+  Future<void> _discard(EncodeSession? session) async {
+    try {
+      await session?.cancel();
+    } catch (_) {
+      /* Preserve the original failure. */
     }
   }
 
@@ -325,7 +464,11 @@ class ExportController extends Notifier<ExportState> {
     if (!identical(_job, job) || job.cancelled) return;
     _job = null;
     // A pass is spent by the render it unlocked succeeding, not by trying.
-    state = (run.onPass && run.phase == ExportPhase.done ? state.copyWith(clearPass: true) : state).withRun(run);
+    state =
+        (run.onPass && run.phase == ExportPhase.done
+                ? state.copyWith(clearPass: true)
+                : state)
+            .withRun(run);
     _stopWatchingLifecycle();
     unawaited(_record(run));
   }
@@ -354,7 +497,9 @@ class ExportController extends Notifier<ExportState> {
   /// straight to the store.
   Future<void> _record(ExportRun run) async {
     final summary = RenderSummary(
-      outcome: run.phase == ExportPhase.done ? RenderOutcome.rendered : RenderOutcome.failed,
+      outcome: run.phase == ExportPhase.done
+          ? RenderOutcome.rendered
+          : RenderOutcome.failed,
       codec: run.codec.label,
       width: run.width,
       height: run.height,
@@ -394,11 +539,19 @@ class _Job {
   }
 }
 
-final exportControllerProvider = NotifierProvider<ExportController, ExportState>(ExportController.new);
+final exportControllerProvider =
+    NotifierProvider<ExportController, ExportState>(ExportController.new);
 
 /// How far the render of [projectId] has got, while one is running — the
 /// library card's "Rendering 38%".
-final renderProgressProvider = Provider.family<double?, String>((ref, projectId) {
+final renderProgressProvider = Provider.family<double?, String>((
+  ref,
+  projectId,
+) {
   final run = ref.watch(exportControllerProvider.select((s) => s.run));
-  return run != null && run.projectId == projectId && run.phase == ExportPhase.running ? run.progress : null;
+  return run != null &&
+          run.projectId == projectId &&
+          run.phase == ExportPhase.running
+      ? run.progress
+      : null;
 });

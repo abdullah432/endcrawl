@@ -21,7 +21,11 @@ import '../../project/controllers/project_controller.dart';
 class TimingSheet extends ConsumerWidget {
   const TimingSheet({super.key});
 
-  static Future<void> show(BuildContext context) => showEcSheet<void>(context, builder: (_) => const TimingSheet());
+  static Future<void> show(BuildContext context) => showEcSheet<void>(
+    context,
+    panel: true,
+    builder: (_) => const TimingSheet(),
+  );
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -46,10 +50,17 @@ class TimingSheet extends ConsumerWidget {
     final input = byRuntime
         ? _InputCard(
             label: 'Runtime · the input',
-            value: Text.rich(TextSpan(children: [
-              TextSpan(text: timecode.substring(0, 8)),
-              TextSpan(text: timecode.substring(8), style: TextStyle(color: p.faint)),
-            ])),
+            value: Text.rich(
+              TextSpan(
+                children: [
+                  TextSpan(text: timecode.substring(0, 8)),
+                  TextSpan(
+                    text: timecode.substring(8),
+                    style: TextStyle(color: p.faint),
+                  ),
+                ],
+              ),
+            ),
             decrementLabel: 'Shorter by a second',
             incrementLabel: 'Longer by a second',
             onDec: () => edit(controller.durationDown),
@@ -62,8 +73,13 @@ class TimingSheet extends ConsumerWidget {
             value: Text('${formatPpf(e.ppf)} px/frame'),
             decrementLabel: 'Slower',
             incrementLabel: 'Faster',
-            onDec: e.ppf <= 1 ? null : () => edit(() => controller.setPpf((e.ppf - 1).roundToDouble())),
-            onInc: () => edit(() => controller.setPpf((e.ppf + 1).roundToDouble())),
+            onDec: e.ppf <= 1
+                ? null
+                : () => edit(
+                    () => controller.setPpf((e.ppf - 1).roundToDouble()),
+                  ),
+            onInc: () =>
+                edit(() => controller.setPpf((e.ppf + 1).roundToDouble())),
             derived: 'Derived runtime · ',
             derivedValue: timecode,
           );
@@ -77,7 +93,9 @@ class TimingSheet extends ConsumerWidget {
           EcSegmented(
             labels: const ['Lock runtime', 'Lock speed'],
             selectedIndex: byRuntime ? 0 : 1,
-            onChanged: (i) => edit(i == 0 ? controller.setModeDuration : controller.setModeSpeed),
+            onChanged: (i) => edit(
+              i == 0 ? controller.setModeDuration : controller.setModeSpeed,
+            ),
           ),
           const SizedBox(height: 14),
           input,
@@ -89,7 +107,9 @@ class TimingSheet extends ConsumerWidget {
                 child: _Verdict(
                   ok: !e.judderRisk,
                   title: e.judderRisk ? 'Judder risk' : 'Steady pace',
-                  detail: e.judderRisk ? 'Try slower motion or 60 fps' : 'Playback also depends on the display',
+                  detail: e.judderRisk
+                      ? 'Try slower motion or 60 fps'
+                      : 'Playback also depends on the display',
                 ),
               ),
               const SizedBox(width: 8),
@@ -97,26 +117,36 @@ class TimingSheet extends ConsumerWidget {
                 child: _Verdict(
                   ok: e.readable,
                   title: e.readable ? 'Readable' : 'Too fast',
-                  detail: '${e.dwellSeconds.toStringAsFixed(1)}s dwell · floor 3.0s',
+                  detail:
+                      '${e.dwellSeconds.toStringAsFixed(1)}s dwell · floor 3.0s',
                 ),
-            ),
-          ]),
-          const SizedBox(height: 14),
-          EcGroup(children: [
-            EcGroupRow.toggle(
-              title: 'Motion blur',
-              subtitle: 'A film-style 180° shutter. Softens moving text; holds stay sharp.',
-              value: settings.motionSmoothing,
-              onChanged: (v) => edit(() => controller.setMotionSmoothing(v)),
               ),
             ],
           ),
           const SizedBox(height: 14),
-          Text('Nearest whole-pixel runtimes', style: t.bodyS.copyWith(fontSize: 12, color: p.ink2)),
+          EcGroup(
+            children: [
+              EcGroupRow.toggle(
+                title: 'Motion blur',
+                subtitle:
+                    'A film-style 180° shutter. Softens moving text; holds stay sharp.',
+                value: settings.motionSmoothing,
+                onChanged: (v) => edit(() => controller.setMotionSmoothing(v)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Text(
+            'Nearest whole-pixel runtimes',
+            style: t.bodyS.copyWith(fontSize: 12, color: p.ink2),
+          ),
           const SizedBox(height: 8),
           Row(
             children: [
-              for (final (i, rate) in [neighbours.shorter, neighbours.longer].indexed) ...[
+              for (final (i, rate) in [
+                neighbours.shorter,
+                neighbours.longer,
+              ].indexed) ...[
                 if (i > 0) const SizedBox(width: 8),
                 Expanded(
                   child: rate == null
@@ -125,7 +155,8 @@ class TimingSheet extends ConsumerWidget {
                           ppf: rate.$1,
                           seconds: rate.$2 / e.fps,
                           currentSeconds: runtimeSeconds,
-                          onTap: () => edit(() => controller.applySnap(rate.$1)),
+                          onTap: () =>
+                              edit(() => controller.applySnap(rate.$1)),
                         ),
                 ),
               ],
@@ -138,7 +169,9 @@ class TimingSheet extends ConsumerWidget {
                 child: _EdgeCard(
                   label: 'Head black',
                   value: formatSecondsFrames(settings.headSeconds, e.fps),
-                  onDec: settings.headSeconds <= 0 ? null : () => edit(controller.headDown),
+                  onDec: settings.headSeconds <= 0
+                      ? null
+                      : () => edit(controller.headDown),
                   onInc: () => edit(controller.headUp),
                 ),
               ),
@@ -147,7 +180,9 @@ class TimingSheet extends ConsumerWidget {
                 child: _EdgeCard(
                   label: 'Tail black',
                   value: formatSecondsFrames(settings.tailSeconds, e.fps),
-                  onDec: settings.tailSeconds <= 0 ? null : () => edit(controller.tailDown),
+                  onDec: settings.tailSeconds <= 0
+                      ? null
+                      : () => edit(controller.tailDown),
                   onInc: () => edit(controller.tailUp),
                 ),
               ),
@@ -199,21 +234,49 @@ class _InputCard extends StatelessWidget {
           const SizedBox(height: 10),
           Row(
             children: [
-              Expanded(child: DefaultTextStyle(style: t.timecode, child: FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: value))),
+              Expanded(
+                child: DefaultTextStyle(
+                  style: t.timecode,
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: value,
+                  ),
+                ),
+              ),
               const SizedBox(width: 10),
-              EcCircleButton.tint(icon: Icons.remove_rounded, size: 44, tooltip: decrementLabel, onPressed: onDec),
+              EcCircleButton.tint(
+                icon: Icons.remove_rounded,
+                size: 44,
+                tooltip: decrementLabel,
+                onPressed: onDec,
+              ),
               const SizedBox(width: 6),
-              EcCircleButton.tint(icon: Icons.add_rounded, size: 44, tooltip: incrementLabel, onPressed: onInc),
+              EcCircleButton.tint(
+                icon: Icons.add_rounded,
+                size: 44,
+                tooltip: incrementLabel,
+                onPressed: onInc,
+              ),
             ],
           ),
           const SizedBox(height: 10),
           Divider(height: 1, color: p.line),
           const SizedBox(height: 10),
           Text.rich(
-            TextSpan(children: [
-              TextSpan(text: derived),
-              TextSpan(text: derivedValue, style: t.mono.copyWith(fontSize: 12, color: p.ink, fontWeight: FontWeight.w500)),
-            ]),
+            TextSpan(
+              children: [
+                TextSpan(text: derived),
+                TextSpan(
+                  text: derivedValue,
+                  style: t.mono.copyWith(
+                    fontSize: 12,
+                    color: p.ink,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
             style: t.bodyS.copyWith(fontSize: 12, color: p.muted),
           ),
         ],
@@ -235,15 +298,31 @@ class _Verdict extends StatelessWidget {
     final fg = ok ? p.ok : p.warn;
     return Container(
       padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(color: ok ? p.okWash : p.warnWash, borderRadius: BorderRadius.circular(EcRadius.row)),
+      decoration: BoxDecoration(
+        color: ok ? p.okWash : p.warnWash,
+        borderRadius: BorderRadius.circular(EcRadius.row),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Icon(ok ? Icons.check_rounded : Icons.priority_high_rounded, size: 14, color: fg),
+              Icon(
+                ok ? Icons.check_rounded : Icons.priority_high_rounded,
+                size: 14,
+                color: fg,
+              ),
               const SizedBox(width: 6),
-              Flexible(child: Text(title, style: t.bodyS.copyWith(fontSize: 13, fontWeight: FontWeight.w700, color: fg))),
+              Flexible(
+                child: Text(
+                  title,
+                  style: t.bodyS.copyWith(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: fg,
+                  ),
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 4),
@@ -260,31 +339,54 @@ class _NeighbourCard extends StatelessWidget {
   final double currentSeconds;
   final VoidCallback onTap;
 
-  const _NeighbourCard({required this.ppf, required this.seconds, required this.currentSeconds, required this.onTap});
+  const _NeighbourCard({
+    required this.ppf,
+    required this.seconds,
+    required this.currentSeconds,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
     final p = context.palette;
     final t = context.type;
     final delta = (seconds - currentSeconds).round();
-    final change = delta == 0 ? 'same length' : '${delta.abs()}s ${delta < 0 ? 'shorter' : 'longer'}';
+    final change = delta == 0
+        ? 'same length'
+        : '${delta.abs()}s ${delta < 0 ? 'shorter' : 'longer'}';
     final shape = BorderRadius.circular(EcRadius.row);
     return Material(
       type: MaterialType.transparency,
       borderRadius: shape,
       clipBehavior: Clip.antiAlias,
       child: Ink(
-        decoration: BoxDecoration(color: p.accentWash, borderRadius: shape, border: Border.all(color: p.accentLine)),
+        decoration: BoxDecoration(
+          color: p.accentWash,
+          borderRadius: shape,
+          border: Border.all(color: p.accentLine),
+        ),
         child: InkWell(
           onTap: onTap,
           child: Padding(
             padding: const EdgeInsets.all(12),
             child: Column(
               children: [
-                Text(formatRuntime(Duration(milliseconds: (seconds * 1000).round())),
-                    style: t.monoM.copyWith(fontSize: 15, color: p.accent, fontWeight: FontWeight.w500)),
+                Text(
+                  formatRuntime(
+                    Duration(milliseconds: (seconds * 1000).round()),
+                  ),
+                  style: t.monoM.copyWith(
+                    fontSize: 15,
+                    color: p.accent,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
                 const SizedBox(height: 3),
-                Text('$ppf px/f · $change', style: t.caption.copyWith(fontSize: 11), textAlign: TextAlign.center),
+                Text(
+                  '$ppf px/f · $change',
+                  style: t.caption.copyWith(fontSize: 11),
+                  textAlign: TextAlign.center,
+                ),
               ],
             ),
           ),
@@ -300,14 +402,23 @@ class _EdgeCard extends StatelessWidget {
   final VoidCallback? onDec;
   final VoidCallback? onInc;
 
-  const _EdgeCard({required this.label, required this.value, required this.onDec, required this.onInc});
+  const _EdgeCard({
+    required this.label,
+    required this.value,
+    required this.onDec,
+    required this.onInc,
+  });
 
   @override
   Widget build(BuildContext context) {
     final p = context.palette;
     return Container(
       padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(color: p.surface, borderRadius: BorderRadius.circular(EcRadius.row), border: Border.all(color: p.line)),
+      decoration: BoxDecoration(
+        color: p.surface,
+        borderRadius: BorderRadius.circular(EcRadius.row),
+        border: Border.all(color: p.line),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [

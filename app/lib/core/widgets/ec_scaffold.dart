@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../theme/ec_palette.dart';
+import '../layout/adaptive_layout.dart';
 import '../theme/theme_context.dart';
 
 /// The screen ground: warm off-white with a cool bloom top-left and a warm
@@ -17,10 +18,7 @@ class EcGround extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return CustomPaint(
-      painter: _GroundPainter(context.palette),
-      child: child,
-    );
+    return CustomPaint(painter: _GroundPainter(context.palette), child: child);
   }
 }
 
@@ -32,9 +30,19 @@ class _GroundPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     canvas.drawRect(Offset.zero & size, Paint()..color = palette.ground);
     // radial-gradient(85% 40% at 0% -4%, cool, transparent 70%)
-    _bloom(canvas, Offset(0, -0.04 * size.height), Size(0.85 * size.width, 0.40 * size.height), palette.bloomCool);
+    _bloom(
+      canvas,
+      Offset(0, -0.04 * size.height),
+      Size(0.85 * size.width, 0.40 * size.height),
+      palette.bloomCool,
+    );
     // radial-gradient(60% 32% at 104% 34%, warm, transparent 70%)
-    _bloom(canvas, Offset(1.04 * size.width, 0.34 * size.height), Size(0.60 * size.width, 0.32 * size.height), palette.bloomWarm);
+    _bloom(
+      canvas,
+      Offset(1.04 * size.width, 0.34 * size.height),
+      Size(0.60 * size.width, 0.32 * size.height),
+      palette.bloomWarm,
+    );
   }
 
   /// An elliptical radial gradient: a circular one drawn in a scaled space.
@@ -67,6 +75,7 @@ class EcScaffold extends StatelessWidget {
   final bool scrollable;
   final EdgeInsets padding;
   final Widget? bottom;
+  final double maxContentWidth;
 
   const EcScaffold({
     super.key,
@@ -75,6 +84,7 @@ class EcScaffold extends StatelessWidget {
     this.scrollable = true,
     this.padding = const EdgeInsets.fromLTRB(20, 8, 20, 30),
     this.bottom,
+    this.maxContentWidth = 640,
   });
 
   @override
@@ -87,20 +97,30 @@ class EcScaffold extends StatelessWidget {
             children: [
               ?topBar,
               Expanded(
-                child: scrollable
-                    ? LayoutBuilder(
-                        // minHeight lets a body push content to the bottom
-                        // with a Spacer, while still scrolling when the
-                        // keyboard or a large text scale needs it.
-                        builder: (context, constraints) => SingleChildScrollView(
-                          padding: padding,
-                          child: ConstrainedBox(
-                            constraints: BoxConstraints(minHeight: constraints.maxHeight - padding.vertical),
-                            child: IntrinsicHeight(child: body),
-                          ),
-                        ),
-                      )
-                    : Padding(padding: padding, child: body),
+                child: EcContentWidth(
+                  maxWidth: MediaQuery.sizeOf(context).width < 600
+                      ? double.infinity
+                      : maxContentWidth,
+                  child: scrollable
+                      ? LayoutBuilder(
+                          // minHeight lets a body push content to the bottom
+                          // with a Spacer, while still scrolling when the
+                          // keyboard or a large text scale needs it.
+                          builder: (context, constraints) =>
+                              SingleChildScrollView(
+                                padding: padding,
+                                child: ConstrainedBox(
+                                  constraints: BoxConstraints(
+                                    minHeight:
+                                        constraints.maxHeight -
+                                        padding.vertical,
+                                  ),
+                                  child: IntrinsicHeight(child: body),
+                                ),
+                              ),
+                        )
+                      : Padding(padding: padding, child: body),
+                ),
               ),
               ?bottom,
             ],
@@ -119,7 +139,13 @@ class EcTopBar extends StatelessWidget {
   final VoidCallback? onBack;
   final bool showBack;
 
-  const EcTopBar({super.key, this.title, this.trailing, this.onBack, this.showBack = true});
+  const EcTopBar({
+    super.key,
+    this.title,
+    this.trailing,
+    this.onBack,
+    this.showBack = true,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -137,7 +163,8 @@ class EcTopBar extends StatelessWidget {
                     ? EcCircleButton.glass(
                         icon: Icons.chevron_left_rounded,
                         tooltip: 'Back',
-                        onPressed: onBack ?? () => Navigator.of(context).maybePop(),
+                        onPressed:
+                            onBack ?? () => Navigator.of(context).maybePop(),
                       )
                     : null,
               ),
@@ -145,7 +172,13 @@ class EcTopBar extends StatelessWidget {
             Expanded(
               child: title == null
                   ? const SizedBox.shrink()
-                  : Text(title!, textAlign: TextAlign.center, style: context.type.barTitle, maxLines: 1, overflow: TextOverflow.ellipsis),
+                  : Text(
+                      title!,
+                      textAlign: TextAlign.center,
+                      style: context.type.barTitle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
             ),
             SizedBox(
               width: 64,
@@ -170,14 +203,32 @@ class EcCircleButton extends StatelessWidget {
   final double size;
   final _CircleStyle _style;
 
-  const EcCircleButton.glass({super.key, this.icon, this.child, this.onPressed, this.tooltip, this.size = 40})
-      : _style = _CircleStyle.glass;
+  const EcCircleButton.glass({
+    super.key,
+    this.icon,
+    this.child,
+    this.onPressed,
+    this.tooltip,
+    this.size = 40,
+  }) : _style = _CircleStyle.glass;
 
-  const EcCircleButton.tint({super.key, this.icon, this.child, this.onPressed, this.tooltip, this.size = 40})
-      : _style = _CircleStyle.tint;
+  const EcCircleButton.tint({
+    super.key,
+    this.icon,
+    this.child,
+    this.onPressed,
+    this.tooltip,
+    this.size = 40,
+  }) : _style = _CircleStyle.tint;
 
-  const EcCircleButton.surface({super.key, this.icon, this.child, this.onPressed, this.tooltip, this.size = 44})
-      : _style = _CircleStyle.surface;
+  const EcCircleButton.surface({
+    super.key,
+    this.icon,
+    this.child,
+    this.onPressed,
+    this.tooltip,
+    this.size = 44,
+  }) : _style = _CircleStyle.surface;
 
   @override
   Widget build(BuildContext context) {
@@ -196,9 +247,19 @@ class EcCircleButton extends StatelessWidget {
         child: Ink(
           width: size,
           height: size,
-          decoration: BoxDecoration(color: fill, shape: BoxShape.circle, border: border),
+          decoration: BoxDecoration(
+            color: fill,
+            shape: BoxShape.circle,
+            border: border,
+          ),
           child: Center(
-            child: child ?? Icon(icon, size: size * 0.5, color: onPressed == null ? p.faint : p.ink2),
+            child:
+                child ??
+                Icon(
+                  icon,
+                  size: size * 0.5,
+                  color: onPressed == null ? p.faint : p.ink2,
+                ),
           ),
         ),
       ),

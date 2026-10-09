@@ -8,6 +8,7 @@ import 'package:lastreel/features/export/controllers/export_controller.dart';
 import 'package:lastreel/features/review/review_prompt.dart';
 import 'package:lastreel/features/review/review_prompt_store.dart';
 import 'package:lastreel/main.dart';
+import 'package:lastreel/features/plan/controllers/web_access.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -55,23 +56,23 @@ class AppHarness {
     InMemoryCookooStore? cookoo,
     InMemoryReviewPromptStore? review,
     DateTime? now,
-  })  : auth = auth ?? FakeAuthRepository(initialUser: testUser),
-        projects = projects ?? FakeProjectRepository(),
-        session = session ?? InMemorySessionStore(),
-        profile = profile ?? FakeUserProfileRepository(),
-        links = links ?? FakeExternalLinks(),
-        plan = plan ?? FakeEntitlementRepository(),
-        encoder = encoder ?? FakeVideoEncoder(),
-        frames = frames ?? FakeFrames(),
-        destinations = FakeExportDestinations(),
-        ads = FakeAdService(),
-        analytics = FakeAnalytics(),
-        cookoo = cookoo ?? InMemoryCookooStore(),
-        // Already asked by default, so the one-time rating prompt doesn't
-        // cover the screen in tests about something else.
-        review = review ?? InMemoryReviewPromptStore(asked: true),
-        contact = FakeCookooContactClient(),
-        now = now ?? DateTime.utc(2026, 9, 23, 12);
+  }) : auth = auth ?? FakeAuthRepository(initialUser: testUser),
+       projects = projects ?? FakeProjectRepository(),
+       session = session ?? InMemorySessionStore(),
+       profile = profile ?? FakeUserProfileRepository(),
+       links = links ?? FakeExternalLinks(),
+       plan = plan ?? FakeEntitlementRepository(),
+       encoder = encoder ?? FakeVideoEncoder(),
+       frames = frames ?? FakeFrames(),
+       destinations = FakeExportDestinations(),
+       ads = FakeAdService(),
+       analytics = FakeAnalytics(),
+       cookoo = cookoo ?? InMemoryCookooStore(),
+       // Already asked by default, so the one-time rating prompt doesn't
+       // cover the screen in tests about something else.
+       review = review ?? InMemoryReviewPromptStore(asked: true),
+       contact = FakeCookooContactClient(),
+       now = now ?? DateTime.utc(2026, 9, 23, 12);
 
   /// A signed-out start.
   factory AppHarness.signedOut() => AppHarness(auth: FakeAuthRepository());
@@ -83,7 +84,19 @@ class AppHarness {
   /// Reduce-motion is on unless [motion] is set: the welcome roll loops
   /// forever by design, and the widget honours reduce-motion, so this is
   /// real behaviour rather than a test-only escape hatch.
-  Future<void> pump(WidgetTester tester, {Size size = phone, bool motion = false, bool settle = true}) async {
+  Future<void> pump(
+    WidgetTester tester, {
+    Size size = phone,
+    bool motion = false,
+    bool settle = true,
+    bool webAccess = false,
+  }) async {
+    tester.view.display.size = Size(
+      size.width,
+      size.width >= 600 && size.height < 600 ? 900 : size.height,
+    );
+    tester.view.display.devicePixelRatio = 1;
+    addTearDown(tester.view.display.reset);
     tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
@@ -91,13 +104,16 @@ class AppHarness {
     if (!motion) {
       tester.platformDispatcher.accessibilityFeaturesTestValue =
           const FakeAccessibilityFeatures(disableAnimations: true);
-      addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
+      addTearDown(
+        tester.platformDispatcher.clearAccessibilityFeaturesTestValue,
+      );
     }
     addTearDown(auth.dispose);
 
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          webAccessRequiredProvider.overrideWithValue(webAccess),
           authRepositoryProvider.overrideWithValue(auth),
           projectRepositoryProvider.overrideWithValue(projects),
           sessionStoreProvider.overrideWithValue(session),

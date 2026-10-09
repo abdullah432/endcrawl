@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
+import '../widgets/mobile_subscription_card.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../bootstrap.dart';
@@ -28,8 +30,12 @@ class ProSheet extends ConsumerWidget {
 
   const ProSheet({super.key, this.source = PlanSource.paywall});
 
-  static Future<void> show(BuildContext context, {PlanSource source = PlanSource.paywall}) =>
-      showEcSheet<void>(context, builder: (_) => ProSheet(source: source));
+  static Future<void> show(
+    BuildContext context, {
+    PlanSource source = PlanSource.paywall,
+  }) => kIsWeb
+      ? MobileSubscriptionCard.show(context)
+      : showEcSheet<void>(context, builder: (_) => ProSheet(source: source));
 
   static const _comparison = <(String, String, String)>[
     ('Projects', '${Entitlement.freeProjectLimit}', 'Unlimited'),
@@ -73,11 +79,19 @@ class ProSheet extends ConsumerWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             if (state.message != null) ...[
-              EcNotice(tone: EcTone.neutral, title: state.message!, icon: Icons.info_outline_rounded),
+              EcNotice(
+                tone: EcTone.neutral,
+                title: state.message!,
+                icon: Icons.info_outline_rounded,
+              ),
               const SizedBox(height: 10),
             ],
             EcButton(
-              label: state.loading ? 'Loading plans…' : selected == null ? 'Plans unavailable' : selected.ctaLabel,
+              label: state.loading
+                  ? 'Loading plans…'
+                  : selected == null
+                  ? 'Plans unavailable'
+                  : selected.ctaLabel,
               busy: state.purchasing,
               onPressed: state.busy || state.loading || selected == null
                   ? null
@@ -130,7 +144,11 @@ class ProSheet extends ConsumerWidget {
               children: [
                 EcEyebrow('LastReel Pro', color: p.accent),
                 const SizedBox(height: 10),
-                EcHeadline('Unlimited projects.\n', emphasis: 'Pro formats. No ads.', style: t.displayL.copyWith(fontSize: 44)),
+                EcHeadline(
+                  'Unlimited projects.\n',
+                  emphasis: 'Pro formats. No ads.',
+                  style: t.displayL.copyWith(fontSize: 44),
+                ),
                 const SizedBox(height: 10),
                 Text(
                   'Free has every block, timing and look tool, with H.264 and HEVC up to 1080p. Pro lifts the '
@@ -143,21 +161,45 @@ class ProSheet extends ConsumerWidget {
           ),
           const SizedBox(height: 18),
           if (!state.loading && state.offers.isEmpty)
-            EcButton(label: 'Retry loading plans', variant: EcButtonVariant.text, onPressed: controller.loadOffers),
+            EcButton(
+              label: 'Retry loading plans',
+              variant: EcButtonVariant.text,
+              onPressed: controller.loadOffers,
+            ),
           for (final offer in state.offers) ...[
-            _OfferTile(offer: offer, selected: offer == selected, onTap: () => controller.select(offer)),
+            _OfferTile(
+              offer: offer,
+              selected: offer == selected,
+              onTap: () => controller.select(offer),
+            ),
             const SizedBox(height: 8),
           ],
           const SizedBox(height: 10),
           _ComparisonTable(rows: _comparison),
           const SizedBox(height: 16),
-          Text('Payment is charged to your store account. Subscriptions renew automatically at the displayed price for the selected period unless cancelled in your store settings. Cancel anytime; access continues until the paid period ends.', style: t.caption),
-          Wrap(children: [
-            EcButton(label: 'Terms of service', variant: EcButtonVariant.text, size: EcButtonSize.small,
-              onPressed: () => LegalDocumentScreen.open(context, termsOfService)),
-            EcButton(label: 'Privacy policy', variant: EcButtonVariant.text, size: EcButtonSize.small,
-              onPressed: () => ref.read(externalLinksProvider).openUrl(AppLinks.privacyPolicy)),
-          ]),
+          Text(
+            'Payment is charged to your store account. Subscriptions renew automatically at the displayed price for the selected period unless cancelled in your store settings. Cancel anytime; access continues until the paid period ends.',
+            style: t.caption,
+          ),
+          Wrap(
+            children: [
+              EcButton(
+                label: 'Terms of service',
+                variant: EcButtonVariant.text,
+                size: EcButtonSize.small,
+                onPressed: () =>
+                    LegalDocumentScreen.open(context, termsOfService),
+              ),
+              EcButton(
+                label: 'Privacy policy',
+                variant: EcButtonVariant.text,
+                size: EcButtonSize.small,
+                onPressed: () => ref
+                    .read(externalLinksProvider)
+                    .openUrl(AppLinks.privacyPolicy),
+              ),
+            ],
+          ),
         ],
       ),
     );
@@ -169,7 +211,11 @@ class _OfferTile extends StatelessWidget {
   final bool selected;
   final VoidCallback onTap;
 
-  const _OfferTile({required this.offer, required this.selected, required this.onTap});
+  const _OfferTile({
+    required this.offer,
+    required this.selected,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -189,7 +235,9 @@ class _OfferTile extends StatelessWidget {
               gradient: selected ? p.primary : null,
               border: selected ? null : Border.all(color: p.line2, width: 1.5),
             ),
-            child: selected ? Icon(Icons.check_rounded, size: 14, color: p.onInk) : null,
+            child: selected
+                ? Icon(Icons.check_rounded, size: 14, color: p.onInk)
+                : null,
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -198,8 +246,16 @@ class _OfferTile extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    Text(offer.period == BillingPeriod.yearly ? 'Yearly' : 'Monthly', style: t.titleS),
-                    if (offer.badge != null) ...[const SizedBox(width: 6), EcGradientPill(offer.badge!)],
+                    Text(
+                      offer.period == BillingPeriod.yearly
+                          ? 'Yearly'
+                          : 'Monthly',
+                      style: t.titleS,
+                    ),
+                    if (offer.badge != null) ...[
+                      const SizedBox(width: 6),
+                      EcGradientPill(offer.badge!),
+                    ],
                   ],
                 ),
                 const SizedBox(height: 2),
@@ -207,7 +263,10 @@ class _OfferTile extends StatelessWidget {
               ],
             ),
           ),
-          Text(offer.price, style: t.monoM.copyWith(fontSize: 15, fontWeight: FontWeight.w500)),
+          Text(
+            offer.price,
+            style: t.monoM.copyWith(fontSize: 15, fontWeight: FontWeight.w500),
+          ),
         ],
       ),
     );
@@ -223,19 +282,30 @@ class _ComparisonTable extends StatelessWidget {
     final p = context.palette;
     final t = context.type;
     Widget row(String a, String b, String c, {bool header = false}) {
-      final base = header ? t.pill.copyWith(color: p.muted) : t.bodyS.copyWith(fontSize: 12);
+      final base = header
+          ? t.pill.copyWith(color: p.muted)
+          : t.bodyS.copyWith(fontSize: 12);
       return Container(
         color: header ? p.tint : null,
-        padding: EdgeInsets.symmetric(horizontal: 14, vertical: header ? 10 : 11),
+        padding: EdgeInsets.symmetric(
+          horizontal: 14,
+          vertical: header ? 10 : 11,
+        ),
         child: Row(
           children: [
             Expanded(
               flex: 3,
-              child: Text(header ? a.toUpperCase() : a, style: header ? base : base.copyWith(color: p.ink2)),
+              child: Text(
+                header ? a.toUpperCase() : a,
+                style: header ? base : base.copyWith(color: p.ink2),
+              ),
             ),
             Expanded(
               flex: 2,
-              child: Text(header ? b.toUpperCase() : b, style: base.copyWith(color: p.muted)),
+              child: Text(
+                header ? b.toUpperCase() : b,
+                style: base.copyWith(color: p.muted),
+              ),
             ),
             Expanded(
               flex: 2,
@@ -261,7 +331,10 @@ class _ComparisonTable extends StatelessWidget {
       child: Column(
         children: [
           row('Plan', 'Free', 'Pro', header: true),
-          for (final (a, b, c) in rows) ...[Divider(height: 1, color: p.line), row(a, b, c)],
+          for (final (a, b, c) in rows) ...[
+            Divider(height: 1, color: p.line),
+            row(a, b, c),
+          ],
         ],
       ),
     );

@@ -14,12 +14,10 @@ import 'features/cookoo/controllers/cookoo_promo_controller.dart';
 import 'features/plan/controllers/trial_analytics.dart';
 import 'features/review/review_prompt.dart';
 import 'features/auth/widgets/auth_gate.dart';
+import 'features/auth/widgets/web_access_gate.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  // Portrait everywhere; the editor alone opens up landscape, where turning
-  // the phone is how the full-bleed monitor (3.4) is reached.
-  await SystemChrome.setPreferredOrientations(kPortraitOnly);
 
   // Firebase, Firestore's cache settings and platform storage are all
   // resolved before the first frame, so no screen has to render a loading
@@ -40,7 +38,9 @@ Future<void> main() async {
           firestoreProvider.overrideWithValue(services.firestore),
           sessionStoreProvider.overrideWithValue(services.sessionStore),
           cookooStoreProvider.overrideWithValue(services.cookooStore),
-          reviewPromptStoreProvider.overrideWithValue(services.reviewPromptStore),
+          reviewPromptStoreProvider.overrideWithValue(
+            services.reviewPromptStore,
+          ),
         ],
         child: const LastReelApp(),
       ),
@@ -64,7 +64,11 @@ class LastReelApp extends ConsumerWidget {
         theme: buildLastReelTheme(),
         navigatorKey: rootNavigatorKey,
         navigatorObservers: [EcToastObserver()],
-        builder: (context, child) => ResumeAds(child: ReviewPromptTrigger(child: child!)),
+        builder: (context, child) => EcOrientationPolicy(
+          child: ResumeAds(
+            child: ReviewPromptTrigger(child: WebAccessGate(child: child!)),
+          ),
+        ),
         home: const AuthGate(),
       ),
     );

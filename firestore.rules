@@ -126,6 +126,12 @@ service cloud.firestore {
       allow delete: if isOwner(uid);
     }
 
+    // Only trusted server reconciliation can grant subscription access.
+    match /billingEntitlements/{uid} {
+      allow read: if isOwner(uid);
+      allow write: if false;
+    }
+
     // Default deny: anything not matched above is unreachable.
     match /{document=**} {
       allow read, write: if false;

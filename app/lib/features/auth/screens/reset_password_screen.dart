@@ -24,7 +24,8 @@ class ResetPasswordScreen extends ConsumerStatefulWidget {
   const ResetPasswordScreen({super.key, this.initialEmail = ''});
 
   @override
-  ConsumerState<ResetPasswordScreen> createState() => _ResetPasswordScreenState();
+  ConsumerState<ResetPasswordScreen> createState() =>
+      _ResetPasswordScreenState();
 }
 
 class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
@@ -36,7 +37,8 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
     super.dispose();
   }
 
-  void _send() => ref.read(authControllerProvider.notifier).sendPasswordReset(_email.text);
+  void _send() =>
+      ref.read(authControllerProvider.notifier).sendPasswordReset(_email.text);
 
   @override
   Widget build(BuildContext context) {
@@ -45,13 +47,17 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
     final sentTo = form.resetSentTo;
 
     return EcScaffold(
+      maxContentWidth: 480,
       topBar: const EcTopBar(),
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           const EcHeadline('Reset your', emphasis: 'password.'),
           const SizedBox(height: 16),
-          Text('Enter your account email. We’ll send a link to choose a new password.', style: context.type.body),
+          Text(
+            'Enter your account email. We’ll send a link to choose a new password.',
+            style: context.type.body,
+          ),
           const SizedBox(height: 16),
           EcTextField(
             controller: _email,
@@ -69,7 +75,10 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
           EcButton(
             label: 'Send reset link',
             busy: form.isRunning(AuthAction.reset),
-            onPressed: form.busy || controller.resetCooldownLeft() > Duration.zero ? null : _send,
+            onPressed:
+                form.busy || controller.resetCooldownLeft() > Duration.zero
+                ? null
+                : _send,
           ),
           if (sentTo != null) ...[
             const SizedBox(height: 22),
@@ -79,12 +88,14 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
             EcNotice(
               tone: EcTone.ok,
               title: 'Check your inbox',
-              body: 'If there’s an account for $sentTo, a link is on its way. Not there in a minute? Check spam.',
+              body:
+                  'If there’s an account for $sentTo, a link is on its way. Not there in a minute? Check spam.',
               actions: [
                 EcButton.secondary(
                   label: 'Open Mail',
                   size: EcButtonSize.medium,
-                  onPressed: () => ref.read(externalLinksProvider).openMailApp(),
+                  onPressed: () =>
+                      ref.read(externalLinksProvider).openMailApp(),
                 ),
                 ResendCountdown(
                   remaining: controller.resetCooldownLeft,
@@ -96,7 +107,10 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
           const Spacer(),
           const SizedBox(height: 16),
           Center(
-            child: EcButton.text(label: 'Back to sign in', onPressed: () => popAuthScreen(context, ref)),
+            child: EcButton.text(
+              label: 'Back to sign in',
+              onPressed: () => popAuthScreen(context, ref),
+            ),
           ),
         ],
       ),

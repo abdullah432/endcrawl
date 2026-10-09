@@ -158,10 +158,18 @@ project. iOS therefore keeps purchases unavailable until configured with
 attached to the same entitlement/offering. Do not use the Android or Test Store
 key in an iOS release.
 
-Existing committed conflict markers remain in `ios/Podfile.lock` and
-`ios/Runner.xcodeproj/project.pbxproj`; iOS native build validation is outstanding.
-The Android Firebase JSON had similar committed conflicts; they were resolved
-using the current `com.lastreel.app` configuration to unblock the Android build.
+The iOS simulator build passed on 2026-10-09 with the existing Swift package
+integration. The project enables Swift Package Manager in `pubspec.yaml` so it
+does not depend on a developer's global Flutter setting. Real-device codec and
+store purchase checks remain required.
+
+## Web
+
+Only verified Pro accounts can operate the browser workspace. Free accounts see
+the app behind an access gate and subscribe through the mobile app using the same
+Firebase account. See [responsive web setup](responsive-web.md) for the server-owned
+entitlement ledger, Firebase Functions deployment, RevenueCat webhook secrets and
+mobile-to-web verification steps. Native Free limits and purchases stay unchanged.
 
 ## References
 

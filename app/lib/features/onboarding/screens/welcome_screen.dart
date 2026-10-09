@@ -29,6 +29,7 @@ class WelcomeScreen extends ConsumerWidget {
     final t = context.type;
 
     return EcScaffold(
+      maxContentWidth: 480,
       // The safe area already clears the home indicator, so the bottom
       // padding is only a breath.
       padding: const EdgeInsets.fromLTRB(20, 6, 20, 8),
@@ -42,16 +43,24 @@ class WelcomeScreen extends ConsumerWidget {
               EcButton.text(
                 label: 'Sign in',
                 size: EcButtonSize.small,
-                onPressed: form.busy ? null : () => pushAuthScreen(context, ref, const SignInScreen()),
+                onPressed: form.busy
+                    ? null
+                    : () => pushAuthScreen(context, ref, const SignInScreen()),
               ),
             ],
           ),
           const SizedBox(height: 14),
           const RollHero(),
           const SizedBox(height: 26),
-          const EcHeadline('End credits that roll', emphasis: 'like the real thing.'),
+          const EcHeadline(
+            'End credits that roll',
+            emphasis: 'like the real thing.',
+          ),
           const SizedBox(height: 12),
-          Text('Build the crawl on your phone, time it to the frame and export it for the edit.', style: t.body),
+          Text(
+            'Build the crawl on your phone, time it to the frame and export it for the edit.',
+            style: t.body,
+          ),
           const Spacer(),
           const SizedBox(height: 24),
           AuthErrorBanner(form.formError),
@@ -62,7 +71,10 @@ class WelcomeScreen extends ConsumerWidget {
             variant: EcButtonVariant.plain,
             size: EcButtonSize.medium,
             expand: true,
-            onPressed: form.busy ? null : () => pushAuthScreen(context, ref, const CreateAccountScreen()),
+            onPressed: form.busy
+                ? null
+                : () =>
+                      pushAuthScreen(context, ref, const CreateAccountScreen()),
           ),
           const SizedBox(height: 6),
           const LegalConsent(),

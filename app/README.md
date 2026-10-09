@@ -1,7 +1,11 @@
 # LastReel (Flutter app)
 
-A dedicated end-credits roll editor for phones — see the [repo root](../README.md)
+A dedicated end-credits roll editor for phones, tablets and Pro web accounts — see the [repo root](../README.md)
 for the product summary and the [design handoff](../design/) this was built from.
+
+See [responsive web setup and validation](../docs/responsive-web.md) for tablet/
+desktop compositions, browser exports, paid-only web access and the required
+Firebase/RevenueCat server configuration. Mobile Free/Pro behavior is preserved.
 
 ## Stack
 
@@ -399,10 +403,8 @@ ExportController             render → append loop, measured time left, pause
 
 The Dart side is covered by tests (a fake encoder for the loop, the real
 offscreen renderer, the PNG zip, and the channel contract). The Kotlin
-encoder has been compiled against the Android 14 API; the Swift encoder
-could not be compiled in the environment it was written in. **Both need a
-first run on real devices** — render a short project in each codec and
-open the file.
+encoder and the iOS simulator target compiled on 2026-10-09. **Both need a
+run on real devices** — render a short project in each codec and open the file.
 
 ## Scope note
 

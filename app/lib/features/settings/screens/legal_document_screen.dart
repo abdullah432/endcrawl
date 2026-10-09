@@ -16,7 +16,11 @@ class LegalDocumentScreen extends StatelessWidget {
   const LegalDocumentScreen({super.key, required this.document});
 
   static Future<void> open(BuildContext context, LegalDocument document) {
-    return Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => LegalDocumentScreen(document: document)));
+    return Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => LegalDocumentScreen(document: document),
+      ),
+    );
   }
 
   @override
@@ -24,11 +28,14 @@ class LegalDocumentScreen extends StatelessWidget {
     final p = context.palette;
     final t = context.type;
     return EcScaffold(
+      maxContentWidth: 800,
       topBar: EcTopBar(
         trailing: EcButton.text(
           label: 'Share',
           size: EcButtonSize.small,
-          onPressed: () => SharePlus.instance.share(ShareParams(text: document.toPlainText(), subject: document.title)),
+          onPressed: () => SharePlus.instance.share(
+            ShareParams(text: document.toPlainText(), subject: document.title),
+          ),
         ),
       ),
       padding: const EdgeInsets.fromLTRB(22, 6, 22, 40),
@@ -50,7 +57,10 @@ class LegalDocumentScreen extends StatelessWidget {
               TextSpan(
                 style: t.body.copyWith(fontSize: 13, color: p.ink),
                 children: [
-                  TextSpan(text: '${document.summaryLead} ', style: const TextStyle(fontWeight: FontWeight.w700)),
+                  TextSpan(
+                    text: '${document.summaryLead} ',
+                    style: const TextStyle(fontWeight: FontWeight.w700),
+                  ),
                   TextSpan(text: document.summary),
                 ],
               ),
@@ -58,7 +68,13 @@ class LegalDocumentScreen extends StatelessWidget {
           ),
           for (final (i, section) in document.sections.indexed) ...[
             const SizedBox(height: 14),
-            Text('${i + 1}. ${section.heading}', style: t.titleM.copyWith(fontSize: 15, fontWeight: FontWeight.w700)),
+            Text(
+              '${i + 1}. ${section.heading}',
+              style: t.titleM.copyWith(
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
             const SizedBox(height: 5),
             Text(section.body, style: t.body.copyWith(height: 1.6)),
           ],

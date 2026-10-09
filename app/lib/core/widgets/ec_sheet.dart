@@ -5,6 +5,8 @@ import '../theme/theme_context.dart';
 import '../theme/tokens.dart';
 import 'ec_scaffold.dart';
 import 'ec_surfaces.dart';
+import 'ec_tool_host.dart';
+export 'ec_tool_host.dart' show closeEcSheet;
 
 /// Shows [child] as a bottom sheet with the app's scrim and transparent
 /// Material background, so the sheet draws its own [EcSheet] chrome.
@@ -16,7 +18,27 @@ Future<T?> showEcSheet<T>(
   required WidgetBuilder builder,
   bool dismissible = true,
   bool scrim = true,
+  bool panel = false,
 }) {
+  final host = panel ? EcToolHost.maybeOf(context) : null;
+  if (host != null && host.enabled) {
+    return host.present(builder).then((value) => value as T?);
+  }
+  if (MediaQuery.sizeOf(context).width >= 600) {
+    return showDialog<T>(
+      context: context,
+      barrierDismissible: dismissible,
+      barrierColor: scrim ? context.palette.scrim : Colors.transparent,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.all(24),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 640),
+          child: builder(context),
+        ),
+      ),
+    );
+  }
   return showModalBottomSheet<T>(
     context: context,
     isScrollControlled: true,
@@ -60,6 +82,7 @@ class EcSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final embedded = EcPanelPresentation.maybeOf(context) != null;
     final p = context.palette;
     final t = context.type;
     final maxHeight = MediaQuery.sizeOf(context).height * maxHeightFraction;
@@ -67,7 +90,20 @@ class EcSheet extends StatelessWidget {
     final titleRow =
         header ??
         (title == null
-            ? const SizedBox(height: 12)
+            ? (embedded && showClose
+                  ? Align(
+                      alignment: Alignment.centerRight,
+                      child: Padding(
+                        padding: const EdgeInsets.all(12),
+                        child: EcCircleButton.tint(
+                          icon: Icons.close_rounded,
+                          size: 34,
+                          tooltip: 'Close',
+                          onPressed: () => closeEcSheet(context),
+                        ),
+                      ),
+                    )
+                  : const SizedBox(height: 12))
             : Padding(
                 padding: const EdgeInsets.fromLTRB(20, 16, 20, 14),
                 child: Row(
@@ -78,7 +114,10 @@ class EcSheet extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          if (eyebrow != null) ...[EcEyebrow(eyebrow!), const SizedBox(height: 6)],
+                          if (eyebrow != null) ...[
+                            EcEyebrow(eyebrow!),
+                            const SizedBox(height: 6),
+                          ],
                           Text(title!, style: t.displayM),
                         ],
                       ),
@@ -88,17 +127,19 @@ class EcSheet extends StatelessWidget {
                         icon: Icons.close_rounded,
                         size: 34,
                         tooltip: 'Close',
-                        onPressed: () => Navigator.of(context).maybePop(),
+                        onPressed: () => closeEcSheet(context),
                       ),
                   ],
                 ),
               ));
 
     return Container(
-      constraints: BoxConstraints(maxHeight: maxHeight),
+      constraints: embedded ? null : BoxConstraints(maxHeight: maxHeight),
       decoration: BoxDecoration(
         color: p.sheet,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(EcRadius.sheet)),
+        borderRadius: embedded
+            ? BorderRadius.circular(22)
+            : const BorderRadius.vertical(top: Radius.circular(EcRadius.sheet)),
         boxShadow: p.sheetShadow,
       ),
       // A transparent Material so list tiles and ink inside the sheet paint
@@ -106,21 +147,27 @@ class EcSheet extends StatelessWidget {
       child: Material(
         type: MaterialType.transparency,
         child: Padding(
-          padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
+          padding: EdgeInsets.only(
+            bottom: embedded ? 0 : MediaQuery.viewInsetsOf(context).bottom,
+          ),
           child: SafeArea(
             top: false,
             child: Column(
-              mainAxisSize: MainAxisSize.min,
+              mainAxisSize: embedded ? MainAxisSize.max : MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Center(
-                  child: Container(
-                    width: 40,
-                    height: 5,
-                    margin: const EdgeInsets.only(top: 10),
-                    decoration: BoxDecoration(color: p.line2, borderRadius: BorderRadius.circular(EcRadius.pill)),
+                if (!embedded)
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 5,
+                      margin: const EdgeInsets.only(top: 10),
+                      decoration: BoxDecoration(
+                        color: p.line2,
+                        borderRadius: BorderRadius.circular(EcRadius.pill),
+                      ),
+                    ),
                   ),
-                ),
                 titleRow,
                 Flexible(
                   child: SingleChildScrollView(padding: padding, child: child),
@@ -172,8 +219,17 @@ class EcSheetAction extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text(label, style: t.row.copyWith(fontSize: 15, color: destructive ? p.warn : p.ink)),
-                    if (detail != null) ...[const SizedBox(height: 2), Text(detail!, style: t.caption)],
+                    Text(
+                      label,
+                      style: t.row.copyWith(
+                        fontSize: 15,
+                        color: destructive ? p.warn : p.ink,
+                      ),
+                    ),
+                    if (detail != null) ...[
+                      const SizedBox(height: 2),
+                      Text(detail!, style: t.caption),
+                    ],
                   ],
                 ),
               ),

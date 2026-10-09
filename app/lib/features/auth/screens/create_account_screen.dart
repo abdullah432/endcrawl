@@ -23,7 +23,8 @@ class CreateAccountScreen extends ConsumerStatefulWidget {
   const CreateAccountScreen({super.key});
 
   @override
-  ConsumerState<CreateAccountScreen> createState() => _CreateAccountScreenState();
+  ConsumerState<CreateAccountScreen> createState() =>
+      _CreateAccountScreenState();
 }
 
 class _CreateAccountScreenState extends ConsumerState<CreateAccountScreen> {
@@ -49,7 +50,9 @@ class _CreateAccountScreenState extends ConsumerState<CreateAccountScreen> {
     super.dispose();
   }
 
-  void _submit() => ref.read(authControllerProvider.notifier).createAccount(
+  void _submit() => ref
+      .read(authControllerProvider.notifier)
+      .createAccount(
         name: _name.text,
         email: _email.text,
         password: _password.text,
@@ -62,6 +65,7 @@ class _CreateAccountScreenState extends ConsumerState<CreateAccountScreen> {
     final t = context.type;
 
     return EcScaffold(
+      maxContentWidth: 480,
       topBar: const EcTopBar(),
       body: AutofillGroup(
         child: Column(
@@ -97,7 +101,10 @@ class _CreateAccountScreenState extends ConsumerState<CreateAccountScreen> {
             for (final rule in PasswordPolicy.rules)
               Padding(
                 padding: const EdgeInsets.only(left: 2, bottom: 6),
-                child: EcCheckItem(label: rule.label, met: rule.test(_password.text)),
+                child: EcCheckItem(
+                  label: rule.label,
+                  met: rule.test(_password.text),
+                ),
               ),
             const SizedBox(height: 6),
             EcCheckbox(
@@ -108,7 +115,10 @@ class _CreateAccountScreenState extends ConsumerState<CreateAccountScreen> {
                   style: t.bodyS,
                   children: [
                     const TextSpan(text: 'Email me about new features '),
-                    TextSpan(text: '· optional', style: TextStyle(color: context.palette.muted)),
+                    TextSpan(
+                      text: '· optional',
+                      style: TextStyle(color: context.palette.muted),
+                    ),
                   ],
                 ),
               ),
@@ -127,7 +137,9 @@ class _CreateAccountScreenState extends ConsumerState<CreateAccountScreen> {
             EcInlineLink(
               lead: 'Already have an account?',
               action: 'Sign in',
-              onTap: form.busy ? null : () => replaceAuthScreen(context, ref, const SignInScreen()),
+              onTap: form.busy
+                  ? null
+                  : () => replaceAuthScreen(context, ref, const SignInScreen()),
             ),
           ],
         ),

@@ -15,14 +15,20 @@ import '../../project/controllers/project_controller.dart';
 class LookSheet extends ConsumerWidget {
   const LookSheet({super.key});
 
-  static Future<void> show(BuildContext context) =>
-      showEcSheet<void>(context, scrim: false, builder: (_) => const LookSheet());
+  static Future<void> show(BuildContext context) => showEcSheet<void>(
+    context,
+    panel: true,
+    scrim: false,
+    builder: (_) => const LookSheet(),
+  );
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final p = context.palette;
     final t = context.type;
-    final settings = ref.watch(projectControllerProvider.select((s) => s.settings));
+    final settings = ref.watch(
+      projectControllerProvider.select((s) => s.settings),
+    );
     final controller = ref.read(projectControllerProvider.notifier);
     final is3d = settings.look == RollLook.crawl3d;
 
@@ -42,7 +48,11 @@ class LookSheet extends ConsumerWidget {
                     title: '2D flat roll',
                     badge: 'Default',
                     detail: 'What a conform expects.',
-                    bars: const [(.54, .8, 3.0), (.38, .5, 3.0), (.46, .5, 3.0)],
+                    bars: const [
+                      (.54, .8, 3.0),
+                      (.38, .5, 3.0),
+                      (.46, .5, 3.0),
+                    ],
                     alignEnd: false,
                     onTap: () => controller.setLook(RollLook.flat2d),
                   ),
@@ -53,7 +63,11 @@ class LookSheet extends ConsumerWidget {
                     selected: is3d,
                     title: '3D crawl',
                     detail: 'A style choice, not the standard.',
-                    bars: const [(.22, .3, 2.0), (.40, .55, 3.0), (.62, .85, 4.0)],
+                    bars: const [
+                      (.22, .3, 2.0),
+                      (.40, .55, 3.0),
+                      (.62, .85, 4.0),
+                    ],
                     alignEnd: true,
                     onTap: () => controller.setLook(RollLook.crawl3d),
                   ),
@@ -89,7 +103,10 @@ class LookSheet extends ConsumerWidget {
           ),
           if (!is3d) ...[
             const SizedBox(height: 8),
-            Text('Tilt controls unlock only when 3D is selected.', style: t.caption.copyWith(color: p.muted, height: 1.5)),
+            Text(
+              'Tilt controls unlock only when 3D is selected.',
+              style: t.caption.copyWith(color: p.muted, height: 1.5),
+            ),
           ],
         ],
       ),
@@ -132,14 +149,23 @@ class _LookCard extends StatelessWidget {
           Container(
             height: 64,
             padding: EdgeInsets.only(bottom: alignEnd ? 8 : 0),
-            decoration: BoxDecoration(color: Colors.black, borderRadius: BorderRadius.circular(EcRadius.tile)),
+            decoration: BoxDecoration(
+              color: Colors.black,
+              borderRadius: BorderRadius.circular(EcRadius.tile),
+            ),
             child: LayoutBuilder(
               builder: (context, c) => Column(
-                mainAxisAlignment: alignEnd ? MainAxisAlignment.end : MainAxisAlignment.center,
+                mainAxisAlignment: alignEnd
+                    ? MainAxisAlignment.end
+                    : MainAxisAlignment.center,
                 children: [
                   for (final (i, (w, o, h)) in bars.indexed) ...[
                     if (i > 0) const SizedBox(height: 5),
-                    Container(width: c.maxWidth * w, height: h, color: Colors.white.withValues(alpha: o)),
+                    Container(
+                      width: c.maxWidth * w,
+                      height: h,
+                      color: Colors.white.withValues(alpha: o),
+                    ),
                   ],
                 ],
               ),
@@ -148,8 +174,14 @@ class _LookCard extends StatelessWidget {
           const SizedBox(height: 10),
           Row(
             children: [
-              Expanded(child: Text(title, style: t.titleS.copyWith(fontSize: 13.5))),
-              if (badge != null) Text(caps(badge!), style: t.pill.copyWith(fontSize: 8.5, color: p.accent)),
+              Expanded(
+                child: Text(title, style: t.titleS.copyWith(fontSize: 13.5)),
+              ),
+              if (badge != null)
+                Text(
+                  caps(badge!),
+                  style: t.pill.copyWith(fontSize: 8.5, color: p.accent),
+                ),
             ],
           ),
           const SizedBox(height: 3),
@@ -185,11 +217,28 @@ class _LookSlider extends StatelessWidget {
       children: [
         Row(
           children: [
-            Expanded(child: Text(label, style: t.bodyS.copyWith(fontSize: 12, color: context.palette.ink))),
-            Text(onChanged == null ? '—' : display, style: t.mono.copyWith(fontSize: 12)),
+            Expanded(
+              child: Text(
+                label,
+                style: t.bodyS.copyWith(
+                  fontSize: 12,
+                  color: context.palette.ink,
+                ),
+              ),
+            ),
+            Text(
+              onChanged == null ? '—' : display,
+              style: t.mono.copyWith(fontSize: 12),
+            ),
           ],
         ),
-        Slider(value: value.clamp(min, max), min: min, max: max, label: display, onChanged: onChanged),
+        Slider(
+          value: value.clamp(min, max),
+          min: min,
+          max: max,
+          label: display,
+          onChanged: onChanged,
+        ),
       ],
     );
   }

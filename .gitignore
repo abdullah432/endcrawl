@@ -3,6 +3,7 @@
 firebase-debug.log
 firestore-debug.log
 ui-debug.log
+.playwright-cli/
 
 # Note: google-services.json, GoogleService-Info.plist and
 # app/lib/firebase_options.dart are NOT ignored. They are client
@@ -19,3 +20,5 @@ secrets/
 *.jks
 *.keystore
 key.properties
+
+output/

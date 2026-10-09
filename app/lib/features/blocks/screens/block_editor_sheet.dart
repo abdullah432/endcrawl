@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/theme_context.dart';
 import '../../../core/widgets/ec_sheet.dart';
+import '../../../core/widgets/ec_tool_host.dart';
 import '../../../domain/models/block_catalog.dart';
 import '../../../domain/models/credit_block.dart';
 import '../../editor/editor_actions.dart';
@@ -20,23 +21,35 @@ class BlockEditorSheet extends ConsumerWidget {
   const BlockEditorSheet({super.key, required this.blockId});
 
   static Future<void> show(BuildContext context, String blockId) async {
-    final result = await showEcSheet<_SheetResult>(context, builder: (_) => BlockEditorSheet(blockId: blockId));
-    if (result == _SheetResult.delete && context.mounted) await removeBlockWithUndo(context, blockId);
+    context = EcToolHost.ownerOf(context);
+    final result = await showEcSheet<_SheetResult>(
+      context,
+      panel: true,
+      builder: (_) => BlockEditorSheet(blockId: blockId),
+    );
+    if (result == _SheetResult.delete && context.mounted) {
+      await removeBlockWithUndo(context, blockId);
+    }
   }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final block = ref.watch(projectControllerProvider.select((s) => s.blocks.where((b) => b.id == blockId).firstOrNull));
+    final block = ref.watch(
+      projectControllerProvider.select(
+        (s) => s.blocks.where((b) => b.id == blockId).firstOrNull,
+      ),
+    );
     if (block == null) return const SizedBox.shrink();
 
     final title = switch (block) {
-      PairListBlock(:final header) when header.trim().isNotEmpty => sentenceCase(header),
+      PairListBlock(:final header) when header.trim().isNotEmpty =>
+        sentenceCase(header),
       _ => describeBlock(block).title,
     };
     final delete = Align(
       alignment: Alignment.centerLeft,
       child: TextButton.icon(
-        onPressed: () => Navigator.of(context).pop(_SheetResult.delete),
+        onPressed: () => closeEcSheet(context, _SheetResult.delete),
         icon: const Icon(Icons.delete_outline_rounded, size: 18),
         label: const Text('Delete block'),
         style: TextButton.styleFrom(foregroundColor: context.palette.warn),
@@ -51,7 +64,11 @@ class BlockEditorSheet extends ConsumerWidget {
         footer: CastFastEntry(blockId: block.id),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [CastBlockEditor(block: block), const SizedBox(height: 8), delete],
+          children: [
+            CastBlockEditor(block: block),
+            const SizedBox(height: 8),
+            delete,
+          ],
         ),
       );
     }
@@ -60,7 +77,11 @@ class BlockEditorSheet extends ConsumerWidget {
       title: title,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [GenericBlockEditor(block: block), const SizedBox(height: 4), delete],
+        children: [
+          GenericBlockEditor(block: block),
+          const SizedBox(height: 4),
+          delete,
+        ],
       ),
     );
   }

@@ -16,8 +16,12 @@ import '../../project/controllers/project_controller.dart';
 class BackgroundSheet extends ConsumerWidget {
   const BackgroundSheet({super.key});
 
-  static Future<void> show(BuildContext context) =>
-      showEcSheet<void>(context, scrim: false, builder: (_) => const BackgroundSheet());
+  static Future<void> show(BuildContext context) => showEcSheet<void>(
+    context,
+    panel: true,
+    scrim: false,
+    builder: (_) => const BackgroundSheet(),
+  );
 
   static const _options = [
     (MonitorBackground.black, 'Full black', 'Delivery default'),
@@ -28,7 +32,9 @@ class BackgroundSheet extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final settings = ref.watch(projectControllerProvider.select((s) => s.settings));
+    final settings = ref.watch(
+      projectControllerProvider.select((s) => s.settings),
+    );
     final controller = ref.read(projectControllerProvider.notifier);
 
     return EcSheet(
@@ -51,7 +57,10 @@ class BackgroundSheet extends ConsumerWidget {
                       // A reference clip needs a clip to pick; until import
                       // lands the tile explains rather than doing nothing.
                       onTap: bg == MonitorBackground.reference
-                          ? () => showEcToast(context, 'Reference clips are coming soon')
+                          ? () => showEcToast(
+                              context,
+                              'Reference clips are coming soon',
+                            )
                           : () => controller.setBackground(bg),
                     ),
                   ),
@@ -61,14 +70,16 @@ class BackgroundSheet extends ConsumerWidget {
             const SizedBox(height: 10),
           ],
           const SizedBox(height: 4),
-          EcGroup(children: [
-            EcGroupRow.toggle(
-              title: 'Safe-area guides',
-              subtitle: 'Title 80% · action 90%',
-              value: settings.safeGuides,
-              onChanged: (_) => controller.toggleSafeGuides(),
-            ),
-          ]),
+          EcGroup(
+            children: [
+              EcGroupRow.toggle(
+                title: 'Safe-area guides',
+                subtitle: 'Title 80% · action 90%',
+                value: settings.safeGuides,
+                onChanged: (_) => controller.toggleSafeGuides(),
+              ),
+            ],
+          ),
         ],
       ),
     );
@@ -118,7 +129,11 @@ class BackgroundPreview extends StatelessWidget {
   final MonitorBackground background;
   final double height;
 
-  const BackgroundPreview({super.key, required this.background, this.height = 58});
+  const BackgroundPreview({
+    super.key,
+    required this.background,
+    this.height = 58,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -130,21 +145,40 @@ class BackgroundPreview extends StatelessWidget {
     Widget credits = Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Text('DIRECTED BY',
-            style: t.pill.copyWith(fontSize: 6, letterSpacing: 2, color: Colors.white.withValues(alpha: .6), shadows: shadow)),
+        Text(
+          'DIRECTED BY',
+          style: t.pill.copyWith(
+            fontSize: 6,
+            letterSpacing: 2,
+            color: Colors.white.withValues(alpha: .6),
+            shadows: shadow,
+          ),
+        ),
         const SizedBox(height: 3),
-        Text('MAYA OKONKWO',
-            style: t.pill.copyWith(fontSize: 9, letterSpacing: 1.6, fontWeight: FontWeight.w600, color: Colors.white, shadows: shadow)),
+        Text(
+          'MAYA OKONKWO',
+          style: t.pill.copyWith(
+            fontSize: 9,
+            letterSpacing: 1.6,
+            fontWeight: FontWeight.w600,
+            color: Colors.white,
+            shadows: shadow,
+          ),
+        ),
       ],
     );
-    if (background == MonitorBackground.paper) credits = ColorFiltered(colorFilter: kPaperInvert, child: credits);
+    if (background == MonitorBackground.paper) {
+      credits = ColorFiltered(colorFilter: kPaperInvert, child: credits);
+    }
 
     return Container(
       height: height,
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(8),
-        border: background == MonitorBackground.black ? null : Border.all(color: p.line),
+        border: background == MonitorBackground.black
+            ? null
+            : Border.all(color: p.line),
       ),
       child: Stack(
         fit: StackFit.expand,
@@ -155,7 +189,13 @@ class BackgroundPreview extends StatelessWidget {
             Positioned(
               left: 6,
               bottom: 4,
-              child: Text('SCENE_042.mov', style: t.mono.copyWith(fontSize: 6.5, color: Colors.white.withValues(alpha: .55))),
+              child: Text(
+                'SCENE_042.mov',
+                style: t.mono.copyWith(
+                  fontSize: 6.5,
+                  color: Colors.white.withValues(alpha: .55),
+                ),
+              ),
             ),
             Positioned(
               right: 5,
@@ -166,7 +206,10 @@ class BackgroundPreview extends StatelessWidget {
                   color: Colors.white.withValues(alpha: .18),
                   borderRadius: BorderRadius.circular(EcRadius.pill),
                 ),
-                child: Text('SOON', style: t.pill.copyWith(fontSize: 6.5, color: Colors.white)),
+                child: Text(
+                  'SOON',
+                  style: t.pill.copyWith(fontSize: 6.5, color: Colors.white),
+                ),
               ),
             ),
           ],

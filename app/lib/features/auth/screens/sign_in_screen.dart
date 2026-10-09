@@ -38,13 +38,16 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
     super.dispose();
   }
 
-  void _submit() => ref.read(authControllerProvider.notifier).signIn(email: _email.text, password: _password.text);
+  void _submit() => ref
+      .read(authControllerProvider.notifier)
+      .signIn(email: _email.text, password: _password.text);
 
   @override
   Widget build(BuildContext context) {
     final form = ref.watch(authControllerProvider);
 
     return EcScaffold(
+      maxContentWidth: 480,
       topBar: const EcTopBar(),
       body: AutofillGroup(
         child: Column(
@@ -52,7 +55,10 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
           children: [
             const EcHeadline('Welcome back.'),
             const SizedBox(height: 16),
-            Text('Sign in with the email you used to create your account.', style: context.type.body),
+            Text(
+              'Sign in with the email you used to create your account.',
+              style: context.type.body,
+            ),
             const SizedBox(height: 22),
             EcTextField(
               controller: _email,
@@ -75,12 +81,20 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
                 size: EcButtonSize.small,
                 onPressed: form.busy
                     ? null
-                    : () => pushAuthScreen(context, ref, ResetPasswordScreen(initialEmail: _email.text)),
+                    : () => pushAuthScreen(
+                        context,
+                        ref,
+                        ResetPasswordScreen(initialEmail: _email.text),
+                      ),
               ),
             ),
             const SizedBox(height: 6),
             AuthErrorBanner(form.formError),
-            EcButton(label: 'Sign in', busy: form.isRunning(AuthAction.email), onPressed: form.busy ? null : _submit),
+            EcButton(
+              label: 'Sign in',
+              busy: form.isRunning(AuthAction.email),
+              onPressed: form.busy ? null : _submit,
+            ),
             const SizedBox(height: 16),
             const EcOrDivider(),
             const SizedBox(height: 16),
@@ -90,7 +104,13 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
             EcInlineLink(
               lead: 'New to LastReel?',
               action: 'Create account',
-              onTap: form.busy ? null : () => replaceAuthScreen(context, ref, const CreateAccountScreen()),
+              onTap: form.busy
+                  ? null
+                  : () => replaceAuthScreen(
+                      context,
+                      ref,
+                      const CreateAccountScreen(),
+                    ),
             ),
           ],
         ),

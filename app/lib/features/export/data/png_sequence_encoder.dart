@@ -1,79 +1,98 @@
-import 'dart:io';
+import 'dart:typed_data';
 import 'dart:ui' as ui;
-
-import 'package:archive/archive_io.dart';
+import 'package:archive/archive.dart';
 import 'package:path/path.dart' as p;
-
 import '../models/export_models.dart';
+import 'output_sink.dart';
 import 'video_encoder.dart';
 
-/// A PNG per frame, with alpha, streamed into one uncompressed .zip —
-/// "title_000001.png" onwards, the numbering editors import as a sequence.
-/// PNG is already compressed, so the zip only stores.
+/// One incremental PNG/ZIP encoder for native files and browser storage.
 class PngSequenceEncoder implements VideoEncoder {
   const PngSequenceEncoder();
-
   @override
-  Future<EncoderCapabilities> capabilities() async => const EncoderCapabilities({Codec.png: 8192});
-
+  Future<EncoderCapabilities> capabilities() async =>
+      const EncoderCapabilities({Codec.png: 8192});
   @override
-  Future<EncodeSession> start(EncodeSpec spec) async {
-    final stale = File(spec.outputPath);
-    if (await stale.exists()) await stale.delete();
-    final zip = ZipFileEncoder()..create(spec.outputPath, level: ZipFileEncoder.store);
-    return _PngSession(zip, spec.outputPath, p.basenameWithoutExtension(spec.outputPath));
-  }
+  Future<EncodeSession> start(EncodeSpec spec) async => _PngSession(
+    await createExportOutput(spec.outputPath),
+    p.basenameWithoutExtension(spec.outputPath),
+  );
 }
 
 class _PngSession implements EncodeSession {
-  final ZipFileEncoder _zip;
-  final String _path;
-  final String _stem;
+  final ExportOutputSink sink;
+  final String stem;
+  final _stream = _DrainingZipStream();
+  final _zip = ZipEncoder();
   bool _closed = false;
-
-  _PngSession(this._zip, this._path, this._stem);
-
+  _PngSession(this.sink, this.stem) {
+    _zip.startEncode(_stream, level: 0);
+  }
   @override
   Future<void> append(ui.Image frame, int index) async {
     final png = await frame.toByteData(format: ui.ImageByteFormat.png);
-    if (png == null) throw const EncoderException(EncoderFailureKind.failed, 'A frame couldn’t be encoded.');
-    final bytes = png.buffer.asUint8List(png.offsetInBytes, png.lengthInBytes);
-    try {
-      _zip.addArchiveFile(ArchiveFile.noCompress('${_stem}_${(index + 1).toString().padLeft(6, '0')}.png', bytes.length, bytes));
-    } on FileSystemException catch (e) {
-      throw _failure(e);
+    if (png == null) {
+      throw const EncoderException(
+        EncoderFailureKind.failed,
+        'A frame couldn’t be encoded.',
+      );
     }
+    final bytes = png.buffer.asUint8List(png.offsetInBytes, png.lengthInBytes);
+    final entry = ArchiveFile.noCompress(
+      '${stem}_${(index + 1).toString().padLeft(6, '0')}.png',
+      bytes.length,
+      bytes,
+    );
+    _zip.add(entry, autoClose: true);
+    await sink.write(_stream.drain());
   }
 
   @override
   Future<EncodedFile> finish() async {
-    try {
-      await _close();
-      return EncodedFile(_path, await File(_path).length());
-    } on FileSystemException catch (e) {
-      throw _failure(e);
-    }
+    if (_closed) throw StateError('Sequence already closed');
+    _closed = true;
+    _zip.endEncode();
+    await sink.write(_stream.drain());
+    return sink.finish();
   }
 
   @override
   Future<void> cancel() async {
-    try {
-      await _close();
-    } on FileSystemException {
-      // Deleting it below is all that's left to do.
-    }
-    final file = File(_path);
-    if (await file.exists()) await file.delete();
-  }
-
-  Future<void> _close() async {
-    if (_closed) return;
     _closed = true;
-    await _zip.close();
+    _stream.clear();
+    await sink.cancel();
+  }
+}
+
+/// Drains each entry while retaining cumulative offsets for the ZIP directory.
+class _DrainingZipStream extends OutputStream {
+  final _pending = BytesBuilder(copy: false);
+  int _length = 0;
+  _DrainingZipStream() : super(byteOrder: ByteOrder.littleEndian);
+  Uint8List drain() => _pending.takeBytes();
+  @override
+  int get length => _length;
+  @override
+  void writeByte(int value) {
+    _pending.addByte(value);
+    _length++;
   }
 
-  /// ENOSPC on Linux/Android (28) and Darwin (28 too).
-  static EncoderException _failure(FileSystemException e) => e.osError?.errorCode == 28
-      ? const EncoderException.outOfSpace()
-      : EncoderException(EncoderFailureKind.failed, e.message);
+  @override
+  void writeBytes(List<int> bytes, {int? length}) {
+    final data = length == null ? bytes : bytes.sublist(0, length);
+    _pending.add(data);
+    _length += data.length;
+  }
+
+  @override
+  void writeStream(InputStream stream) =>
+      writeBytes(stream.readBytes(stream.length).toUint8List());
+  @override
+  void clear() => _pending.clear();
+  @override
+  void flush() {}
+  @override
+  Uint8List subset(int start, [int? end]) =>
+      throw UnsupportedError('ZIP output is append-only');
 }

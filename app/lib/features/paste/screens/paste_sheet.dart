@@ -9,6 +9,7 @@ import '../../../core/widgets/ec_button.dart';
 import '../../../core/widgets/ec_chip.dart';
 import '../../../core/widgets/ec_fields.dart';
 import '../../../core/widgets/ec_sheet.dart';
+import '../../../core/widgets/ec_tool_host.dart';
 import '../../../core/widgets/ec_surfaces.dart';
 import '../../../core/widgets/ec_toast.dart';
 import '../../../domain/models/block_catalog.dart';
@@ -22,8 +23,15 @@ class PasteSheet extends ConsumerStatefulWidget {
   const PasteSheet({super.key});
 
   static Future<void> show(BuildContext context) async {
-    final added = await showEcSheet<int>(context, builder: (_) => const PasteSheet());
-    if (added != null && added > 0 && context.mounted) showEcToast(context, 'Added ${plural(added, 'row')}');
+    context = EcToolHost.ownerOf(context);
+    final added = await showEcSheet<int>(
+      context,
+      panel: true,
+      builder: (_) => const PasteSheet(),
+    );
+    if (added != null && added > 0 && context.mounted) {
+      showEcToast(context, 'Added ${plural(added, 'row')}');
+    }
   }
 
   @override
@@ -59,7 +67,9 @@ class _PasteSheetState extends ConsumerState<PasteSheet> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Text(
-                    target == null ? 'Adds a new cast block' : 'Adds to “${describeBlock(target).title}”',
+                    target == null
+                        ? 'Adds a new cast block'
+                        : 'Adds to “${describeBlock(target).title}”',
                     textAlign: TextAlign.center,
                     style: context.type.caption,
                   ),
@@ -76,9 +86,13 @@ class _PasteSheetState extends ConsumerState<PasteSheet> {
                       const SizedBox(width: 8),
                       Expanded(
                         child: EcButton(
-                          label: rows.isEmpty ? 'Add rows' : 'Add ${plural(rows.length, 'row')}',
+                          label: rows.isEmpty
+                              ? 'Add rows'
+                              : 'Add ${plural(rows.length, 'row')}',
                           size: EcButtonSize.medium,
-                          onPressed: rows.isEmpty ? null : () => Navigator.of(context).pop(controller.apply()),
+                          onPressed: rows.isEmpty
+                              ? null
+                              : () => closeEcSheet(context, controller.apply()),
                         ),
                       ),
                     ],
@@ -100,7 +114,8 @@ class _PasteSheetState extends ConsumerState<PasteSheet> {
               tone: EcTone.neutral,
               icon: Icons.upload_file_rounded,
               title: 'Import from a file is coming soon',
-              body: 'Until then, copy the list from your call sheet or spreadsheet and paste it here.',
+              body:
+                  'Until then, copy the list from your call sheet or spreadsheet and paste it here.',
             )
           else
             ..._pasteBody(context, state, controller),
@@ -109,7 +124,11 @@ class _PasteSheetState extends ConsumerState<PasteSheet> {
     );
   }
 
-  List<Widget> _pasteBody(BuildContext context, PasteState state, PasteController controller) {
+  List<Widget> _pasteBody(
+    BuildContext context,
+    PasteState state,
+    PasteController controller,
+  ) {
     final p = context.palette;
     final t = context.type;
     final parsed = state.parsed;
@@ -118,8 +137,8 @@ class _PasteSheetState extends ConsumerState<PasteSheet> {
     final structuredLabel = parsed.isEmpty
         ? 'Structured'
         : unparsed.isEmpty
-            ? 'Structured · ${plural(parsed.length, 'row')}'
-            : 'Structured · ${parsed.length - unparsed.length} of ${parsed.length}';
+        ? 'Structured · ${plural(parsed.length, 'row')}'
+        : 'Structured · ${parsed.length - unparsed.length} of ${parsed.length}';
 
     return [
       SizedBox(
@@ -150,7 +169,10 @@ class _PasteSheetState extends ConsumerState<PasteSheet> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Text(caps(structuredLabel), style: t.section.copyWith(color: p.accent)),
+                  Text(
+                    caps(structuredLabel),
+                    style: t.section.copyWith(color: p.accent),
+                  ),
                   const SizedBox(height: 6),
                   Expanded(
                     child: Container(
@@ -161,10 +183,15 @@ class _PasteSheetState extends ConsumerState<PasteSheet> {
                         border: Border.all(color: p.accentLine),
                       ),
                       child: parsed.isEmpty
-                          ? Text('Split rows appear here as you paste.', style: t.caption)
+                          ? Text(
+                              'Split rows appear here as you paste.',
+                              style: t.caption,
+                            )
                           : ListView(
                               padding: EdgeInsets.zero,
-                              children: [for (final r in parsed) _StructuredLine(row: r)],
+                              children: [
+                                for (final r in parsed) _StructuredLine(row: r),
+                              ],
                             ),
                     ),
                   ),
@@ -191,7 +218,9 @@ class _PasteSheetState extends ConsumerState<PasteSheet> {
                 '${counts[d.id]}',
                 style: t.mono.copyWith(
                   fontSize: 11.5,
-                  color: state.rule.id == d.id ? p.onInk.withValues(alpha: .75) : p.faint,
+                  color: state.rule.id == d.id
+                      ? p.onInk.withValues(alpha: .75)
+                      : p.faint,
                 ),
               ),
             ),
@@ -256,15 +285,22 @@ class _StructuredLine extends StatelessWidget {
     return Row(
       children: [
         Expanded(
-          child: Text(left,
-              textAlign: TextAlign.end,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: base.copyWith(color: row.ok ? p.muted : p.warn)),
+          child: Text(
+            left,
+            textAlign: TextAlign.end,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: base.copyWith(color: row.ok ? p.muted : p.warn),
+          ),
         ),
         const SizedBox(width: 5),
         Expanded(
-          child: Text(right, maxLines: 1, overflow: TextOverflow.ellipsis, style: base.copyWith(color: row.ok ? p.ink : p.warn)),
+          child: Text(
+            right,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: base.copyWith(color: row.ok ? p.ink : p.warn),
+          ),
         ),
       ],
     );

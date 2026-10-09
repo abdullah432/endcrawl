@@ -10,6 +10,7 @@ dependencies:
   archive: ^4.3.0
   clarity_flutter: ^1.10.0
   cloud_firestore: ^6.10.0
+  cloud_functions: ^6.5.0
   firebase_analytics: ^12.6.0
   firebase_auth: ^6.7.0
   firebase_core: ^4.15.0
@@ -26,6 +27,7 @@ dependencies:
   path: ^1.9.1
   path_provider: ^2.1.6
   purchases_flutter: ^10.13.2
+  qr_flutter: ^4.1.0
   share_plus: ^13.3.0
   shared_preferences: ^2.5.5
   url_launcher: ^6.3.2
@@ -45,6 +47,8 @@ flutter_launcher_icons:
   remove_alpha_ios: true
 
 flutter:
+  config:
+    enable-swift-package-manager: true
   uses-material-design: true
   assets:
     - assets/images/cookoo/

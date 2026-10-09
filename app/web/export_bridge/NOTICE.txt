@@ -1,0 +1,9 @@
+The locally bundled browser export bridge includes Mediabunny 1.61.3.
+Copyright (c) 2026-present, Vanilagy and contributors.
+Mediabunny is licensed under the Mozilla Public License 2.0:
+https://mozilla.org/MPL/2.0/
+Unmodified source for this exact release is available at:
+https://www.npmjs.com/package/mediabunny/v/1.61.3
+The package-lock.json pins the source package and its integrity hash.
+Bundle license notices are retained in ../export_bridge.js.LEGAL.txt.
+Regenerate the bundle with npm ci && npm run build in this directory.
