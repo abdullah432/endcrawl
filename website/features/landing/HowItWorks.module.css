@@ -1,0 +1,49 @@
+.band {
+  background: var(--ec-sheet);
+  border-block: 1px solid var(--ec-line);
+}
+
+.inner {
+  display: flex;
+  flex-direction: column;
+  gap: 56px;
+  padding-block: 110px;
+}
+
+.title {
+  max-width: 760px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr));
+  gap: 56px 40px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.step {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.number {
+  font-family: var(--ec-mono);
+  font-size: 11px;
+  color: var(--ec-muted);
+}
+
+.body {
+  font-size: 15.5px;
+  line-height: 1.6;
+  color: var(--ec-ink2);
+}
+
+@media (max-width: 640px) {
+  .inner {
+    padding-block: 80px;
+    gap: 44px;
+  }
+}

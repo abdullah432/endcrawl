@@ -13,6 +13,7 @@ import '../controllers/auth_controller.dart';
 import '../widgets/auth_error_banner.dart';
 import '../widgets/auth_navigation.dart';
 import '../widgets/resend_countdown.dart';
+import '../widgets/auth_split.dart';
 
 /// 0.4 — requesting a password reset link.
 ///
@@ -44,61 +45,61 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
     final controller = ref.read(authControllerProvider.notifier);
     final sentTo = form.resetSentTo;
 
-    return EcScaffold(
-      topBar: const EcTopBar(),
-      body: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          const EcHeadline('Reset your', emphasis: 'password.'),
-          const SizedBox(height: 16),
-          Text('Enter your account email. We’ll send a link to choose a new password.', style: context.type.body),
-          const SizedBox(height: 16),
-          EcTextField(
-            controller: _email,
-            label: 'Email',
-            hint: 'you@studio.com',
-            keyboardType: TextInputType.emailAddress,
-            autofillHints: const [AutofillHints.email],
-            textInputAction: TextInputAction.done,
-            autofocus: widget.initialEmail.isEmpty,
-            error: form.errorFor(AuthField.email),
-            onSubmitted: (_) => _send(),
-          ),
-          const SizedBox(height: 16),
-          AuthErrorBanner(form.formError),
-          EcButton(
-            label: 'Send reset link',
-            busy: form.isRunning(AuthAction.reset),
-            onPressed: form.busy || controller.resetCooldownLeft() > Duration.zero ? null : _send,
-          ),
-          if (sentTo != null) ...[
-            const SizedBox(height: 22),
-            // Conditional on purpose: Firebase won't say whether an account
-            // exists for the address, and the copy shouldn't claim more
-            // certainty than the request has.
-            EcNotice(
-              tone: EcTone.ok,
-              title: 'Check your inbox',
-              body: 'If there’s an account for $sentTo, a link is on its way. Not there in a minute? Check spam.',
-              actions: [
-                EcButton.secondary(
-                  label: 'Open Mail',
-                  size: EcButtonSize.medium,
-                  onPressed: () => ref.read(externalLinksProvider).openMailApp(),
-                ),
-                ResendCountdown(
-                  remaining: controller.resetCooldownLeft,
-                  onResend: form.busy ? null : _send,
-                ),
-              ],
+    return AuthSplit(
+      hero: AuthHero.roll,
+      child: EcScaffold(
+        topBar: const EcTopBar(),
+        body: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const EcHeadline('Reset your', emphasis: 'password.'),
+            const SizedBox(height: 16),
+            Text('Enter your account email. We’ll send a link to choose a new password.', style: context.type.body),
+            const SizedBox(height: 16),
+            EcTextField(
+              controller: _email,
+              label: 'Email',
+              hint: 'you@studio.com',
+              keyboardType: TextInputType.emailAddress,
+              autofillHints: const [AutofillHints.email],
+              textInputAction: TextInputAction.done,
+              autofocus: widget.initialEmail.isEmpty,
+              error: form.errorFor(AuthField.email),
+              onSubmitted: (_) => _send(),
+            ),
+            const SizedBox(height: 16),
+            AuthErrorBanner(form.formError),
+            EcButton(
+              label: 'Send reset link',
+              busy: form.isRunning(AuthAction.reset),
+              onPressed: form.busy || controller.resetCooldownLeft() > Duration.zero ? null : _send,
+            ),
+            if (sentTo != null) ...[
+              const SizedBox(height: 22),
+              // Conditional on purpose: Firebase won't say whether an account
+              // exists for the address, and the copy shouldn't claim more
+              // certainty than the request has.
+              EcNotice(
+                tone: EcTone.ok,
+                title: 'Check your inbox',
+                body: 'If there’s an account for $sentTo, a link is on its way. Not there in a minute? Check spam.',
+                actions: [
+                  EcButton.secondary(
+                    label: 'Open Mail',
+                    size: EcButtonSize.medium,
+                    onPressed: () => ref.read(externalLinksProvider).openMailApp(),
+                  ),
+                  ResendCountdown(remaining: controller.resetCooldownLeft, onResend: form.busy ? null : _send),
+                ],
+              ),
+            ],
+            const Spacer(),
+            const SizedBox(height: 16),
+            Center(
+              child: EcButton.text(label: 'Back to sign in', onPressed: () => popAuthScreen(context, ref)),
             ),
           ],
-          const Spacer(),
-          const SizedBox(height: 16),
-          Center(
-            child: EcButton.text(label: 'Back to sign in', onPressed: () => popAuthScreen(context, ref)),
-          ),
-        ],
+        ),
       ),
     );
   }

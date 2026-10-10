@@ -6,6 +6,8 @@ import '../plan/plan_navigation.dart';
 import 'controllers/new_project_controller.dart';
 import 'screens/canvas_screen.dart';
 import 'screens/template_contents_screen.dart';
+import '../access/controllers/web_access.dart';
+import '../access/widgets/locked_dialog.dart';
 
 /// Starts the new-project flow from a picked template (or empty).
 ///
@@ -14,6 +16,7 @@ import 'screens/template_contents_screen.dart';
 /// template goes through its contents (2.2) then the canvas (2.3); "Start
 /// empty" goes straight to the canvas.
 Future<void> startNewProject(BuildContext context, ProjectTemplate? template) async {
+  if (lockedOnWeb(context, LockedAction.newProject)) return;
   final container = ProviderScope.containerOf(context, listen: false);
   final newProject = container.read(newProjectControllerProvider);
   if (!await newProject.canStart()) {

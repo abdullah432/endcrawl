@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 
+import '../layout/layout_class.dart';
 import '../theme/ec_type.dart';
 import '../theme/theme_context.dart';
 import '../theme/tokens.dart';
+import 'ec_dialog.dart';
 import 'ec_scaffold.dart';
 import 'ec_surfaces.dart';
 
@@ -16,7 +18,26 @@ Future<T?> showEcSheet<T>(
   required WidgetBuilder builder,
   bool dismissible = true,
   bool scrim = true,
+  double dialogWidth = 560,
 }) {
+  // On a tablet or a desktop browser a bottom sheet would stretch across
+  // the whole window; the same sheet opens as a centred dialog instead.
+  if (context.layoutClass.isWide) {
+    return showDialog<T>(
+      context: context,
+      barrierDismissible: dismissible,
+      barrierColor: scrim ? context.palette.scrim : Colors.transparent,
+      builder: (dialogContext) => EcSheetPresentation(
+        dialog: true,
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: ConstrainedBox(constraints: BoxConstraints(maxWidth: dialogWidth), child: builder(dialogContext)),
+          ),
+        ),
+      ),
+    );
+  }
   return showModalBottomSheet<T>(
     context: context,
     isScrollControlled: true,
@@ -27,6 +48,19 @@ Future<T?> showEcSheet<T>(
     barrierColor: scrim ? context.palette.scrim : Colors.transparent,
     builder: builder,
   );
+}
+
+/// Whether the [EcSheet] below is shown as a centred dialog (tablet and
+/// desktop) rather than a bottom sheet (phone).
+class EcSheetPresentation extends InheritedWidget {
+  final bool dialog;
+  const EcSheetPresentation({super.key, required this.dialog, required super.child});
+
+  static bool isDialog(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<EcSheetPresentation>()?.dialog ?? false;
+
+  @override
+  bool updateShouldNotify(EcSheetPresentation oldWidget) => dialog != oldWidget.dialog;
 }
 
 /// Every bottom sheet's chrome: sheet colour, 28 px top radius, grab handle,
@@ -62,6 +96,7 @@ class EcSheet extends StatelessWidget {
   Widget build(BuildContext context) {
     final p = context.palette;
     final t = context.type;
+    final dialog = EcSheetPresentation.isDialog(context);
     final maxHeight = MediaQuery.sizeOf(context).height * maxHeightFraction;
 
     final titleRow =
@@ -96,10 +131,13 @@ class EcSheet extends StatelessWidget {
 
     return Container(
       constraints: BoxConstraints(maxHeight: maxHeight),
+      clipBehavior: dialog ? Clip.antiAlias : Clip.none,
       decoration: BoxDecoration(
         color: p.sheet,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(EcRadius.sheet)),
-        boxShadow: p.sheetShadow,
+        borderRadius: dialog
+            ? BorderRadius.circular(EcRadius.sheet)
+            : const BorderRadius.vertical(top: Radius.circular(EcRadius.sheet)),
+        boxShadow: dialog ? EcDialog.shadow : p.sheetShadow,
       ),
       // A transparent Material so list tiles and ink inside the sheet paint
       // on the sheet itself rather than under its fill.
@@ -113,14 +151,18 @@ class EcSheet extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Center(
-                  child: Container(
-                    width: 40,
-                    height: 5,
-                    margin: const EdgeInsets.only(top: 10),
-                    decoration: BoxDecoration(color: p.line2, borderRadius: BorderRadius.circular(EcRadius.pill)),
+                // A dialog has no handle to drag.
+                if (dialog)
+                  const SizedBox(height: 10)
+                else
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 5,
+                      margin: const EdgeInsets.only(top: 10),
+                      decoration: BoxDecoration(color: p.line2, borderRadius: BorderRadius.circular(EcRadius.pill)),
+                    ),
                   ),
-                ),
                 titleRow,
                 Flexible(
                   child: SingleChildScrollView(padding: padding, child: child),

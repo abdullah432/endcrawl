@@ -1,12 +1,14 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'core/services/analytics.dart';
 import 'core/services/external_links.dart';
 import 'core/config/billing_config.dart';
+import 'data/repositories/claims_entitlement_repository.dart';
 import 'data/repositories/revenuecat_entitlement_repository.dart';
 import 'data/repositories/auth_repository.dart';
 import 'data/repositories/entitlement_repository.dart';
@@ -109,6 +111,8 @@ final analyticsPreferenceSyncProvider = Provider<void>((ref) {
 
 /// One SDK owner for the lifetime of the app, with immediate account isolation.
 final entitlementRepositoryProvider = Provider<EntitlementRepository>((ref) {
+  // The web reads Pro from the server-set sign-in claim; it never sells.
+  if (kIsWeb) return ClaimsEntitlementRepository(ref.watch(firebaseAuthProvider));
   if (BillingConfig.apiKey.isEmpty) return const FreeEntitlementRepository();
   final repository = RevenueCatEntitlementRepository(apiKey: BillingConfig.apiKey);
   ref.listen(currentUidProvider, (_, uid) => repository.setUser(uid), fireImmediately: true);

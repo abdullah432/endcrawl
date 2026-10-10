@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/widgets.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
@@ -20,9 +21,12 @@ import '../data/video_encoder.dart';
 import '../models/export_models.dart';
 import '../render/frame_renderer.dart';
 import '../render/frame_source.dart';
+import '../data/browser_video_encoder.dart';
 
 final videoEncoderProvider = Provider<VideoEncoder>(
-  (ref) => const RoutingVideoEncoder(video: NativeVideoEncoder(), images: PngSequenceEncoder()),
+  (ref) => kIsWeb
+      ? const BrowserVideoEncoder()
+      : const RoutingVideoEncoder(video: NativeVideoEncoder(), images: PngSequenceEncoder()),
 );
 
 /// What this device can encode — 6.1 offers only these.

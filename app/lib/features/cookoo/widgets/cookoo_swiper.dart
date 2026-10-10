@@ -131,15 +131,22 @@ class _CookooSwiperState extends ConsumerState<CookooSwiper> {
       _scroll = scroll;
       if (!_seen) _scroll?.addListener(_checkSeen);
     }
-    final screen = MediaQuery.sizeOf(context).width;
-    // 358 wide with 16 at each side; narrow phones keep the 16 and shrink
+    _sizeFor(MediaQuery.sizeOf(context).width);
+  }
+
+  /// Sizes the pages for the width the swiper actually has — the screen on
+  /// a phone, a pane in Settings on a tablet or desktop.
+  void _sizeFor(double width) {
+    // 358 wide with 16 at each side; narrow widths keep the 16 and shrink
     // the card. Each page carries half the 10 px gap on either side.
-    _slideWidth = screen < 380 ? screen - 32 : CookooPromoCard.width;
-    final fraction = (_slideWidth + _gap) / screen;
+    _slideWidth = width < 380 ? width - 32 : CookooPromoCard.width;
+    final fraction = ((_slideWidth + _gap) / width).clamp(0.1, 1.0);
     if (_pages?.viewportFraction != fraction) {
       final old = _pages;
       _pages = PageController(viewportFraction: fraction, initialPage: _index);
-      old?.dispose();
+      // Disposed after this frame: the PageView still holds it until it
+      // rebuilds with the new one.
+      if (old != null) WidgetsBinding.instance.addPostFrameCallback((_) => old.dispose());
     }
   }
 
@@ -215,23 +222,28 @@ class _CookooSwiperState extends ConsumerState<CookooSwiper> {
         ),
         SizedBox(
           height: CookooPromoCard.height,
-          child: PageView.builder(
-            controller: _pages,
-            itemCount: cookooSlides.length,
-            onPageChanged: _onPage,
-            itemBuilder: (context, i) {
-              final slide = cookooSlides[i];
-              return Semantics(
-                container: true,
-                label: 'Slide ${i + 1} of ${cookooSlides.length}',
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: _gap / 2),
-                  child: CookooPromoCard(
-                    slide: slide,
-                    onTellUs: () => _tellUs(slide),
-                    onFooterTap: slide.caseSlug == null ? null : () => _openCase(slide),
-                  ),
-                ),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              _sizeFor(constraints.maxWidth);
+              return PageView.builder(
+                controller: _pages,
+                itemCount: cookooSlides.length,
+                onPageChanged: _onPage,
+                itemBuilder: (context, i) {
+                  final slide = cookooSlides[i];
+                  return Semantics(
+                    container: true,
+                    label: 'Slide ${i + 1} of ${cookooSlides.length}',
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: _gap / 2),
+                      child: CookooPromoCard(
+                        slide: slide,
+                        onTellUs: () => _tellUs(slide),
+                        onFooterTap: slide.caseSlug == null ? null : () => _openCase(slide),
+                      ),
+                    ),
+                  );
+                },
               );
             },
           ),

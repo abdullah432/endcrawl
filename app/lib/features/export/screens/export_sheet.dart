@@ -4,6 +4,7 @@ import 'package:path/path.dart' show basename;
 
 import '../../../bootstrap.dart';
 import '../../../core/theme/ec_type.dart';
+import '../../../core/layout/layout_class.dart';
 import '../../../core/theme/theme_context.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../core/result.dart';
@@ -16,6 +17,7 @@ import '../../../core/widgets/ec_chip.dart';
 import '../../../core/widgets/ec_headline.dart';
 import '../../../core/widgets/ec_scaffold.dart';
 import '../../../core/widgets/ec_settings.dart';
+import '../../../core/widgets/ec_dialog.dart';
 import '../../../core/widgets/ec_sheet.dart';
 import '../../../core/widgets/ec_surfaces.dart';
 import '../../../core/widgets/ec_toast.dart';
@@ -26,6 +28,9 @@ import '../../project/controllers/project_controller.dart';
 import '../../timing/screens/timing_sheet.dart';
 import '../controllers/export_controller.dart';
 import '../models/export_models.dart';
+import '../../access/controllers/web_access.dart';
+import '../../access/widgets/locked_dialog.dart';
+import '../data/browser_video_encoder.dart';
 
 /// Export: settings (6.1), rendering (6.2), failed (6.3), ready (6.4).
 ///
@@ -36,8 +41,9 @@ class ExportSheet extends ConsumerWidget {
   const ExportSheet({super.key});
 
   static Future<void> show(BuildContext context) async {
+    if (lockedOnWeb(context, LockedAction.export)) return;
     final container = ProviderScope.containerOf(context, listen: false);
-    await showEcSheet<void>(context, builder: (_) => const ExportSheet());
+    await showEcSheet<void>(context, dialogWidth: 1000, builder: (_) => const ExportSheet());
     // A delivered file is done with; a failure stays, to be resumed.
     if (container.read(exportControllerProvider).run?.phase == ExportPhase.done) {
       container.read(exportControllerProvider.notifier).dismiss();
@@ -50,12 +56,17 @@ class ExportSheet extends ConsumerWidget {
     final run = ref.watch(exportControllerProvider.select((s) => s.run));
     final mine = run != null && run.projectId == projectId;
 
-    return switch (mine ? run.phase : null) {
+    final view = switch (mine ? run.phase : null) {
       ExportPhase.running => _Rendering(run: run!),
       ExportPhase.failed => _Failed(run: run!),
       ExportPhase.done => _Ready(run: run!),
-      null => _Settings(busyWith: run?.phase == ExportPhase.running ? run!.projectTitle : null),
+      null => null,
     };
+    if (view == null) return _Settings(busyWith: run?.phase == ExportPhase.running ? run!.projectTitle : null);
+    // Progress, failure and the finished file keep a sheet's width even in
+    // the wide export dialog.
+    if (!EcSheetPresentation.isDialog(context)) return view;
+    return Center(child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 560), child: view));
   }
 }
 
@@ -93,6 +104,261 @@ class _Settings extends ConsumerWidget {
       ('Scroll rate', '${e.ppf.toStringAsFixed(2)} px/f'),
     ];
 
+    final browser = ref.watch(runningOnWebProvider);
+    final lockedFacts = <Widget>[
+      Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: p.surface,
+          borderRadius: BorderRadius.circular(EcRadius.card),
+          border: Border.all(color: p.line),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                Expanded(child: Text(caps('Locked for this render'), style: t.section)),
+                EcButton.text(
+                  label: 'Edit',
+                  size: EcButtonSize.small,
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                    TimingSheet.show(context);
+                  },
+                ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Wrap(
+              runSpacing: 10,
+              children: [
+                for (final (label, value) in facts)
+                  FractionallySizedBox(
+                    widthFactor: .5,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(label, style: t.caption.copyWith(fontSize: 10.5)),
+                        const SizedBox(height: 2),
+                        Text(
+                          value,
+                          style: t.mono.copyWith(fontSize: 13, color: p.ink, fontWeight: FontWeight.w500),
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    ];
+    final notices = <Widget>[
+      const SizedBox(height: 10),
+      if (unsupportedRate) ...[
+        EcNotice(
+          tone: EcTone.warn,
+          title: 'This device cannot export this frame rate',
+          body: 'Use 30 fps and a slower scroll for smoother motion.',
+          actions: [
+            EcButton.secondary(
+              label: 'Use 30 fps · same runtime',
+              onPressed: () => ref.read(projectControllerProvider.notifier).setFps(30),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+      ],
+      EcGroup(
+        children: [
+          EcGroupRow.toggle(
+            title: 'Motion blur',
+            subtitle: 'A film-style 180° shutter. Softens moving text; it does not remove judder.',
+            value: project.settings.motionSmoothing,
+            onChanged: ref.read(projectControllerProvider.notifier).setMotionSmoothing,
+          ),
+        ],
+      ),
+      if (e.judderRisk || !e.readable) ...[
+        const SizedBox(height: 10),
+        EcNotice(
+          tone: EcTone.warn,
+          title: e.judderRisk ? 'Fast motion may strobe' : 'Names pass too quickly',
+          body:
+              'Text moves ${formatPpf(e.ppf)} px per frame at ${formatFps(e.fps)}. '
+              'A whole-pixel speed does not guarantee smooth playback. '
+              'Try a slower roll or a higher frame rate.',
+          actions: [
+            if (e.judderRisk && e.fps < 60 && (device?.supports60Fps(codec, resolution.edge) ?? false))
+              EcButton.secondary(
+                label: 'Use 60 fps · same runtime',
+                size: EcButtonSize.small,
+                onPressed: () => ref.read(projectControllerProvider.notifier).setFps(60),
+              ),
+            if (timingFixes(e, count: 1) case [(final ppf, final frames)])
+              EcButton.secondary(
+                label: 'Use ${formatClock(frames / e.fps)} · $ppf px/f',
+                size: EcButtonSize.small,
+                onPressed: () => ref.read(projectControllerProvider.notifier).applySnap(ppf),
+              ),
+          ],
+        ),
+      ],
+    ];
+    final codecList = <Widget>[
+      const SizedBox(height: 14),
+      const EcSectionLabel('Codec'),
+      EcGroup(
+        children: [
+          if (device == null)
+            const EcGroupRow(title: 'Checking what this device can encode…', chevron: false)
+          else
+            for (final c in device.codecs)
+              _CodecRow(
+                codec: c,
+                selected: c == codec,
+                showPro: !isPro,
+                // H.264 and HEVC are encoded at this rate; the others
+                // vary with the picture. Either way it's an estimate.
+                size: '≈ ${formatBytes(estimateBytes(c, w, h, seconds))}',
+                onTap: () => controller.setCodec(c),
+              ),
+        ],
+      ),
+      if (transparent && !codec.alpha) ...[
+        const SizedBox(height: 10),
+        EcNotice(
+          tone: EcTone.warn,
+          title: '${codec.label} has no alpha',
+          body: 'The transparent background will render as black. ProRes 4444 or PNG keep it.',
+        ),
+      ],
+    ];
+    final resolutionPicker = <Widget>[
+      const SizedBox(height: 14),
+      const EcSectionLabel('Resolution'),
+      EcSegmented(
+        labels: [for (final r in resolutions) r.label],
+        selectedIndex: resolutions.indexOf(resolution),
+        onChanged: (i) => controller.setResolution(resolutions[i]),
+        trailing: {
+          if (!isPro)
+            for (final (i, r) in resolutions.indexed)
+              if (r.isPro) i: const EcGradientPill('Pro'),
+        },
+      ),
+      if ((w, h) != (project.formatW, project.formatH)) ...[
+        const SizedBox(height: 8),
+        Text('$w × $h', textAlign: TextAlign.center, style: t.mono.copyWith(fontSize: 11)),
+      ],
+    ];
+    final actions = <Widget>[
+      if (access == ExportAccess.locked) ...[
+        _ProPickCard(title: _proTitle(codec, resolution)),
+        const SizedBox(height: 10),
+      ],
+      Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 4),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text('Estimated render', style: t.bodyS.copyWith(fontSize: 12, color: p.muted)),
+            ),
+            Text(formatAbout(estimateRenderSeconds(w, h, seconds)), style: t.mono.copyWith(fontSize: 12, color: p.ink)),
+          ],
+        ),
+      ),
+      const SizedBox(height: 10),
+      if (busyWith != null) ...[
+        Text('Rendering “$busyWith” — one render at a time.', textAlign: TextAlign.center, style: t.caption),
+        const SizedBox(height: 8),
+      ],
+      if (access == ExportAccess.locked) ...[
+        EcButton(
+          label: '▶  Watch ad · render once',
+          onPressed: busyWith != null ? null : () => _unlockWithAd(context, ref, _proLabel(codec, resolution)),
+        ),
+        const SizedBox(height: 8),
+        EcButton.secondary(label: 'Go Pro · every render, no ads', onPressed: () => ProSheet.show(context)),
+      ] else ...[
+        if (prefer60) ...[
+          Text('60 fps keeps the same runtime and scroll speed.', textAlign: TextAlign.center, style: t.caption),
+          const SizedBox(height: 8),
+          EcButton(
+            label: 'Render ${codec.label} · 60 fps',
+            onPressed: busyWith != null || browser ? null : controller.startAt60Fps,
+          ),
+          const SizedBox(height: 8),
+          EcButton.secondary(
+            label: 'Render current ${formatFps(e.fps)}',
+            onPressed: busyWith != null || browser ? null : controller.start,
+          ),
+        ] else
+          EcButton(
+            label: 'Render ${codec.label}',
+            onPressed: busyWith != null || unsupportedRate || browser ? null : controller.start,
+          ),
+      ],
+      if (browser) ...[
+        const SizedBox(height: 8),
+        Text(BrowserVideoEncoder.message, textAlign: TextAlign.center, style: t.caption),
+      ],
+    ];
+
+    // T6.1 / D14: on a tablet or desktop the codecs sit beside the
+    // resolution. A render that's ready to go is started from the footer
+    // (D14); a Pro pick on the free plan keeps its card, ad and offer in
+    // the right-hand column (T6.1).
+    if (EcSheetPresentation.isDialog(context)) {
+      final locked = access == ExportAccess.locked;
+      final note = browser
+          ? BrowserVideoEncoder.message
+          : busyWith != null
+              ? 'Rendering “$busyWith” — one render at a time.'
+              : 'Estimated render ${formatAbout(estimateRenderSeconds(w, h, seconds))} · keeps running if you close this';
+      return _WideExport(
+        title: context.layoutClass == LayoutClass.expanded ? 'Render a master.' : 'Render the roll.',
+        projectTitle: project.name,
+        facts: facts,
+        left: [...codecList.skip(2)],
+        right: [
+          ...resolutionPicker.skip(2),
+          ...notices,
+          if (locked) ...[const SizedBox(height: 14), ...actions],
+          if (!locked && prefer60) ...[
+            const SizedBox(height: 14),
+            Text('60 fps keeps the same runtime and scroll speed.', style: t.caption),
+          ],
+        ],
+        footer: locked
+            ? null
+            : Row(
+                children: [
+                  Expanded(child: Text(note, style: t.bodyS.copyWith(fontSize: 12.5, color: p.muted))),
+                  const SizedBox(width: 16),
+                  EcButton.secondary(
+                    label: prefer60 ? 'Render ${formatFps(e.fps)}' : 'Cancel',
+                    size: EcButtonSize.medium,
+                    expand: false,
+                    onPressed: prefer60
+                        ? (busyWith != null || browser ? null : controller.start)
+                        : () => Navigator.of(context).maybePop(),
+                  ),
+                  const SizedBox(width: 10),
+                  EcButton(
+                    label: prefer60 ? 'Render · 60 fps' : 'Render',
+                    size: EcButtonSize.medium,
+                    expand: false,
+                    onPressed: busyWith != null || browser || (!prefer60 && unsupportedRate)
+                        ? null
+                        : (prefer60 ? controller.startAt60Fps : controller.start),
+                  ),
+                ],
+              ),
+      );
+    }
+
     return EcSheet(
       title: 'Export',
       maxHeightFraction: 0.94,
@@ -101,66 +367,103 @@ class _Settings extends ConsumerWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            if (access == ExportAccess.locked) ...[
-              _ProPickCard(title: _proTitle(codec, resolution)),
-              const SizedBox(height: 10),
-            ],
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 4),
-              child: Row(
-                children: [
-                  Expanded(child: Text('Estimated render', style: t.bodyS.copyWith(fontSize: 12, color: p.muted))),
-                  Text(formatAbout(estimateRenderSeconds(w, h, seconds)), style: t.mono.copyWith(fontSize: 12, color: p.ink)),
-                ],
-              ),
-            ),
-            const SizedBox(height: 10),
-            if (busyWith != null) ...[
-              Text('Rendering “$busyWith” — one render at a time.', textAlign: TextAlign.center, style: t.caption),
-              const SizedBox(height: 8),
-            ],
-            if (access == ExportAccess.locked) ...[
-              EcButton(
-                label: '▶  Watch ad · render once',
-                onPressed: busyWith != null ? null : () => _unlockWithAd(context, ref, _proLabel(codec, resolution)),
-              ),
-              const SizedBox(height: 8),
-              EcButton.secondary(label: 'Go Pro · every render, no ads', onPressed: () => ProSheet.show(context)),
-            ] else ...[
-              if (prefer60) ...[
-                Text('60 fps keeps the same runtime and scroll speed.', textAlign: TextAlign.center, style: t.caption),
-                const SizedBox(height: 8),
-                EcButton(
-                  label: 'Render ${codec.label} · 60 fps',
-                  onPressed: busyWith != null ? null : controller.startAt60Fps,
-                ),
-                const SizedBox(height: 8),
-                EcButton.secondary(label: 'Render current ${formatFps(e.fps)}', onPressed: busyWith != null ? null : controller.start),
-              ] else
-                EcButton(label: 'Render ${codec.label}', onPressed: busyWith != null || unsupportedRate ? null : controller.start),
-            ],
-          ],
+          children: actions,
         ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: p.surface,
-              borderRadius: BorderRadius.circular(EcRadius.card),
-              border: Border.all(color: p.line),
+        children: [...lockedFacts, ...notices, ...codecList, ...resolutionPicker],
+      ),
+    );
+  }
+}
+
+/// T6.1 / D14 — the export settings as a wide dialog: what's locked for
+/// this render on one line, the codecs on the left, resolution and the
+/// render actions on the right. The same sections as the phone's sheet.
+class _WideExport extends StatelessWidget {
+  final String title;
+  final String projectTitle;
+  final List<(String, String)> facts;
+  final List<Widget> left;
+  final List<Widget> right;
+
+  /// The estimate and the render buttons, under a hairline (D14).
+  final Widget? footer;
+
+  const _WideExport({
+    required this.title,
+    required this.projectTitle,
+    required this.facts,
+    required this.left,
+    required this.right,
+    this.footer,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.palette;
+    final t = context.type;
+    final height = (MediaQuery.sizeOf(context).height - 48).clamp(420.0, 780.0);
+    return Container(
+      height: height,
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        color: p.sheet,
+        borderRadius: BorderRadius.circular(EcRadius.sheet),
+        boxShadow: EcDialog.shadow,
+      ),
+      child: Material(
+        type: MaterialType.transparency,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(28, 26, 22, 14),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        EcEyebrow('Export · $projectTitle'),
+                        const SizedBox(height: 6),
+                        Semantics(header: true, child: Text(title, style: t.displayL.copyWith(fontSize: 38))),
+                      ],
+                    ),
+                  ),
+                  EcCircleButton.surface(
+                    icon: Icons.close_rounded,
+                    tooltip: 'Close',
+                    onPressed: () => Navigator.of(context).maybePop(),
+                  ),
+                ],
+              ),
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Row(
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 28),
+              child: Container(
+                padding: const EdgeInsets.fromLTRB(14, 6, 6, 6),
+                decoration: BoxDecoration(
+                  color: p.surface,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: p.line),
+                ),
+                child: Row(
                   children: [
-                    Expanded(child: Text(caps('Locked for this render'), style: t.section)),
+                    Text('Locked for this render', style: t.bodyS.copyWith(color: p.muted)),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        facts.map((f) => f.$2).join(' · '),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: t.mono.copyWith(fontSize: 11.5, color: p.ink),
+                      ),
+                    ),
                     EcButton.text(
-                      label: 'Edit',
+                      label: 'Edit timing',
                       size: EcButtonSize.small,
                       onPressed: () {
                         Navigator.of(context).pop();
@@ -169,111 +472,46 @@ class _Settings extends ConsumerWidget {
                     ),
                   ],
                 ),
-                const SizedBox(height: 4),
-                Wrap(
-                  runSpacing: 10,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(28, 0, 28, 20),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    for (final (label, value) in facts)
-                      FractionallySizedBox(
-                        widthFactor: .5,
+                    Expanded(
+                      flex: 11,
+                      child: SingleChildScrollView(
                         child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(label, style: t.caption.copyWith(fontSize: 10.5)),
-                            const SizedBox(height: 2),
-                            Text(value, style: t.mono.copyWith(fontSize: 13, color: p.ink, fontWeight: FontWeight.w500)),
-                          ],
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [const EcSectionLabel('Codec'), ...left],
                         ),
                       ),
+                    ),
+                    const SizedBox(width: 20),
+                    Expanded(
+                      flex: 9,
+                      child: SingleChildScrollView(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [const EcSectionLabel('Resolution'), ...right],
+                        ),
+                      ),
+                    ),
                   ],
                 ),
-              ],
+              ),
             ),
-          ),
-          const SizedBox(height: 10),
-          if (unsupportedRate) ...[
-            EcNotice(
-              tone: EcTone.warn,
-              title: 'This device cannot export this frame rate',
-              body: 'Use 30 fps and a slower scroll for smoother motion.',
-              actions: [EcButton.secondary(label: 'Use 30 fps · same runtime', onPressed: () => ref.read(projectControllerProvider.notifier).setFps(30))],
-            ),
-            const SizedBox(height: 10),
+            if (footer case final footer?)
+              Container(
+                padding: const EdgeInsets.fromLTRB(28, 16, 28, 18),
+                decoration: BoxDecoration(border: Border(top: BorderSide(color: p.line))),
+                child: footer,
+              ),
           ],
-          EcGroup(children: [
-            EcGroupRow.toggle(
-              title: 'Motion blur',
-              subtitle: 'A film-style 180° shutter. Softens moving text; it does not remove judder.',
-              value: project.settings.motionSmoothing,
-              onChanged: ref.read(projectControllerProvider.notifier).setMotionSmoothing,
-            ),
-          ]),
-          if (e.judderRisk || !e.readable) ...[
-            const SizedBox(height: 10),
-            EcNotice(
-              tone: EcTone.warn,
-              title: e.judderRisk ? 'Fast motion may strobe' : 'Names pass too quickly',
-              body: 'Text moves ${formatPpf(e.ppf)} px per frame at ${formatFps(e.fps)}. '
-                  'A whole-pixel speed does not guarantee smooth playback. '
-                  'Try a slower roll or a higher frame rate.',
-              actions: [
-                if (e.judderRisk && e.fps < 60 && (device?.supports60Fps(codec, resolution.edge) ?? false))
-                  EcButton.secondary(
-                    label: 'Use 60 fps · same runtime',
-                    size: EcButtonSize.small,
-                    onPressed: () => ref.read(projectControllerProvider.notifier).setFps(60),
-                  ),
-                if (timingFixes(e, count: 1) case [(final ppf, final frames)])
-                  EcButton.secondary(
-                    label: 'Use ${formatClock(frames / e.fps)} · $ppf px/f',
-                    size: EcButtonSize.small,
-                    onPressed: () => ref.read(projectControllerProvider.notifier).applySnap(ppf),
-                  ),
-              ],
-            ),
-          ],
-          const SizedBox(height: 14),
-          const EcSectionLabel('Codec'),
-          EcGroup(children: [
-            if (device == null)
-              const EcGroupRow(title: 'Checking what this device can encode…', chevron: false)
-            else
-              for (final c in device.codecs)
-                _CodecRow(
-                  codec: c,
-                  selected: c == codec,
-                  showPro: !isPro,
-                  // H.264 and HEVC are encoded at this rate; the others
-                  // vary with the picture. Either way it's an estimate.
-                  size: '≈ ${formatBytes(estimateBytes(c, w, h, seconds))}',
-                  onTap: () => controller.setCodec(c),
-                ),
-          ]),
-          if (transparent && !codec.alpha) ...[
-            const SizedBox(height: 10),
-            EcNotice(
-              tone: EcTone.warn,
-              title: '${codec.label} has no alpha',
-              body: 'The transparent background will render as black. ProRes 4444 or PNG keep it.',
-            ),
-          ],
-          const SizedBox(height: 14),
-          const EcSectionLabel('Resolution'),
-          EcSegmented(
-            labels: [for (final r in resolutions) r.label],
-            selectedIndex: resolutions.indexOf(resolution),
-            onChanged: (i) => controller.setResolution(resolutions[i]),
-            trailing: {
-              if (!isPro)
-                for (final (i, r) in resolutions.indexed)
-                  if (r.isPro) i: const EcGradientPill('Pro'),
-            },
-          ),
-          if ((w, h) != (project.formatW, project.formatH)) ...[
-            const SizedBox(height: 8),
-            Text('$w × $h', textAlign: TextAlign.center, style: t.mono.copyWith(fontSize: 11)),
-          ],
-        ],
+        ),
       ),
     );
   }
@@ -281,16 +519,16 @@ class _Settings extends ConsumerWidget {
 
 /// What a Pro pick unlocks, as the ad and the card name it.
 String _proLabel(Codec codec, ExportResolution resolution) => switch ((codec.isPro, resolution.isPro)) {
-      (true, true) => '${codec.label} in ${resolution.label}',
-      (true, false) => codec.label,
-      _ => resolution.label,
-    };
+  (true, true) => '${codec.label} in ${resolution.label}',
+  (true, false) => codec.label,
+  _ => resolution.label,
+};
 
 String _proTitle(Codec codec, ExportResolution resolution) => switch ((codec.isPro, resolution.isPro)) {
-      (true, true) => '${codec.label} and ${resolution.label} are Pro',
-      (true, false) => '${codec.label} is a Pro codec',
-      _ => '${resolution.label} is a Pro resolution',
-    };
+  (true, true) => '${codec.label} and ${resolution.label} are Pro',
+  (true, false) => '${codec.label} is a Pro codec',
+  _ => '${resolution.label} is a Pro resolution',
+};
 
 /// Watches one rewarded ad (6.1a) and, if it's watched through, renders
 /// with the chosen Pro settings. Closing it early unlocks nothing.
@@ -404,7 +642,10 @@ class _CodecRow extends StatelessWidget {
                       children: [
                         Flexible(child: Text(codec.label, style: t.titleS.copyWith(fontSize: 13.5))),
                         if (showPro && codec.isPro) ...[const SizedBox(width: 6), const EcGradientPill('Pro')],
-                        if (codec.alpha) ...[const SizedBox(width: 6), const EcStatusPill('Alpha', tone: EcTone.accent)],
+                        if (codec.alpha) ...[
+                          const SizedBox(width: 6),
+                          const EcStatusPill('Alpha', tone: EcTone.accent),
+                        ],
                       ],
                     ),
                     const SizedBox(height: 2),
@@ -465,7 +706,9 @@ class _Rendering extends ConsumerWidget {
         padding: const EdgeInsets.fromLTRB(20, 16, 20, 14),
         child: Row(
           children: [
-            Expanded(child: EcHeadline('Rendering', emphasis: '…', style: t.displayM)),
+            Expanded(
+              child: EcHeadline('Rendering', emphasis: '…', style: t.displayM),
+            ),
             EcCircleButton.tint(
               icon: Icons.close_rounded,
               size: 34,
@@ -524,7 +767,10 @@ class _Rendering extends ConsumerWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('${run.codec.label} · ${run.width} × ${run.height}', style: t.titleS.copyWith(fontSize: 13.5)),
+                          Text(
+                            '${run.codec.label} · ${run.width} × ${run.height}',
+                            style: t.titleS.copyWith(fontSize: 13.5),
+                          ),
                           const SizedBox(height: 3),
                           Text('frame ${run.frame} / ${run.totalFrames}', style: t.mono.copyWith(fontSize: 10.5)),
                         ],
@@ -595,10 +841,14 @@ class _Failed extends ConsumerWidget {
           children: [
             Row(
               children: [
-                Expanded(child: EcButton(label: 'Try again', onPressed: controller.retry)),
+                Expanded(
+                  child: EcButton(label: 'Try again', onPressed: controller.retry),
+                ),
                 if (canLower) ...[
                   const SizedBox(width: 8),
-                  Expanded(child: EcButton.secondary(label: 'Lower resolution', onPressed: controller.retryAtLowerResolution)),
+                  Expanded(
+                    child: EcButton.secondary(label: 'Lower resolution', onPressed: controller.retryAtLowerResolution),
+                  ),
                 ],
               ],
             ),
@@ -676,7 +926,14 @@ class _Ready extends ConsumerWidget {
               decoration: BoxDecoration(
                 color: p.ok,
                 shape: BoxShape.circle,
-                boxShadow: [BoxShadow(color: p.ok.withValues(alpha: .7), offset: const Offset(0, 12), blurRadius: 28, spreadRadius: -10)],
+                boxShadow: [
+                  BoxShadow(
+                    color: p.ok.withValues(alpha: .7),
+                    offset: const Offset(0, 12),
+                    blurRadius: 28,
+                    spreadRadius: -10,
+                  ),
+                ],
               ),
               child: Icon(Icons.check_rounded, color: p.onInk, size: 28),
             ),
@@ -686,26 +943,31 @@ class _Ready extends ConsumerWidget {
           const SizedBox(height: 8),
           Text(facts, textAlign: TextAlign.center, style: t.mono.copyWith(fontSize: 11)),
           const SizedBox(height: 20),
-          EcGroup(children: [
-            EcGroupRow(
-              title: 'Save to Files',
-              subtitle: basename(path),
-              onTap: () => deliver(destinations.share(path, origin: origin())),
-            ),
-            // Photos holds video; an image sequence goes to Files.
-            if (run.codec != Codec.png)
+          EcGroup(
+            children: [
               EcGroupRow(
-                title: 'Save to Photos',
-                onTap: () => deliver(destinations.saveToPhotos(path), done: 'Saved to Photos'),
+                title: 'Save to Files',
+                subtitle: basename(path),
+                onTap: () => deliver(destinations.share(path, origin: origin())),
               ),
-            EcGroupRow(
-              title: 'Send to Frame.io',
-              chevron: false,
-              trailing: const EcStatusPill('Soon'),
-              onTap: () => showEcToast(context, 'Frame.io is coming soon — share the file for now'),
-            ),
-            EcGroupRow(title: 'Share sheet', onTap: () => deliver(destinations.share(path, origin: origin()))),
-          ]),
+              // Photos holds video; an image sequence goes to Files.
+              if (run.codec != Codec.png)
+                EcGroupRow(
+                  title: 'Save to Photos',
+                  onTap: () => deliver(destinations.saveToPhotos(path), done: 'Saved to Photos'),
+                ),
+              EcGroupRow(
+                title: 'Send to Frame.io',
+                chevron: false,
+                trailing: const EcStatusPill('Soon'),
+                onTap: () => showEcToast(context, 'Frame.io is coming soon — share the file for now'),
+              ),
+              EcGroupRow(
+                title: 'Share sheet',
+                onTap: () => deliver(destinations.share(path, origin: origin())),
+              ),
+            ],
+          ),
           // The file has saved by the time this shows; the ad sits below
           // every destination and never stands between the user and them.
           const SponsoredSlot(AdPlacement.exportComplete, hideLabel: 'Remove ads', gap: 20),

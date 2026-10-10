@@ -20,7 +20,12 @@ import 'status_line.dart';
 /// mode, not a project setting: the chrome is frosted glass on black and
 /// fades two seconds after the last touch; a tap brings it back.
 class LandscapeMonitor extends ConsumerStatefulWidget {
-  const LandscapeMonitor({super.key});
+  /// Where the exit button goes instead of pinning portrait — the tablet
+  /// and desktop open this monitor full screen from the editor's expand
+  /// button and close it again.
+  final VoidCallback? onExit;
+
+  const LandscapeMonitor({super.key, this.onExit});
 
   @override
   ConsumerState<LandscapeMonitor> createState() => _LandscapeMonitorState();
@@ -56,7 +61,11 @@ class _LandscapeMonitorState extends ConsumerState<LandscapeMonitor> {
   /// while the phone is still sideways.
   void _exit() {
     ref.read(playbackControllerProvider.notifier).pause();
-    SystemChrome.setPreferredOrientations(kPortraitOnly);
+    if (widget.onExit case final onExit?) {
+      onExit();
+    } else {
+      SystemChrome.setPreferredOrientations(appOrientations);
+    }
   }
 
   @override

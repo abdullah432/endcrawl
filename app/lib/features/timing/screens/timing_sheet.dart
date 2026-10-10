@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/ec_type.dart';
+import '../../../core/layout/layout_class.dart';
 import '../../../core/theme/theme_context.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../core/utils/formatting.dart';
@@ -14,14 +15,32 @@ import '../../../domain/engine/roll_engine.dart';
 import '../../../domain/models/project_settings.dart';
 import '../../editor/controllers/editor_ui_controller.dart';
 import '../../project/controllers/project_controller.dart';
+import '../../access/controllers/web_access.dart';
+import '../../access/widgets/locked_dialog.dart';
+import 'timing_look_screen.dart';
 
 /// 5.1 — runtime in, scroll rate out, the way a delivery spec arrives; or
 /// lock the speed and read the runtime. Judder and dwell are reported
 /// separately so it's clear which one is the problem.
-class TimingSheet extends ConsumerWidget {
+class TimingSheet extends StatelessWidget {
   const TimingSheet({super.key});
 
-  static Future<void> show(BuildContext context) => showEcSheet<void>(context, builder: (_) => const TimingSheet());
+  static Future<void> show(BuildContext context) async {
+    if (lockedOnWeb(context, LockedAction.timing)) return;
+    if (context.layoutClass.isWide) return TimingLookScreen.open(context, TimingLookTab.timing);
+    await showEcSheet<void>(context, builder: (_) => const TimingSheet());
+  }
+
+  @override
+  Widget build(BuildContext context) =>
+      EcSheet(title: 'Timing', maxHeightFraction: 0.92, child: const TimingControls());
+}
+
+/// The timing controls — runtime or speed as the input, the verdicts, the
+/// nearest clean runtimes and head/tail black. The phone's sheet (5.1) and
+/// the tablet and desktop Timing panel (T5.1, D13) are both this.
+class TimingControls extends ConsumerWidget {
+  const TimingControls({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -46,10 +65,17 @@ class TimingSheet extends ConsumerWidget {
     final input = byRuntime
         ? _InputCard(
             label: 'Runtime · the input',
-            value: Text.rich(TextSpan(children: [
-              TextSpan(text: timecode.substring(0, 8)),
-              TextSpan(text: timecode.substring(8), style: TextStyle(color: p.faint)),
-            ])),
+            value: Text.rich(
+              TextSpan(
+                children: [
+                  TextSpan(text: timecode.substring(0, 8)),
+                  TextSpan(
+                    text: timecode.substring(8),
+                    style: TextStyle(color: p.faint),
+                  ),
+                ],
+              ),
+            ),
             decrementLabel: 'Shorter by a second',
             incrementLabel: 'Longer by a second',
             onDec: () => edit(controller.durationDown),
@@ -68,93 +94,91 @@ class TimingSheet extends ConsumerWidget {
             derivedValue: timecode,
           );
 
-    return EcSheet(
-      title: 'Timing',
-      maxHeightFraction: 0.92,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          EcSegmented(
-            labels: const ['Lock runtime', 'Lock speed'],
-            selectedIndex: byRuntime ? 0 : 1,
-            onChanged: (i) => edit(i == 0 ? controller.setModeDuration : controller.setModeSpeed),
-          ),
-          const SizedBox(height: 14),
-          input,
-          const SizedBox(height: 14),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: _Verdict(
-                  ok: !e.judderRisk,
-                  title: e.judderRisk ? 'Judder risk' : 'Steady pace',
-                  detail: e.judderRisk ? 'Try slower motion or 60 fps' : 'Playback also depends on the display',
-                ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        EcSegmented(
+          labels: const ['Lock runtime', 'Lock speed'],
+          selectedIndex: byRuntime ? 0 : 1,
+          onChanged: (i) => edit(i == 0 ? controller.setModeDuration : controller.setModeSpeed),
+        ),
+        const SizedBox(height: 14),
+        input,
+        const SizedBox(height: 14),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: _Verdict(
+                ok: !e.judderRisk,
+                title: e.judderRisk ? 'Judder risk' : 'Steady pace',
+                detail: e.judderRisk ? 'Try slower motion or 60 fps' : 'Playback also depends on the display',
               ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _Verdict(
-                  ok: e.readable,
-                  title: e.readable ? 'Readable' : 'Too fast',
-                  detail: '${e.dwellSeconds.toStringAsFixed(1)}s dwell · floor 3.0s',
-                ),
             ),
-          ]),
-          const SizedBox(height: 14),
-          EcGroup(children: [
+            const SizedBox(width: 8),
+            Expanded(
+              child: _Verdict(
+                ok: e.readable,
+                title: e.readable ? 'Readable' : 'Too fast',
+                detail: '${e.dwellSeconds.toStringAsFixed(1)}s dwell · floor 3.0s',
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 14),
+        EcGroup(
+          children: [
             EcGroupRow.toggle(
               title: 'Motion blur',
               subtitle: 'A film-style 180° shutter. Softens moving text; holds stay sharp.',
               value: settings.motionSmoothing,
               onChanged: (v) => edit(() => controller.setMotionSmoothing(v)),
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          Text('Nearest whole-pixel runtimes', style: t.bodyS.copyWith(fontSize: 12, color: p.ink2)),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              for (final (i, rate) in [neighbours.shorter, neighbours.longer].indexed) ...[
-                if (i > 0) const SizedBox(width: 8),
-                Expanded(
-                  child: rate == null
-                      ? const SizedBox.shrink()
-                      : _NeighbourCard(
-                          ppf: rate.$1,
-                          seconds: rate.$2 / e.fps,
-                          currentSeconds: runtimeSeconds,
-                          onTap: () => edit(() => controller.applySnap(rate.$1)),
-                        ),
-                ),
-              ],
-            ],
-          ),
-          const SizedBox(height: 14),
-          Row(
-            children: [
+            ),
+          ],
+        ),
+        const SizedBox(height: 14),
+        Text('Nearest whole-pixel runtimes', style: t.bodyS.copyWith(fontSize: 12, color: p.ink2)),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            for (final (i, rate) in [neighbours.shorter, neighbours.longer].indexed) ...[
+              if (i > 0) const SizedBox(width: 8),
               Expanded(
-                child: _EdgeCard(
-                  label: 'Head black',
-                  value: formatSecondsFrames(settings.headSeconds, e.fps),
-                  onDec: settings.headSeconds <= 0 ? null : () => edit(controller.headDown),
-                  onInc: () => edit(controller.headUp),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _EdgeCard(
-                  label: 'Tail black',
-                  value: formatSecondsFrames(settings.tailSeconds, e.fps),
-                  onDec: settings.tailSeconds <= 0 ? null : () => edit(controller.tailDown),
-                  onInc: () => edit(controller.tailUp),
-                ),
+                child: rate == null
+                    ? const SizedBox.shrink()
+                    : _NeighbourCard(
+                        ppf: rate.$1,
+                        seconds: rate.$2 / e.fps,
+                        currentSeconds: runtimeSeconds,
+                        onTap: () => edit(() => controller.applySnap(rate.$1)),
+                      ),
               ),
             ],
-          ),
-        ],
-      ),
+          ],
+        ),
+        const SizedBox(height: 14),
+        Row(
+          children: [
+            Expanded(
+              child: _EdgeCard(
+                label: 'Head black',
+                value: formatSecondsFrames(settings.headSeconds, e.fps),
+                onDec: settings.headSeconds <= 0 ? null : () => edit(controller.headDown),
+                onInc: () => edit(controller.headUp),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: _EdgeCard(
+                label: 'Tail black',
+                value: formatSecondsFrames(settings.tailSeconds, e.fps),
+                onDec: settings.tailSeconds <= 0 ? null : () => edit(controller.tailDown),
+                onInc: () => edit(controller.tailUp),
+              ),
+            ),
+          ],
+        ),
+      ],
     );
   }
 }
@@ -199,7 +223,12 @@ class _InputCard extends StatelessWidget {
           const SizedBox(height: 10),
           Row(
             children: [
-              Expanded(child: DefaultTextStyle(style: t.timecode, child: FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: value))),
+              Expanded(
+                child: DefaultTextStyle(
+                  style: t.timecode,
+                  child: FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: value),
+                ),
+              ),
               const SizedBox(width: 10),
               EcCircleButton.tint(icon: Icons.remove_rounded, size: 44, tooltip: decrementLabel, onPressed: onDec),
               const SizedBox(width: 6),
@@ -210,10 +239,15 @@ class _InputCard extends StatelessWidget {
           Divider(height: 1, color: p.line),
           const SizedBox(height: 10),
           Text.rich(
-            TextSpan(children: [
-              TextSpan(text: derived),
-              TextSpan(text: derivedValue, style: t.mono.copyWith(fontSize: 12, color: p.ink, fontWeight: FontWeight.w500)),
-            ]),
+            TextSpan(
+              children: [
+                TextSpan(text: derived),
+                TextSpan(
+                  text: derivedValue,
+                  style: t.mono.copyWith(fontSize: 12, color: p.ink, fontWeight: FontWeight.w500),
+                ),
+              ],
+            ),
             style: t.bodyS.copyWith(fontSize: 12, color: p.muted),
           ),
         ],
@@ -243,7 +277,12 @@ class _Verdict extends StatelessWidget {
             children: [
               Icon(ok ? Icons.check_rounded : Icons.priority_high_rounded, size: 14, color: fg),
               const SizedBox(width: 6),
-              Flexible(child: Text(title, style: t.bodyS.copyWith(fontSize: 13, fontWeight: FontWeight.w700, color: fg))),
+              Flexible(
+                child: Text(
+                  title,
+                  style: t.bodyS.copyWith(fontSize: 13, fontWeight: FontWeight.w700, color: fg),
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 4),
@@ -274,15 +313,21 @@ class _NeighbourCard extends StatelessWidget {
       borderRadius: shape,
       clipBehavior: Clip.antiAlias,
       child: Ink(
-        decoration: BoxDecoration(color: p.accentWash, borderRadius: shape, border: Border.all(color: p.accentLine)),
+        decoration: BoxDecoration(
+          color: p.accentWash,
+          borderRadius: shape,
+          border: Border.all(color: p.accentLine),
+        ),
         child: InkWell(
           onTap: onTap,
           child: Padding(
             padding: const EdgeInsets.all(12),
             child: Column(
               children: [
-                Text(formatRuntime(Duration(milliseconds: (seconds * 1000).round())),
-                    style: t.monoM.copyWith(fontSize: 15, color: p.accent, fontWeight: FontWeight.w500)),
+                Text(
+                  formatRuntime(Duration(milliseconds: (seconds * 1000).round())),
+                  style: t.monoM.copyWith(fontSize: 15, color: p.accent, fontWeight: FontWeight.w500),
+                ),
                 const SizedBox(height: 3),
                 Text('$ppf px/f · $change', style: t.caption.copyWith(fontSize: 11), textAlign: TextAlign.center),
               ],
@@ -307,7 +352,11 @@ class _EdgeCard extends StatelessWidget {
     final p = context.palette;
     return Container(
       padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(color: p.surface, borderRadius: BorderRadius.circular(EcRadius.row), border: Border.all(color: p.line)),
+      decoration: BoxDecoration(
+        color: p.surface,
+        borderRadius: BorderRadius.circular(EcRadius.row),
+        border: Border.all(color: p.line),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [

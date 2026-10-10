@@ -28,6 +28,16 @@ abstract final class AppLinks {
   /// The published policy, hosted on cookoo.dev — the same page the store
   /// listings link to, so there is only one version to keep current.
   static final privacyPolicy = Uri.parse('https://cookoo.dev/lastreel/privacy-policy');
+
+  /// LastReel on Google Play — where the web sends people to subscribe
+  /// (D2's button and QR code).
+  static final playStoreListing = Uri.parse('https://play.google.com/store/apps/details?id=com.lastreel.app');
+
+  /// Google Play's subscriptions page for LastReel — "Manage in Google
+  /// Play" on the web, which never bills.
+  static final playSubscriptions =
+      Uri.parse('https://play.google.com/store/account/subscriptions?package=com.lastreel.app');
+
   static String get storeName => defaultTargetPlatform == TargetPlatform.android ? 'Google Play' : 'App Store';
   static Uri get manageSubscriptions => Uri.parse(defaultTargetPlatform == TargetPlatform.android
       ? 'https://play.google.com/store/account/subscriptions?package=com.lastreel.app'

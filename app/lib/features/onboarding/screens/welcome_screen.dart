@@ -14,6 +14,7 @@ import '../../auth/widgets/auth_navigation.dart';
 import '../../auth/widgets/legal_consent.dart';
 import '../../auth/widgets/social_sign_in_buttons.dart';
 import '../widgets/roll_hero.dart';
+import '../../../core/layout/layout_class.dart';
 
 /// 0.1 — the first screen, and the whole of onboarding.
 ///
@@ -25,6 +26,9 @@ class WelcomeScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // On a tablet or desktop the welcome and sign in are one screen, the
+    // monitor beside the form (T0.1, D1).
+    if (context.layoutClass.isWide) return const SignInScreen(root: true);
     final form = ref.watch(authControllerProvider);
     final t = context.type;
 

@@ -8,13 +8,18 @@ import '../../../core/widgets/ec_sheet.dart';
 import '../../../core/widgets/ec_surfaces.dart';
 import '../../../core/widgets/ec_toast.dart';
 import '../../../domain/models/entitlement.dart';
+import '../../access/controllers/web_access.dart';
+import '../../access/screens/web_access_screen.dart';
+import '../../access/widgets/locked_dialog.dart';
 import '../../plan/controllers/editable_projects.dart';
 import '../../plan/controllers/plan_controller.dart';
 import '../../plan/screens/pro_sheet.dart';
 import '../../project/controllers/project_controller.dart';
 
-/// Whether the open project is read-only on the free plan.
+/// Whether the open project is read-only: on the free plan's project cap,
+/// or anywhere in the web preview.
 final editorReadOnlyProvider = Provider<bool>((ref) {
+  if (ref.watch(webPreviewProvider)) return true;
   final id = ref.watch(projectControllerProvider.select((s) => s.project.id));
   return ref.watch(readOnlyProjectIdsProvider).contains(id);
 });
@@ -28,6 +33,20 @@ class ReadOnlyBanner extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     if (!ref.watch(editorReadOnlyProvider)) return const SizedBox.shrink();
+    if (ref.watch(webPreviewProvider)) {
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+        child: EcNotice(
+          tone: EcTone.accent,
+          icon: Icons.visibility_outlined,
+          title: 'You’re previewing LastReel on the web.',
+          body: 'Open and play any project. Editing, new projects and export unlock with Pro.',
+          actions: [
+            EcButton(label: 'How to get Pro', size: EcButtonSize.small, onPressed: () => WebAccessScreen.open(context)),
+          ],
+        ),
+      );
+    }
     final trial = ref.watch(planControllerProvider.select((s) => s.offers.any((o) => o.hasTrial)));
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
@@ -82,6 +101,12 @@ class ReadOnlyBanner extends ConsumerWidget {
   }
 }
 
-/// A row's tap on a read-only project: say why nothing opens.
-void explainReadOnly(BuildContext context) =>
-    showEcToast(context, 'Read-only on the free plan — ${Entitlement.freeProjectsInWords} stay editable');
+/// A row's tap on a read-only project: say why nothing opens — on the web
+/// preview with the locked dialog (D8), on the free plan with a toast.
+void explainReadOnly(BuildContext context, [LockedAction action = LockedAction.edit]) {
+  if (ProviderScope.containerOf(context, listen: false).read(webPreviewProvider)) {
+    showWebLockedDialog(context, action);
+    return;
+  }
+  showEcToast(context, 'Read-only on the free plan — ${Entitlement.freeProjectsInWords} stay editable');
+}

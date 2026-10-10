@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
 
+import '../../../core/layout/layout_class.dart';
 import '../../../core/theme/theme_context.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../core/utils/formatting.dart';
@@ -52,11 +53,20 @@ class BlockRow extends ConsumerWidget {
 
     final readOnly = ref.watch(editorReadOnlyProvider);
 
+    // On a tablet or desktop the selected block opens in the panel beside
+    // the monitor, not a sheet — read-only ones too, so their settings can
+    // still be read there.
+    final inline = context.layoutClass.isWide;
+
     void onTap() {
       final ui = ref.read(editorUiControllerProvider.notifier);
       if (readOnly && !selecting) {
         ref.read(playbackControllerProvider.notifier).seekToBlock(block.id);
-        explainReadOnly(context);
+        if (inline) {
+          ui.focus(block.id);
+        } else {
+          explainReadOnly(context);
+        }
         return;
       }
       if (selecting) {
@@ -65,7 +75,73 @@ class BlockRow extends ConsumerWidget {
       }
       ui.focus(block.id);
       ref.read(playbackControllerProvider.notifier).seekToBlock(block.id);
-      BlockEditorSheet.show(context, block.id);
+      if (!inline) BlockEditorSheet.show(context, block.id);
+    }
+
+    // D11 — the desktop's list is an index: number, code, title, time. The
+    // whole row drags to reorder; Duplicate and Delete live in the block's
+    // "…" menu, since a pointer can't swipe.
+    if (context.layoutClass == LayoutClass.expanded) {
+      final dense = AnimatedContainer(
+        duration: EcMotion.fast,
+        decoration: BoxDecoration(
+          color: raised ? p.surface : Colors.transparent,
+          borderRadius: BorderRadius.circular(12),
+          border: raised ? border : Border.all(color: Colors.transparent, width: 1.5),
+          boxShadow: focused ? [BoxShadow(color: p.accentWash, spreadRadius: 3)] : null,
+        ),
+        child: Material(
+          type: MaterialType.transparency,
+          borderRadius: BorderRadius.circular(12),
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
+            onTap: onTap,
+            child: SizedBox(
+              height: 40,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                child: Row(
+                  children: [
+                    if (selecting) ...[_Check(checked: checked, size: 20), const SizedBox(width: 8)],
+                    SizedBox(
+                      width: 20,
+                      child: Text(
+                        (index + 1).toString().padLeft(2, '0'),
+                        style: t.mono.copyWith(fontSize: 9.5, color: focused ? p.accent : p.faint),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    EcCodeTile(block.kind.code, size: 26, tone: warn ? EcTone.warn : (focused ? EcTone.accent : EcTone.neutral)),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Opacity(
+                        opacity: block.muted ? .5 : 1,
+                        child: Text(
+                          description.title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: t.titleS.copyWith(fontSize: 13, fontWeight: focused ? FontWeight.w600 : FontWeight.w500),
+                        ),
+                      ),
+                    ),
+                    if (warn) ...[const SizedBox(width: 6), Icon(Icons.error_outline_rounded, size: 14, color: p.warn)],
+                    const SizedBox(width: 8),
+                    Text(seconds == null ? '—' : formatClock(seconds), style: t.mono.copyWith(fontSize: 10)),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 2),
+        child: Semantics(
+          button: true,
+          label: '${description.title}${description.detail.isEmpty ? '' : ', ${description.detail}'}',
+          child: selecting || readOnly ? dense : ReorderableDragStartListener(index: index, child: dense),
+        ),
+      );
     }
 
     final row = AnimatedContainer(
@@ -172,15 +248,16 @@ class BlockRow extends ConsumerWidget {
 
 class _Check extends StatelessWidget {
   final bool checked;
-  const _Check({required this.checked});
+  final double size;
+  const _Check({required this.checked, this.size = 24});
 
   @override
   Widget build(BuildContext context) {
     final p = context.palette;
     return AnimatedContainer(
       duration: EcMotion.fast,
-      width: 24,
-      height: 24,
+      width: size,
+      height: size,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         gradient: checked ? p.primary : null,

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../layout/layout_class.dart';
 import '../theme/ec_palette.dart';
 import '../theme/theme_context.dart';
 
@@ -68,6 +69,10 @@ class EcScaffold extends StatelessWidget {
   final EdgeInsets padding;
   final Widget? bottom;
 
+  /// On a tablet or desktop window the content keeps a readable width,
+  /// centred, rather than stretching across the screen.
+  final double maxContentWidth;
+
   const EcScaffold({
     super.key,
     this.topBar,
@@ -75,6 +80,7 @@ class EcScaffold extends StatelessWidget {
     this.scrollable = true,
     this.padding = const EdgeInsets.fromLTRB(20, 8, 20, 30),
     this.bottom,
+    this.maxContentWidth = 680,
   });
 
   @override
@@ -83,7 +89,9 @@ class EcScaffold extends StatelessWidget {
       backgroundColor: Colors.transparent,
       body: EcGround(
         child: SafeArea(
-          child: Column(
+          child: _Readable(
+            maxWidth: maxContentWidth,
+            child: Column(
             children: [
               ?topBar,
               Expanded(
@@ -105,9 +113,23 @@ class EcScaffold extends StatelessWidget {
               ?bottom,
             ],
           ),
+          ),
         ),
       ),
     );
+  }
+}
+
+/// Centres [child] at no more than [maxWidth] on a wide window.
+class _Readable extends StatelessWidget {
+  final double maxWidth;
+  final Widget child;
+  const _Readable({required this.maxWidth, required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    if (!context.layoutClass.isWide) return child;
+    return Center(child: ConstrainedBox(constraints: BoxConstraints(maxWidth: maxWidth), child: child));
   }
 }
 

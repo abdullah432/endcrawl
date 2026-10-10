@@ -7,6 +7,8 @@ import '../../../core/config/features.dart';
 import '../../../core/theme/theme_context.dart';
 import '../../../core/widgets/ec_logo.dart';
 import '../../../core/widgets/ec_scaffold.dart';
+import '../../access/controllers/web_access.dart';
+import '../../access/screens/web_access_screen.dart';
 import '../../library/screens/library_screen.dart';
 import '../../onboarding/screens/welcome_screen.dart';
 import '../controllers/auth_controller.dart';
@@ -41,9 +43,29 @@ class AuthGate extends ConsumerWidget {
       AsyncValue(:final value) => switch (value) {
           null => const _AuthFlow(),
           final user when Features.emailVerification && user.needsEmailVerification => VerifyEmailScreen(user: user),
+          _ when ref.watch(runningOnWebProvider) => const _WebHome(),
           _ => const LibraryScreen(),
         },
     };
+  }
+}
+
+/// Signed in on the web: Pro accounts go straight to their projects; a
+/// free account lands on the access page (D2) until it chooses to preview.
+/// After a successful check the access page stays up to say so (D6) until
+/// "Open my projects".
+class _WebHome extends ConsumerWidget {
+  const _WebHome();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final plan = ref.watch(entitlementProvider);
+    if (!plan.hasValue) return const _Splash();
+    final entered = ref.watch(webEntryProvider);
+    final justUnlocked = ref.watch(accessCheckProvider.select((c) => c.phase == AccessPhase.unlocked));
+    final pro = plan.value!.isPro;
+    if (!entered && (!pro || justUnlocked)) return const WebAccessScreen();
+    return const LibraryScreen();
   }
 }
 

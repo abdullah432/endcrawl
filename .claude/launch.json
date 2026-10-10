@@ -4,8 +4,20 @@
     {
       "name": "lastreel-web",
       "runtimeExecutable": "bash",
-      "runtimeArgs": ["-c", "cd app && flutter run -d web-server --web-hostname localhost --web-port 8686"],
+      "runtimeArgs": [
+        "-c",
+        "cd app && flutter run -d web-server --web-hostname localhost --web-port 8686"
+      ],
       "port": 8686
+    },
+    {
+      "name": "lastreel-website",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": [
+        "-c",
+        "cd website && npm run start -- -p 3100"
+      ],
+      "port": 3100
     }
   ]
 }

@@ -5,6 +5,7 @@ import 'package:lastreel/features/cookoo/controllers/cookoo_contact_controller.d
 import 'package:lastreel/features/cookoo/controllers/cookoo_promo_controller.dart';
 import 'package:lastreel/features/cookoo/data/cookoo_store.dart';
 import 'package:lastreel/features/export/controllers/export_controller.dart';
+import 'package:lastreel/features/access/controllers/web_access.dart';
 import 'package:lastreel/features/review/review_prompt.dart';
 import 'package:lastreel/features/review/review_prompt_store.dart';
 import 'package:lastreel/main.dart';
@@ -43,6 +44,9 @@ class AppHarness {
   FakeCookooContactClient contact;
   DateTime now;
 
+  /// Runs the app as the web build would (the Pro workspace rules).
+  bool web;
+
   AppHarness({
     FakeAuthRepository? auth,
     FakeProjectRepository? projects,
@@ -55,6 +59,7 @@ class AppHarness {
     InMemoryCookooStore? cookoo,
     InMemoryReviewPromptStore? review,
     DateTime? now,
+    this.web = false,
   })  : auth = auth ?? FakeAuthRepository(initialUser: testUser),
         projects = projects ?? FakeProjectRepository(),
         session = session ?? InMemorySessionStore(),
@@ -113,6 +118,7 @@ class AppHarness {
           analyticsProvider.overrideWithValue(analytics),
           cookooStoreProvider.overrideWithValue(cookoo),
           reviewPromptStoreProvider.overrideWithValue(review),
+          runningOnWebProvider.overrideWithValue(web),
           cookooContactClientProvider.overrideWithValue(contact),
         ],
         child: const LastReelApp(),

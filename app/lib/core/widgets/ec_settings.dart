@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../layout/layout_class.dart';
 import '../theme/theme_context.dart';
 import '../theme/tokens.dart';
 import 'ec_sheet.dart';
@@ -15,6 +16,33 @@ class EcGroup extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final p = context.palette;
+    // Tablet and desktop (T7.1, D15) draw each group as a white card with
+    // its label inside; the phone keeps the label above a glass card.
+    if (context.layoutClass.isWide) {
+      return Container(
+        clipBehavior: Clip.antiAlias,
+        padding: EdgeInsets.fromLTRB(8, label == null ? 6 : 20, 8, 6),
+        decoration: BoxDecoration(
+          color: p.surface,
+          borderRadius: BorderRadius.circular(EcRadius.group),
+          boxShadow: p.glassShadow,
+        ),
+        child: Material(
+          type: MaterialType.transparency,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (label != null) Padding(padding: const EdgeInsets.only(left: 10), child: EcSectionLabel(label!)),
+              for (var i = 0; i < children.length; i++) ...[
+                if (i > 0) Divider(height: 1, color: p.line, indent: 16, endIndent: 16),
+                children[i],
+              ],
+            ],
+          ),
+        ),
+      );
+    }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       mainAxisSize: MainAxisSize.min,

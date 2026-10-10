@@ -1,0 +1,126 @@
+.frame {
+  position: relative;
+  width: 100%;
+  margin: 40px 0 0;
+  aspect-ratio: 2.39 / 1;
+  min-height: 260px;
+  border-block: 1px solid rgba(255, 255, 255, 0.12);
+  overflow: hidden;
+}
+
+.mask {
+  position: absolute;
+  inset: 0;
+  mask-image: linear-gradient(180deg, transparent, #000 16%, #000 84%, transparent);
+}
+
+.roll {
+  display: flex;
+  flex-direction: column;
+  animation: roll 42s linear infinite;
+}
+
+/* Paused by the control; the class lives on the figure. */
+:global(.roll-paused) .roll {
+  animation-play-state: paused;
+}
+
+@keyframes roll {
+  to {
+    transform: translateY(-50%);
+  }
+}
+
+.loop {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: 60px;
+  font-family: var(--ec-credit);
+  text-transform: uppercase;
+  color: #fff;
+}
+
+.head {
+  font-size: clamp(9px, 0.85vw, 12px);
+  letter-spacing: 0.36em;
+  color: rgba(255, 255, 255, 0.5);
+  margin-bottom: 10px;
+}
+
+.name {
+  font-size: clamp(15px, 1.7vw, 24px);
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  line-height: 1.7;
+}
+
+.pair {
+  display: flex;
+  gap: 28px;
+  width: min(86%, 560px);
+  font-size: clamp(11px, 1.2vw, 17px);
+  letter-spacing: 0.12em;
+  line-height: 2.05;
+}
+
+.role {
+  flex: 1;
+  text-align: right;
+  color: rgba(255, 255, 255, 0.58);
+}
+
+.pairName {
+  flex: 1;
+  font-weight: 600;
+}
+
+.gap {
+  height: 44px;
+}
+
+.status {
+  position: absolute;
+  left: 16px;
+  top: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-family: var(--ec-mono);
+  font-size: 11px;
+  color: #fff;
+}
+
+.dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--ec-ok-on-black);
+}
+
+.stamp {
+  position: absolute;
+  right: 16px;
+  bottom: 14px;
+  font-family: var(--ec-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .roll {
+    animation: none;
+  }
+}
+
+@media (max-width: 640px) {
+  .stamp {
+    display: none;
+  }
+}

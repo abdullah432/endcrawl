@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/layout/layout_class.dart';
 import '../../../core/theme/theme_context.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../core/widgets/ec_chip.dart';
@@ -11,6 +12,8 @@ import '../../../domain/models/credit_block.dart';
 import '../../editor/controllers/editor_ui_controller.dart';
 import '../../project/controllers/project_controller.dart';
 import 'block_editor_sheet.dart';
+import '../../access/controllers/web_access.dart';
+import '../../access/widgets/locked_dialog.dart';
 
 /// 4.1 — every block type, in seven groups, searchable and filterable.
 ///
@@ -21,6 +24,7 @@ class AddBlockSheet extends ConsumerStatefulWidget {
   const AddBlockSheet({super.key, this.afterTitle});
 
   static Future<void> show(BuildContext context) async {
+    if (lockedOnWeb(context, LockedAction.addBlock)) return;
     final container = ProviderScope.containerOf(context, listen: false);
     final focusedId = container.read(editorUiControllerProvider).focusedId;
     final blocks = container.read(projectControllerProvider).blocks;
@@ -28,6 +32,7 @@ class AddBlockSheet extends ConsumerStatefulWidget {
 
     final kind = await showEcSheet<BlockKind>(
       context,
+      dialogWidth: 860,
       builder: (_) => AddBlockSheet(afterTitle: after == null ? null : describeBlock(after).title),
     );
     if (kind == null || !context.mounted) return;
@@ -35,7 +40,9 @@ class AddBlockSheet extends ConsumerStatefulWidget {
     final block = newBlockOf(kind);
     container.read(projectControllerProvider.notifier).insertBlock(block, afterId: after?.id);
     container.read(editorUiControllerProvider.notifier).focus(block.id);
-    await BlockEditorSheet.show(context, block.id);
+    // On a tablet or desktop the new block opens in the editor's panel
+    // (T4.1); on the phone, in its sheet.
+    if (!context.layoutClass.isWide) await BlockEditorSheet.show(context, block.id);
   }
 
   @override
@@ -99,7 +106,9 @@ class _AddBlockSheetState extends ConsumerState<AddBlockSheet> {
                 g.label,
                 trailing: Text('${visible.where((k) => k.group == g).length}', style: t.section),
               ),
-              _KindGroup(kinds: [for (final k in visible) if (k.group == g) k]),
+              EcSheetPresentation.isDialog(context)
+                  ? _KindGrid(kinds: [for (final k in visible) if (k.group == g) k])
+                  : _KindGroup(kinds: [for (final k in visible) if (k.group == g) k]),
               const SizedBox(height: 18),
             ],
         ],
@@ -143,6 +152,71 @@ class _SearchField extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// T4.1: on a tablet or desktop the library reads three across, each type
+/// a card.
+class _KindGrid extends StatelessWidget {
+  final List<BlockKind> kinds;
+  const _KindGrid({required this.kinds});
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.palette;
+    final t = context.type;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final columns = constraints.maxWidth >= 640 ? 3 : 2;
+        final width = (constraints.maxWidth - 10 * (columns - 1)) / columns;
+        return Wrap(
+          spacing: 10,
+          runSpacing: 10,
+          children: [
+            for (final k in kinds)
+              SizedBox(
+                width: width,
+                child: Semantics(
+                  button: true,
+                  label: 'Add ${k.label}',
+                  excludeSemantics: true,
+                  child: Material(
+                    color: p.surface,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      side: BorderSide(color: p.line),
+                    ),
+                    clipBehavior: Clip.antiAlias,
+                    child: InkWell(
+                      onTap: () => Navigator.of(context).pop(k),
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(10, 10, 12, 10),
+                        child: Row(
+                          children: [
+                            EcCodeTile(k.code, size: 34),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(k.label, maxLines: 1, overflow: TextOverflow.ellipsis, style: t.titleS.copyWith(fontSize: 13.5)),
+                                  const SizedBox(height: 2),
+                                  Text(k.description, maxLines: 1, overflow: TextOverflow.ellipsis, style: t.caption.copyWith(fontSize: 11.5)),
+                                ],
+                              ),
+                            ),
+                            Icon(Icons.add_rounded, size: 18, color: p.accent),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        );
+      },
     );
   }
 }

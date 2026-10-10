@@ -67,6 +67,11 @@ class EcPalette extends ThemeExtension<EcPalette> {
   final Color okWash;
   final Color okOnBlack;
 
+  /// Waiting, not wrong — a purchase the store hasn't confirmed yet (D4).
+  final Color amber;
+  final Color amberWash;
+  final Color amberLine;
+
   /// The monitor is black in every theme — it previews a delivery file.
   final Color monitor;
 
@@ -111,6 +116,9 @@ class EcPalette extends ThemeExtension<EcPalette> {
     required this.ok,
     required this.okWash,
     required this.okOnBlack,
+    required this.amber,
+    required this.amberWash,
+    required this.amberLine,
     required this.monitor,
     required this.inkSurface,
     required this.onInk,
@@ -156,6 +164,9 @@ class EcPalette extends ThemeExtension<EcPalette> {
     ok: Color(0xFF157A57),
     okWash: Color(0x1A16875F), // 10 %
     okOnBlack: Color(0xFF2BE0A0),
+    amber: Color(0xFF8A5300),
+    amberWash: Color(0x1CD68C14), // rgba(214,140,20,.11)
+    amberLine: Color(0x61BE780A), // rgba(190,120,10,.38)
     monitor: Color(0xFF000000),
     inkSurface: Color(0xFF1A1612),
     onInk: Color(0xFFFFFFFF),

@@ -1,0 +1,35 @@
+.eyebrow {
+  display: inline-block;
+  text-transform: uppercase;
+}
+
+.mono {
+  font-family: var(--ec-mono);
+  font-size: 12px;
+  letter-spacing: 0.18em;
+}
+
+.credit {
+  font-family: var(--ec-credit);
+  font-size: 11px;
+  letter-spacing: 0.36em;
+}
+
+.muted {
+  color: var(--ec-muted);
+}
+
+.sky {
+  color: var(--ec-sky);
+}
+
+.dim {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+@media (max-width: 640px) {
+  .mono {
+    font-size: 11px;
+    letter-spacing: 0.12em;
+  }
+}

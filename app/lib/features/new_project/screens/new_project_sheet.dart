@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/layout/layout_class.dart';
 import '../../../core/theme/theme_context.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../core/utils/formatting.dart';
@@ -17,6 +18,9 @@ import '../../project/project_navigation.dart';
 import '../controllers/new_project_controller.dart';
 import '../new_project_flow.dart';
 import '../widgets/template_list.dart';
+import 'new_project_dialog.dart';
+import '../../access/controllers/web_access.dart';
+import '../../access/widgets/locked_dialog.dart';
 
 /// 2.1 — "+ New" once projects exist: the same template list as the empty
 /// library, as a sheet, with a crash recovery above it when there is one.
@@ -26,8 +30,11 @@ class NewProjectSheet extends ConsumerStatefulWidget {
 
   const NewProjectSheet({super.key, required this.slotLabel});
 
-  static Future<void> show(BuildContext context, {required String slotLabel}) {
-    return showEcSheet<void>(context, builder: (_) => NewProjectSheet(slotLabel: slotLabel));
+  static Future<void> show(BuildContext context, {required String slotLabel}) async {
+    if (lockedOnWeb(context, LockedAction.newProject)) return;
+    // A tablet or desktop window takes the whole decision in one dialog.
+    if (context.layoutClass.isWide) return NewProjectDialog.show(context, slotLabel: slotLabel);
+    await showEcSheet<void>(context, builder: (_) => NewProjectSheet(slotLabel: slotLabel));
   }
 
   @override
@@ -85,7 +92,7 @@ class _NewProjectSheetState extends ConsumerState<NewProjectSheet> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           if (recovery != null) ...[
-            _RecoveryCard(summary: recovery),
+            RecoveryCard(summary: recovery),
             const SizedBox(height: 18),
           ],
           const EcSectionLabel('Templates'),
@@ -100,9 +107,9 @@ class _NewProjectSheetState extends ConsumerState<NewProjectSheet> {
   }
 }
 
-class _RecoveryCard extends ConsumerWidget {
+class RecoveryCard extends ConsumerWidget {
   final ProjectSummary summary;
-  const _RecoveryCard({required this.summary});
+  const RecoveryCard({super.key, required this.summary});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {

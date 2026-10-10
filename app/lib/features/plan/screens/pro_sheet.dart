@@ -39,6 +39,7 @@ class ProSheet extends ConsumerWidget {
     ('Resolution', 'Up to 1080p', 'Up to 4K'),
     ('Pro render on Free', '1 per rewarded ad', 'Every render'),
     ('Watermark', 'None', 'None'),
+    ('LastReel on the web', 'Preview only', 'Full editor'),
   ];
 
   @override

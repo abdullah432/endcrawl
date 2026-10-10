@@ -16,6 +16,7 @@ import '../../timing/screens/timing_sheet.dart';
 import '../../project/controllers/project_controller.dart';
 import '../controllers/editor_ui_controller.dart';
 import 'status_line.dart';
+import '../../access/controllers/web_access.dart';
 
 /// The four actions, floating over the list as one glass dock (3.1):
 /// + Block, Paste, Timing (showing the runtime) and Export.
@@ -29,7 +30,8 @@ class EditorDock extends ConsumerWidget {
     final healthy = rollHealth(project) == RollHealth.clean;
     final runtime = formatClock(project.runtime.inMilliseconds / 1000);
     // A read-only project still plays and exports; nothing else changes it.
-    final editable = !ref.watch(editorReadOnlyProvider);
+    // In the web preview the items stay live and explain the lock instead.
+    final editable = !ref.watch(editorReadOnlyProvider) || ref.watch(webPreviewProvider);
 
     return ClipRRect(
       borderRadius: BorderRadius.circular(24),

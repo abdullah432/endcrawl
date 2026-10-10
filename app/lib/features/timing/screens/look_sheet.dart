@@ -2,21 +2,38 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/ec_type.dart';
+import '../../../core/layout/layout_class.dart';
 import '../../../core/theme/theme_context.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../core/widgets/ec_choice_card.dart';
 import '../../../core/widgets/ec_sheet.dart';
 import '../../../domain/models/project_settings.dart';
 import '../../project/controllers/project_controller.dart';
+import '../../access/controllers/web_access.dart';
+import '../../access/widgets/locked_dialog.dart';
+import 'timing_look_screen.dart';
 
 /// 5.2 — 2D flat roll, labelled the default so the app has an opinion, or a
 /// 3D crawl as a style choice. The monitor stays unscrimmed above the sheet
 /// so every change shows live.
-class LookSheet extends ConsumerWidget {
+class LookSheet extends StatelessWidget {
   const LookSheet({super.key});
 
-  static Future<void> show(BuildContext context) =>
-      showEcSheet<void>(context, scrim: false, builder: (_) => const LookSheet());
+  static Future<void> show(BuildContext context) async {
+    if (lockedOnWeb(context, LockedAction.look)) return;
+    if (context.layoutClass.isWide) return TimingLookScreen.open(context, TimingLookTab.look);
+    await showEcSheet<void>(context, scrim: false, builder: (_) => const LookSheet());
+  }
+
+  @override
+  Widget build(BuildContext context) =>
+      EcSheet(title: 'Monitor look', maxHeightFraction: 0.6, child: const LookControls());
+}
+
+/// 2D or 3D and the tilt controls — the phone's sheet (5.2) and the
+/// tablet and desktop Look panel (T5.2, D13).
+class LookControls extends ConsumerWidget {
+  const LookControls({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -26,73 +43,72 @@ class LookSheet extends ConsumerWidget {
     final controller = ref.read(projectControllerProvider.notifier);
     final is3d = settings.look == RollLook.crawl3d;
 
-    return EcSheet(
-      title: 'Monitor look',
-      maxHeightFraction: 0.6,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          IntrinsicHeight(
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Expanded(
-                  child: _LookCard(
-                    selected: !is3d,
-                    title: '2D flat roll',
-                    badge: 'Default',
-                    detail: 'What a conform expects.',
-                    bars: const [(.54, .8, 3.0), (.38, .5, 3.0), (.46, .5, 3.0)],
-                    alignEnd: false,
-                    onTap: () => controller.setLook(RollLook.flat2d),
-                  ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(
+                child: _LookCard(
+                  selected: !is3d,
+                  title: '2D flat roll',
+                  badge: 'Default',
+                  detail: 'What a conform expects.',
+                  bars: const [(.54, .8, 3.0), (.38, .5, 3.0), (.46, .5, 3.0)],
+                  alignEnd: false,
+                  onTap: () => controller.setLook(RollLook.flat2d),
                 ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: _LookCard(
-                    selected: is3d,
-                    title: '3D crawl',
-                    detail: 'A style choice, not the standard.',
-                    bars: const [(.22, .3, 2.0), (.40, .55, 3.0), (.62, .85, 4.0)],
-                    alignEnd: true,
-                    onTap: () => controller.setLook(RollLook.crawl3d),
-                  ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _LookCard(
+                  selected: is3d,
+                  title: '3D crawl',
+                  detail: 'A style choice, not the standard.',
+                  bars: const [(.22, .3, 2.0), (.40, .55, 3.0), (.62, .85, 4.0)],
+                  alignEnd: true,
+                  onTap: () => controller.setLook(RollLook.crawl3d),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
-          const SizedBox(height: 18),
-          AnimatedOpacity(
-            duration: EcMotion.fast,
-            opacity: is3d ? 1 : .45,
-            child: Column(
-              children: [
-                _LookSlider(
-                  label: 'Tilt angle',
-                  value: settings.tilt,
-                  display: '${settings.tilt.round()}°',
-                  min: 8,
-                  max: 55,
-                  onChanged: is3d ? controller.setTilt : null,
-                ),
-                const SizedBox(height: 6),
-                _LookSlider(
-                  label: 'Vanishing distance',
-                  value: settings.vanishingDistance,
-                  display: '${settings.vanishingDistance.round()}%',
-                  min: 20,
-                  max: 140,
-                  onChanged: is3d ? controller.setVanishingDistance : null,
-                ),
-              ],
-            ),
+        ),
+        const SizedBox(height: 18),
+        AnimatedOpacity(
+          duration: EcMotion.fast,
+          opacity: is3d ? 1 : .45,
+          child: Column(
+            children: [
+              _LookSlider(
+                label: 'Tilt angle',
+                value: settings.tilt,
+                display: '${settings.tilt.round()}°',
+                min: 8,
+                max: 55,
+                onChanged: is3d ? controller.setTilt : null,
+              ),
+              const SizedBox(height: 6),
+              _LookSlider(
+                label: 'Vanishing distance',
+                value: settings.vanishingDistance,
+                display: '${settings.vanishingDistance.round()}%',
+                min: 20,
+                max: 140,
+                onChanged: is3d ? controller.setVanishingDistance : null,
+              ),
+            ],
           ),
-          if (!is3d) ...[
-            const SizedBox(height: 8),
-            Text('Tilt controls unlock only when 3D is selected.', style: t.caption.copyWith(color: p.muted, height: 1.5)),
-          ],
+        ),
+        if (!is3d) ...[
+          const SizedBox(height: 8),
+          Text(
+            'Tilt controls unlock only when 3D is selected.',
+            style: t.caption.copyWith(color: p.muted, height: 1.5),
+          ),
         ],
-      ),
+      ],
     );
   }
 }
@@ -139,7 +155,11 @@ class _LookCard extends StatelessWidget {
                 children: [
                   for (final (i, (w, o, h)) in bars.indexed) ...[
                     if (i > 0) const SizedBox(height: 5),
-                    Container(width: c.maxWidth * w, height: h, color: Colors.white.withValues(alpha: o)),
+                    Container(
+                      width: c.maxWidth * w,
+                      height: h,
+                      color: Colors.white.withValues(alpha: o),
+                    ),
                   ],
                 ],
               ),
@@ -185,7 +205,9 @@ class _LookSlider extends StatelessWidget {
       children: [
         Row(
           children: [
-            Expanded(child: Text(label, style: t.bodyS.copyWith(fontSize: 12, color: context.palette.ink))),
+            Expanded(
+              child: Text(label, style: t.bodyS.copyWith(fontSize: 12, color: context.palette.ink)),
+            ),
             Text(onChanged == null ? '—' : display, style: t.mono.copyWith(fontSize: 12)),
           ],
         ),

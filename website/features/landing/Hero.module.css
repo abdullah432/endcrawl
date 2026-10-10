@@ -1,0 +1,49 @@
+.hero {
+  position: relative;
+  overflow: hidden;
+  background: #000;
+  color: #fff;
+}
+
+.glow {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(60% 50% at 50% 0%, rgba(12, 140, 233, 0.28), transparent 70%),
+    radial-gradient(40% 30% at 90% 70%, rgba(255, 95, 196, 0.1), transparent 70%);
+}
+
+.body {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 26px;
+  padding-top: 56px;
+  text-align: center;
+}
+
+.eyebrow {
+  letter-spacing: 0.2em;
+}
+
+.lede {
+  max-width: 640px;
+  font-size: clamp(17px, 1.6vw, 21px);
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.78);
+  text-wrap: pretty;
+}
+
+.footnote {
+  font-size: 13.5px;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+@media (max-width: 640px) {
+  .body {
+    gap: 22px;
+    padding-top: 36px;
+  }
+}

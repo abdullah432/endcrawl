@@ -1,0 +1,53 @@
+.section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+  padding-block: 90px 30px;
+  text-align: center;
+}
+
+.title {
+  font-family: var(--ec-mono);
+  font-size: 12px;
+  font-weight: 400;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--ec-muted);
+}
+
+.pills {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px 14px;
+  max-width: 960px;
+  padding: 0;
+  list-style: none;
+}
+
+.pills li {
+  height: 52px;
+  padding: 0 22px;
+  border-radius: 999px;
+  border: 1px solid var(--ec-line2);
+  display: flex;
+  align-items: center;
+  font-family: var(--ec-serif);
+  font-size: 24px;
+}
+
+.body {
+  max-width: 600px;
+  font-size: 15.5px;
+  line-height: 1.55;
+  color: var(--ec-ink2);
+}
+
+@media (max-width: 640px) {
+  .pills li {
+    height: 44px;
+    padding: 0 16px;
+    font-size: 20px;
+  }
+}

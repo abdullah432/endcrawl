@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/config/orientations.dart';
+import '../../../core/layout/layout_class.dart';
 import '../../../core/theme/theme_context.dart';
 import '../../../core/widgets/ec_scaffold.dart';
 import '../../monitor/widgets/monitor_view.dart';
@@ -16,6 +17,7 @@ import '../widgets/readability_banner.dart';
 import '../widgets/scrub_bar.dart';
 import '../widgets/status_line.dart';
 import '../widgets/transport_bar.dart';
+import 'wide_editor.dart';
 
 /// 3.1 — the hub. Monitor on top, blocks below, four actions in a dock.
 /// Turning the phone opens the review monitor (3.4).
@@ -36,7 +38,7 @@ class _EditorScreenState extends ConsumerState<EditorScreen> {
   void initState() {
     super.initState();
     _project = ref.read(projectControllerProvider.notifier);
-    SystemChrome.setPreferredOrientations(kEditorOrientations);
+    SystemChrome.setPreferredOrientations(editorOrientations);
 
     // A debounced autosave is a lost edit if the app is backgrounded mid
     // debounce, so a pause flushes whatever is pending immediately.
@@ -49,7 +51,7 @@ class _EditorScreenState extends ConsumerState<EditorScreen> {
   @override
   void dispose() {
     _lifecycle?.dispose();
-    SystemChrome.setPreferredOrientations(kPortraitOnly);
+    SystemChrome.setPreferredOrientations(appOrientations);
     super.dispose();
   }
 
@@ -68,10 +70,14 @@ class _EditorScreenState extends ConsumerState<EditorScreen> {
   Widget build(BuildContext context) {
     return PopScope(
       onPopInvokedWithResult: (didPop, _) => _handlePop(didPop),
+      // A tablet or desktop window gets the side-by-side editor in either
+      // orientation; a phone turned on its side gets the review monitor.
       child: OrientationBuilder(
-        builder: (context, orientation) => orientation == Orientation.landscape
-            ? const Scaffold(backgroundColor: Colors.black, body: LandscapeMonitor())
-            : const _PortraitEditor(),
+        builder: (context, orientation) => context.layoutClass.isWide
+            ? const WideEditor()
+            : orientation == Orientation.landscape
+                ? const Scaffold(backgroundColor: Colors.black, body: LandscapeMonitor())
+                : const _PortraitEditor(),
       ),
     );
   }

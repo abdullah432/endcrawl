@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
 
+import '../../../core/layout/layout_class.dart';
 import '../../../core/theme/ec_type.dart';
 import '../../../core/theme/theme_context.dart';
 import '../../../core/utils/formatting.dart';
@@ -20,7 +21,10 @@ class BlockList extends ConsumerWidget {
   /// Clear space under the last row for the floating dock.
   final double bottomInset;
 
-  const BlockList({super.key, this.bottomInset = 100});
+  /// Between the count and the rows — the desktop's + Block and Paste (D11).
+  final Widget? belowHeader;
+
+  const BlockList({super.key, this.bottomInset = 100, this.belowHeader});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -31,6 +35,8 @@ class BlockList extends ConsumerWidget {
     final uiController = ref.read(editorUiControllerProvider.notifier);
     final controller = ref.read(projectControllerProvider.notifier);
 
+    // The desktop's dense index runs closer to the pane's edges (D11).
+    final side = context.layoutClass == LayoutClass.expanded ? 8.0 : 16.0;
     final count = ui.selectMode ? '${ui.selectedIds.length} of ${blocks.length} selected' : plural(blocks.length, 'block');
 
     return Column(
@@ -55,6 +61,7 @@ class BlockList extends ConsumerWidget {
             ],
           ),
         ),
+        ?belowHeader,
         Expanded(
           child: blocks.isEmpty
               ? ListView(
@@ -63,7 +70,7 @@ class BlockList extends ConsumerWidget {
                 )
               : SlidableAutoCloseBehavior(
                   child: ReorderableListView.builder(
-                    padding: EdgeInsets.fromLTRB(16, 4, 16, bottomInset),
+                    padding: EdgeInsets.fromLTRB(side, 4, side, bottomInset),
                     buildDefaultDragHandles: false,
                     itemCount: blocks.length,
                     onReorderItem: controller.reorder,

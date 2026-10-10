@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../bootstrap.dart';
+import '../../../core/layout/layout_class.dart';
 import '../../../core/result.dart';
 import '../../../core/theme/theme_context.dart';
 import '../../../core/widgets/ec_button.dart';
@@ -25,6 +26,9 @@ import '../widgets/delete_project_sheet.dart';
 import '../widgets/project_actions_sheet.dart';
 import '../widgets/project_card.dart';
 import '../widgets/rename_sheet.dart';
+import 'wide_library.dart';
+import '../../access/controllers/web_access.dart';
+import '../../access/widgets/locked_dialog.dart';
 
 /// 1.1 / 1.2 / 1.7 — the home screen, where finished work lives.
 ///
@@ -38,6 +42,7 @@ class LibraryScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    if (context.layoutClass.isWide) return const WideLibrary();
     final view = ref.watch(libraryViewProvider);
 
     return EcScaffold(
@@ -159,7 +164,7 @@ class _ProjectList extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final ui = ref.watch(libraryUiProvider);
     final now = ref.watch(clockProvider)();
-    final actions = _LibraryActions(context, ref, view);
+    final actions = LibraryActions(context, ref, view);
 
     // The fresh copy after a duplicate goes to the top, highlighted (1.7).
     final items = [
@@ -222,12 +227,12 @@ class _ProjectList extends ConsumerWidget {
 /// The library's project actions, each ending in the design's feedback:
 /// a dark toast with a ten-second undo for anything that removes or adds a
 /// project.
-class _LibraryActions {
+class LibraryActions {
   final BuildContext context;
   final WidgetRef ref;
   final LibraryView view;
 
-  _LibraryActions(this.context, this.ref, this.view);
+  LibraryActions(this.context, this.ref, this.view);
 
   LibraryController get _library => ref.read(libraryControllerProvider);
 
@@ -258,6 +263,7 @@ class _LibraryActions {
   // live in providers, rather than going back through this widget's ref.
 
   Future<void> duplicate(LibraryItem item) async {
+    if (lockedOnWeb(context, LockedAction.manage)) return;
     final library = _library;
     final ui = ref.read(libraryUiProvider.notifier);
     final result = await library.duplicate(item.summary.id);
@@ -282,6 +288,7 @@ class _LibraryActions {
   }
 
   Future<void> rename(LibraryItem item) async {
+    if (lockedOnWeb(context, LockedAction.manage)) return;
     final title = await RenameSheet.show(context, item.summary.title);
     if (title == null || !context.mounted) return;
     final result = await _library.rename(item.summary.id, title);
@@ -289,6 +296,7 @@ class _LibraryActions {
   }
 
   Future<void> delete(LibraryItem item) async {
+    if (lockedOnWeb(context, LockedAction.manage)) return;
     final library = _library;
     final confirmed = await DeleteProjectSheet.confirm(context, item.summary);
     if (!confirmed || !context.mounted) return;

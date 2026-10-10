@@ -15,6 +15,7 @@ import '../../../domain/models/credit_face.dart';
 import '../../../domain/models/project.dart';
 import '../../../domain/models/project_settings.dart';
 import '../../../domain/models/render_summary.dart';
+import '../../access/controllers/web_access.dart';
 import '../../plan/controllers/editable_projects.dart';
 
 enum SaveState { idle, saving, saved, failed }
@@ -245,9 +246,11 @@ class ProjectController extends Notifier<ProjectState> {
   SessionStore get _session => ref.read(sessionStoreProvider);
 
   /// Whether the open project is one the free plan can't edit (see
-  /// [readOnlyProjectIdsProvider]). Live, so starting a trial from the
-  /// editor unlocks it at once.
-  bool get readOnly => ref.read(readOnlyProjectIdsProvider).contains(state.project.id);
+  /// [readOnlyProjectIdsProvider]), or the web is in preview without Pro
+  /// (see [webPreviewProvider]). Live, so starting a trial from the editor
+  /// — or a Pro check on the web — unlocks it at once.
+  bool get readOnly =>
+      ref.read(webPreviewProvider) || ref.read(readOnlyProjectIdsProvider).contains(state.project.id);
 
   /// The single write path for document content. A read-only project
   /// refuses every edit here, whatever screen asked for it.
@@ -272,6 +275,9 @@ class ProjectController extends Notifier<ProjectState> {
   }
 
   Future<void> _save(Project project) async {
+    // The web preview reads; it never writes, not even the open/close
+    // bookkeeping.
+    if (ref.read(webPreviewProvider)) return;
     state = state.copyWith(saveState: SaveState.saving, clearSaveFailure: true);
     final result = await _repository.save(project);
     switch (result) {

@@ -19,7 +19,7 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   // Portrait everywhere; the editor alone opens up landscape, where turning
   // the phone is how the full-bleed monitor (3.4) is reached.
-  await SystemChrome.setPreferredOrientations(kPortraitOnly);
+  await SystemChrome.setPreferredOrientations(appOrientations);
 
   // Firebase, Firestore's cache settings and platform storage are all
   // resolved before the first frame, so no screen has to render a loading
