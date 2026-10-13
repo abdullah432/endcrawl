@@ -13,7 +13,7 @@ abstract interface class ExternalLinks {
 
   Future<bool> openUrl(Uri uri);
 
-  Future<bool> composeEmail(String to, {String? subject});
+  Future<bool> composeEmail(String to, {String? subject, String? body});
 }
 
 class UrlLauncherLinks implements ExternalLinks {
@@ -31,9 +31,13 @@ class UrlLauncherLinks implements ExternalLinks {
   Future<bool> openUrl(Uri uri) => _launch(uri);
 
   @override
-  Future<bool> composeEmail(String to, {String? subject}) => _launch(
-        Uri(scheme: 'mailto', path: to, query: subject == null ? null : 'subject=${Uri.encodeComponent(subject)}'),
-      );
+  Future<bool> composeEmail(String to, {String? subject, String? body}) {
+    final query = [
+      if (subject != null) 'subject=${Uri.encodeComponent(subject)}',
+      if (body != null) 'body=${Uri.encodeComponent(body)}',
+    ].join('&');
+    return _launch(Uri(scheme: 'mailto', path: to, query: query.isEmpty ? null : query));
+  }
 
   Future<bool> _launch(Uri uri) async {
     try {

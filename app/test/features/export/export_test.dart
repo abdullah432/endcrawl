@@ -5,9 +5,10 @@ import 'package:lastreel/features/ads/data/ad_service.dart';
 import 'package:lastreel/features/export/data/video_encoder.dart';
 import 'package:lastreel/features/export/models/export_models.dart';
 import 'package:lastreel/features/export/screens/export_sheet.dart';
+import 'package:lastreel/features/review/data/feedback_repository.dart';
 import 'package:lastreel/features/review/review_prompt.dart';
 import 'package:lastreel/features/review/review_prompt_store.dart';
-import 'package:flutter/widgets.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../../support/app_harness.dart';
@@ -615,6 +616,26 @@ void main() {
       expect(app.analytics.names.where((n) => n == 'review_prompt_shown'), hasLength(1));
     });
 
+    testWidgets('inside the Rendering sheet it takes the ad\'s place, under the progress', (tester) async {
+      await openExport(tester);
+      await startLongRender(tester);
+      await tester.pump(ReviewPromptTrigger.delay);
+      await tester.pumpAndSettle();
+      expect(prompt, findsOneWidget);
+      expect(find.textContaining('Sponsored'), findsNothing);
+      expect(find.text('Keep working · renders in background'), findsOneWidget);
+      await tester.tap(find.byKey(const ValueKey('star-2')));
+      await tester.pump();
+      await tapText(tester, 'Rate LastReel');
+      // 6.2b in the same sheet, the render still showing above it.
+      expect(find.textContaining('What should we fix?', findRichText: true), findsOneWidget);
+      expect(find.text('Rendering'), findsOneWidget);
+      await tapText(tester, 'Skip');
+      expect(app.feedback.sent.single.rating, 2);
+      expect(find.text('Keep working · renders in background'), findsOneWidget);
+      await finish(tester);
+    });
+
     testWidgets('with "Keep working" it asks over the editor', (tester) async {
       await openExport(tester);
       await startLongRender(tester);
@@ -662,9 +683,96 @@ void main() {
       await startLongRender(tester);
       await tester.pump(ReviewPromptTrigger.delay);
       await tester.pumpAndSettle();
-      await tapText(tester, 'Rate LastReel');
+      await tester.tap(find.byKey(const ValueKey('star-5')));
+      await tester.pump();
+      await tester.tap(find.text('Rate LastReel'));
+      await tester.pump();
+      // 6.2c — a moment of thanks, then the store's card.
+      expect(find.textContaining('Opening the review', findRichText: true), findsOneWidget);
+      await tester.pump(ReviewPrompt.thanksPause);
+      await tester.pumpAndSettle();
       expect(prompt, findsNothing);
       expect(app.analytics.names, contains('review_prompt_rate'));
+      await finish(tester);
+    });
+
+    Future<void> openPrompt(WidgetTester tester) async {
+      await openExport(tester);
+      await startLongRender(tester);
+      await tester.pump(ReviewPromptTrigger.delay);
+      await tester.pumpAndSettle();
+    }
+
+    bool lit(WidgetTester tester, int star) =>
+        (tester.widget<IconButton>(find.byKey(ValueKey('star-$star')).first).icon as Icon).icon == Icons.star_rounded;
+
+    testWidgets('the stars start empty, and Rate waits for a pick', (tester) async {
+      await openPrompt(tester);
+      expect([for (var i = 1; i <= 5; i++) lit(tester, i)], everyElement(isFalse));
+      await tester.tap(find.text('Rate LastReel'));
+      await tester.pump();
+      expect(app.feedback.sent, isEmpty);
+
+      await tester.tap(find.byKey(const ValueKey('star-3')));
+      await tester.pump();
+      expect([for (var i = 1; i <= 5; i++) lit(tester, i)], [true, true, true, false, false]);
+      await finish(tester);
+    });
+
+    testWidgets('four or five stars go to the store, and the stars reach the team', (tester) async {
+      await openPrompt(tester);
+      await tester.tap(find.byKey(const ValueKey('star-4')));
+      await tester.pump();
+      await tester.tap(find.text('Rate LastReel'));
+      await tester.pump(ReviewPrompt.thanksPause);
+      await tester.pumpAndSettle();
+      expect(find.textContaining('What should we fix?', findRichText: true), findsNothing);
+      expect(app.feedback.sent.single.rating, 4);
+      expect(app.analytics.names, contains('review_prompt_rate'));
+      await finish(tester);
+    });
+
+    testWidgets('under four stars asks what to fix and sends it to the team, not the store', (tester) async {
+      await openPrompt(tester);
+      await tester.tap(find.byKey(const ValueKey('star-2')));
+      await tester.pump();
+      await tapText(tester, 'Rate LastReel');
+      expect(find.textContaining('What should we fix?', findRichText: true), findsOneWidget);
+      expect(app.analytics.names, isNot(contains('review_prompt_rate')));
+
+      await tapText(tester, 'Export speed');
+      await tapText(tester, 'Ads');
+      await tester.enterText(find.byType(TextField).last, 'ProRes renders take ages.');
+      await tester.tap(find.text('Send to the team'));
+      // The toast counts down for four seconds; look before it leaves.
+      for (var i = 0; i < 5; i++) {
+        await tester.pump(const Duration(milliseconds: 100));
+      }
+
+      final sent = app.feedback.sent.single;
+      expect(sent.rating, 2);
+      expect(sent.topics, {FeedbackTopic.exportSpeed, FeedbackTopic.ads});
+      expect(sent.message, 'ProRes renders take ages.');
+      expect(find.text('Thanks. The team reads every one.'), findsOneWidget);
+      await finish(tester);
+    });
+
+    testWidgets('skipping the questions still sends the stars alone', (tester) async {
+      await openPrompt(tester);
+      await tester.tap(find.byKey(const ValueKey('star-1')));
+      await tester.pump();
+      await tapText(tester, 'Rate LastReel');
+      await tapText(tester, 'Skip');
+      final sent = app.feedback.sent.single;
+      expect(sent.rating, 1);
+      expect(sent.topics, isEmpty);
+      await finish(tester);
+    });
+
+    testWidgets('Not now sends nothing', (tester) async {
+      await openPrompt(tester);
+      await tapText(tester, 'Not now');
+      expect(app.feedback.sent, isEmpty);
       await finish(tester);
     });
 

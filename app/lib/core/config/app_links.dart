@@ -29,6 +29,13 @@ abstract final class AppLinks {
   /// listings link to, so there is only one version to keep current.
   static final privacyPolicy = Uri.parse('https://cookoo.dev/lastreel/privacy-policy');
 
+  /// The web app — the desk editor, Pro on a computer (1.8b's link).
+  static final webApp = Uri.parse('https://app.lastreel.cookoo.dev');
+
+  /// COOKOO's other apps on Google Play — Settings → Explore our other apps.
+  static final textCrawlListing = Uri.parse('https://play.google.com/store/apps/details?id=com.kukustudio.textcrawler');
+  static final aksListing = Uri.parse('https://play.google.com/store/apps/details?id=com.cookoo.aks');
+
   /// LastReel on Google Play — where the web sends people to subscribe
   /// (D2's button and QR code).
   static final playStoreListing = Uri.parse('https://play.google.com/store/apps/details?id=com.lastreel.app');

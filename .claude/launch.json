@@ -6,7 +6,7 @@
       "runtimeExecutable": "bash",
       "runtimeArgs": [
         "-c",
-        "cd app && flutter run -d web-server --web-hostname localhost --web-port 8686"
+        "cd app && flutter run -d web-server --release --web-hostname localhost --web-port 8686"
       ],
       "port": 8686
     },

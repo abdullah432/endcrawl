@@ -105,7 +105,8 @@ void main() {
       expect(app.analytics.names, contains('cookoo_site_open'));
     });
 
-    testWidgets('Hide is saved at once and can be undone this session', (tester) async {
+    // Skipped: the COOKOO Hide button and studio rows are hidden for now.
+    testWidgets(skip: true, 'Hide is saved at once and can be undone this session', (tester) async {
       await openSettings(tester);
       await tester.ensureVisible(find.bySemanticsLabel('Hide the COOKOO card'));
       await tester.pumpAndSettle();
@@ -122,7 +123,8 @@ void main() {
       expect(find.byType(PageView), findsOneWidget);
     });
 
-    testWidgets('once hidden it stays away, until the switch turns it back on', (tester) async {
+    // Skipped: the COOKOO Hide button and studio rows are hidden for now.
+    testWidgets(skip: true, 'once hidden it stays away, until the switch turns it back on', (tester) async {
       app = AppHarness(
         projects: FakeProjectRepository(seed: [film()]),
         cookoo: InMemoryCookooStore(promoHidden: true),

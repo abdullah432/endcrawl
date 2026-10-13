@@ -27,6 +27,15 @@ rules_version = '2';
 // Deliberately no plan/entitlement field: anything the client can write,
 // the client can grant itself.
 //
+// Collection: feedback/{id}   (the rating prompt's report to the team)
+// Fields: uid, rating (1..5), topics (<= 6 strings), message (<= 2000
+//   chars), appVersion, platform, createdAt (server time).
+// Create-only: the app can send feedback but never read it back; the team
+// reads it in the Firebase console.
+//
+// Collection: testers/{uid}   (accounts that see Settings → Tester)
+// Fields: enabled (bool), email (string, for humans). Admin-written only.
+//
 // Every project is private to one account. There is no sharing, no
 // collaboration and no public read in this version; when sharing arrives it
 // gets its own explicitly-reviewed rules rather than a loosened rule here.
@@ -124,6 +133,32 @@ service cloud.firestore {
         && immutableFieldsUnchanged();
 
       allow delete: if isOwner(uid);
+    }
+
+    match /feedback/{id} {
+      allow create: if isAuthenticated()
+        && incoming().keys().hasOnly(['uid', 'rating', 'topics', 'message', 'appVersion', 'platform', 'createdAt'])
+        && incoming().keys().hasAll(['uid', 'rating', 'topics', 'message', 'appVersion', 'platform', 'createdAt'])
+        && incoming().uid == request.auth.uid
+        && incoming().rating is int
+        && incoming().rating >= 1
+        && incoming().rating <= 5
+        && incoming().topics is list
+        && incoming().topics.size() <= 6
+        && incoming().message is string
+        && incoming().message.size() <= 2000
+        && incoming().appVersion is string
+        && incoming().appVersion.size() <= 64
+        && incoming().platform is string
+        && incoming().platform.size() <= 16
+        && incoming().createdAt == request.time;
+    }
+
+    // Tester accounts (Settings → Tester): written only from the Firebase
+    // console / admin tools; each account can read just its own entry.
+    match /testers/{uid} {
+      allow read: if isOwner(uid);
+      allow write: if false;
     }
 
     // Default deny: anything not matched above is unreachable.

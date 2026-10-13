@@ -21,6 +21,8 @@ import '../../plan/controllers/editable_projects.dart';
 import '../../plan/widgets/trial_offer_card.dart';
 import '../../project/project_navigation.dart';
 import '../../settings/screens/settings_screen.dart';
+import '../../desk/desk_invite.dart';
+import '../../tester/tester_mode.dart';
 import '../controllers/library_controller.dart';
 import '../widgets/delete_project_sheet.dart';
 import '../widgets/project_actions_sheet.dart';
@@ -42,8 +44,12 @@ class LibraryScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    if (context.layoutClass.isWide) return const WideLibrary();
     final view = ref.watch(libraryViewProvider);
+    // 1.8 — now and then, LastReel on a computer. Watching the tester
+    // check too, so the invite gets another look once it has answered.
+    ref.watch(testerAllowedProvider);
+    DeskInvite.check(context, view.value);
+    if (context.layoutClass.isWide) return const WideLibrary();
 
     return EcScaffold(
       scrollable: false,

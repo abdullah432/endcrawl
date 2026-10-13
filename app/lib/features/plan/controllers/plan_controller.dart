@@ -10,7 +10,8 @@ enum PlanSource {
   library('library'),
   slotsFull('slots_full'),
   paywall('paywall'),
-  settings('settings');
+  settings('settings'),
+  desk('desk_invite');
 
   final String analyticsName;
   const PlanSource(this.analyticsName);

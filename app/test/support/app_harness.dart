@@ -6,6 +6,10 @@ import 'package:lastreel/features/cookoo/controllers/cookoo_promo_controller.dar
 import 'package:lastreel/features/cookoo/data/cookoo_store.dart';
 import 'package:lastreel/features/export/controllers/export_controller.dart';
 import 'package:lastreel/features/access/controllers/web_access.dart';
+import 'package:lastreel/features/desk/desk_invite.dart';
+import 'package:lastreel/features/desk/desk_invite_store.dart';
+import 'package:lastreel/features/review/data/feedback_repository.dart';
+import 'package:lastreel/features/tester/tester_mode.dart';
 import 'package:lastreel/features/review/review_prompt.dart';
 import 'package:lastreel/features/review/review_prompt_store.dart';
 import 'package:lastreel/main.dart';
@@ -19,6 +23,7 @@ import 'fake_cookoo_contact_client.dart';
 import 'fake_entitlement_repository.dart';
 import 'fake_export.dart';
 import 'fake_external_links.dart';
+import 'fake_feedback_repository.dart';
 import 'fake_project_repository.dart';
 import 'fake_user_profile_repository.dart';
 
@@ -42,6 +47,12 @@ class AppHarness {
   InMemoryCookooStore cookoo;
   InMemoryReviewPromptStore review;
   FakeCookooContactClient contact;
+  FakeFeedbackRepository feedback;
+  InMemoryDeskInviteStore desk;
+  InMemoryTesterStore testerMode;
+
+  /// Whether this account is listed as a tester (Firestore `testers/{uid}`).
+  bool testerAllowed;
   DateTime now;
 
   /// Runs the app as the web build would (the Pro workspace rules).
@@ -58,8 +69,10 @@ class AppHarness {
     FakeFrames? frames,
     InMemoryCookooStore? cookoo,
     InMemoryReviewPromptStore? review,
+    InMemoryDeskInviteStore? desk,
     DateTime? now,
     this.web = false,
+    this.testerAllowed = false,
   })  : auth = auth ?? FakeAuthRepository(initialUser: testUser),
         projects = projects ?? FakeProjectRepository(),
         session = session ?? InMemorySessionStore(),
@@ -76,6 +89,11 @@ class AppHarness {
         // cover the screen in tests about something else.
         review = review ?? InMemoryReviewPromptStore(asked: true),
         contact = FakeCookooContactClient(),
+        feedback = FakeFeedbackRepository(),
+        // Off by default, so the desk invite doesn't cover the library in
+        // tests about something else.
+        desk = desk ?? InMemoryDeskInviteStore(turnedOff: true),
+        testerMode = InMemoryTesterStore(),
         now = now ?? DateTime.utc(2026, 9, 23, 12);
 
   /// A signed-out start.
@@ -120,6 +138,10 @@ class AppHarness {
           reviewPromptStoreProvider.overrideWithValue(review),
           runningOnWebProvider.overrideWithValue(web),
           cookooContactClientProvider.overrideWithValue(contact),
+          feedbackRepositoryProvider.overrideWithValue(feedback),
+          deskInviteStoreProvider.overrideWithValue(desk),
+          testerStoreProvider.overrideWithValue(testerMode),
+          testerAllowedProvider.overrideWith((ref) => Stream.value(testerAllowed)),
         ],
         child: const LastReelApp(),
       ),

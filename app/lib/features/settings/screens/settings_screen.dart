@@ -34,6 +34,8 @@ import '../../../core/layout/layout_class.dart';
 import '../../access/controllers/web_access.dart';
 import '../../access/screens/web_access_screen.dart';
 import '../../home/widgets/app_side_nav.dart';
+import '../../review/review_prompt.dart';
+import '../../tester/tester_mode.dart';
 
 /// 7.1 — Settings.
 ///
@@ -75,12 +77,15 @@ class SettingsScreen extends ConsumerWidget {
               if (user != null) _ProfileCard(user: user),
               const SizedBox(height: 22),
               groups.plan(),
+              if (groups.testerAllowed) ...[const SizedBox(height: 22), groups.tester()],
               const SizedBox(height: 22),
               groups.defaults(),
               const SizedBox(height: 22),
               groups.app(),
               const SizedBox(height: 22),
               groups.support(),
+              const SizedBox(height: 22),
+              groups.otherApps(),
               const SizedBox(height: 22),
               groups.legal(),
             ]),
@@ -89,8 +94,9 @@ class SettingsScreen extends ConsumerWidget {
               const SizedBox(height: 22),
               groups.account(),
               const SizedBox(height: 18),
-              groups.studio(),
-              const SizedBox(height: 18),
+              // Hidden for now: "Made by COOKOO" and the studio-card switch.
+              // groups.studio(),
+              // const SizedBox(height: 18),
               if (version != null) Text(version, textAlign: TextAlign.center, style: t.mono.copyWith(fontSize: 10)),
             ]),
           ],
@@ -120,6 +126,22 @@ class _SettingsGroups {
   /// The plan — on the web, the subscription's status (D15): the web never
   /// sells, so it links out to Google Play and re-checks access instead.
   Widget plan() => ref.watch(runningOnWebProvider) ? const _WebPlanCard() : const _PlanCard();
+
+  /// Tester builds only: make this device read as LastReel Pro — no ads,
+  /// no trial offers, every format — to check the Pro experience.
+  bool get testerAllowed => ref.watch(testerAllowedProvider).value ?? false;
+
+  Widget tester() => EcGroup(
+        label: 'Tester',
+        children: [
+          EcGroupRow.toggle(
+            title: 'LastReel Pro (tester)',
+            subtitle: 'Acts as a Pro subscriber on this device. Only for tester accounts.',
+            value: ref.watch(testerProProvider),
+            onChanged: ref.read(testerProProvider.notifier).set,
+          ),
+        ],
+      );
 
   Widget defaults() {
     final prefs = _prefs;
@@ -188,8 +210,37 @@ class _SettingsGroups {
         title: 'Contact support',
         onTap: () => links.composeEmail(AppLinks.supportEmail, subject: version == null ? 'LastReel support' : '$version support'),
       ),
-      EcGroupRow(title: 'Rate LastReel', onTap: _settings.rate),
+      // The same stars as the render-time prompt: 4–5 go to the store, under
+      // 4 to "What should we fix?". The web has no store review to open.
+      EcGroupRow(
+        title: 'Rate LastReel',
+        onTap: ref.read(runningOnWebProvider) ? _settings.rate : () => ReviewPrompt.askNow(context),
+      ),
     ]);
+  }
+
+  /// "Explore our other apps · by COOKOO": one honest line per app, and
+  /// Get opens its Google Play page.
+  Widget otherApps() {
+    final links = ref.read(externalLinksProvider);
+    return EcGroup(
+      label: 'Explore our other apps',
+      trailing: 'By COOKOO',
+      children: [
+        _AppRow(
+          icon: 'assets/images/apps/textcrawl.png',
+          name: 'TextCrawl',
+          line: 'Make sci-fi style opening crawls with 3D text and music, then export in HD.',
+          onGet: () => links.openUrl(AppLinks.textCrawlListing),
+        ),
+        _AppRow(
+          icon: 'assets/images/apps/aks.png',
+          name: 'AKS',
+          line: 'Record your screen, camera or voice and share it as a link your team can comment on.',
+          onGet: () => links.openUrl(AppLinks.aksListing),
+        ),
+      ],
+    );
   }
 
   Widget legal() {
@@ -251,15 +302,24 @@ extension on _Section {
   Widget body(_SettingsGroups groups) => switch (this) {
         _Section.plan => Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [groups.plan(), const SizedBox(height: 18), groups.defaults()],
+            children: [
+              groups.plan(),
+              if (groups.testerAllowed) ...[const SizedBox(height: 18), groups.tester()],
+              const SizedBox(height: 18),
+              groups.defaults(),
+            ],
           ),
         _Section.defaults => groups.defaults(),
         _Section.app => groups.app(),
-        _Section.support => groups.support(),
+        _Section.support => Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [groups.support(), const SizedBox(height: 18), groups.otherApps()],
+          ),
         _Section.legal => groups.legal(),
         _Section.studio => Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [const CookooPromoBlock(), const SizedBox(height: 18), groups.studio()],
+            // Hidden for now: "Made by COOKOO" and the studio-card switch.
+            children: [const CookooPromoBlock() /*, const SizedBox(height: 18), groups.studio() */],
           ),
       };
 }
@@ -427,10 +487,14 @@ class _DesktopSettings extends StatelessWidget {
                               children: [
                                 groups.plan(),
                                 gap,
+                                if (groups.testerAllowed) ...[groups.tester(), gap],
                                 if (user != null) ...[_ProfileCard(user: user), gap],
                                 groups.support(),
                                 gap,
-                                groups.studio(),
+                                groups.otherApps(),
+                                // Hidden for now: "Made by COOKOO" and the studio-card switch.
+                                // gap,
+                                // groups.studio(),
                               ],
                             ),
                           ),
@@ -753,6 +817,60 @@ class _PlanCard extends ConsumerWidget {
     return Semantics(
       button: true,
       child: GestureDetector(onTap: () => SubscriptionScreen.open(context), child: card),
+    );
+  }
+}
+
+/// One of COOKOO's apps: icon, name, a line, and Get.
+class _AppRow extends StatelessWidget {
+  final String icon;
+  final String name;
+  final String line;
+  final VoidCallback onGet;
+
+  const _AppRow({required this.icon, required this.name, required this.line, required this.onGet});
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.palette;
+    final t = context.type;
+    return Semantics(
+      button: true,
+      label: 'Get $name on Google Play',
+      excludeSemantics: true,
+      child: InkWell(
+        onTap: onGet,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          child: Row(
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: Image.asset(icon, width: 48, height: 48, fit: BoxFit.cover),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(name, style: t.row.copyWith(fontWeight: FontWeight.w600)),
+                    const SizedBox(height: 2),
+                    Text(line, style: t.caption.copyWith(fontSize: 11.5, height: 1.35, color: p.muted)),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 10),
+              Container(
+                height: 32,
+                padding: const EdgeInsets.symmetric(horizontal: 14),
+                alignment: Alignment.center,
+                decoration: BoxDecoration(color: p.accentWash, borderRadius: BorderRadius.circular(999)),
+                child: Text('Get', style: t.bodyS.copyWith(fontSize: 12.5, fontWeight: FontWeight.w700, color: p.accent)),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

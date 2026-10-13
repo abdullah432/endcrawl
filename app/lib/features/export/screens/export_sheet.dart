@@ -26,6 +26,8 @@ import '../../../domain/models/project_settings.dart';
 import '../../plan/screens/pro_sheet.dart';
 import '../../project/controllers/project_controller.dart';
 import '../../timing/screens/timing_sheet.dart';
+import '../../review/data/feedback_repository.dart';
+import '../../review/review_prompt.dart';
 import '../controllers/export_controller.dart';
 import '../models/export_models.dart';
 import '../../access/controllers/web_access.dart';
@@ -55,6 +57,11 @@ class ExportSheet extends ConsumerWidget {
     final projectId = ref.watch(projectControllerProvider.select((s) => s.project.id));
     final run = ref.watch(exportControllerProvider.select((s) => s.run));
     final mine = run != null && run.projectId == projectId;
+
+    // 6.2b — under four stars, the sheet becomes "What should we fix?",
+    // with the render still going in a slim bar above.
+    final rate = ref.watch(inlineRateProvider);
+    if (rate.phase == InlineRatePhase.feedback) return _WhatToFix(rating: rate.rating, run: mine ? run : null);
 
     final view = switch (mine ? run.phase : null) {
       ExportPhase.running => _Rendering(run: run!),
@@ -789,14 +796,62 @@ class _Rendering extends ConsumerWidget {
               ],
             ),
           ),
-          const SponsoredSlot(
-            AdPlacement.rendering,
-            label: 'Sponsored · while you wait',
-            hideLabel: 'Remove ads',
-            gap: 14,
+          // 6.2a — the rating ask takes the ad's place, never covering progress.
+          const RateSlot(
+            ad: SponsoredSlot(
+              AdPlacement.rendering,
+              label: 'Sponsored · while you wait',
+              hideLabel: 'Remove ads',
+              gap: 14,
+            ),
           ),
         ],
       ),
+    );
+  }
+}
+
+/// 6.2b inside the export sheet: the slim render bar, then the questions.
+class _WhatToFix extends ConsumerWidget {
+  final int rating;
+  final ExportRun? run;
+  const _WhatToFix({required this.rating, required this.run});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final p = context.palette;
+    final t = context.type;
+    final run = this.run;
+    final container = ProviderScope.containerOf(context, listen: false);
+    void finish(RatingFeedback? report) {
+      ReviewPrompt.sendToTeam(container, report, rating);
+      ref.read(inlineRateProvider.notifier).close();
+    }
+
+    return EcSheet(
+      header: run == null
+          ? null
+          : Padding(
+              padding: const EdgeInsets.fromLTRB(20, 14, 20, 8),
+              child: Row(
+                children: [
+                  Text(
+                    run.phase == ExportPhase.done ? 'Ready' : 'Rendering',
+                    style: t.titleS.copyWith(fontSize: 13),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(child: RenderProgressBar(run.progress)),
+                  const SizedBox(width: 12),
+                  Text(
+                    run.phase == ExportPhase.done
+                        ? '100%'
+                        : '${(run.progress * 100).floor()}% · ${formatClock(run.secondsLeft.toDouble())}',
+                    style: t.mono.copyWith(fontSize: 10.5, color: p.accent),
+                  ),
+                ],
+              ),
+            ),
+      child: ReviewFeedbackForm(rating: rating, onSend: finish, onSkip: () => finish(null)),
     );
   }
 }
@@ -970,7 +1025,7 @@ class _Ready extends ConsumerWidget {
           ),
           // The file has saved by the time this shows; the ad sits below
           // every destination and never stands between the user and them.
-          const SponsoredSlot(AdPlacement.exportComplete, hideLabel: 'Remove ads', gap: 20),
+          const RateSlot(ad: SponsoredSlot(AdPlacement.exportComplete, hideLabel: 'Remove ads', gap: 20)),
         ],
       ),
     );

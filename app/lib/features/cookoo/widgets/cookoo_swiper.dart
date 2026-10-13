@@ -181,11 +181,13 @@ class _CookooSwiperState extends ConsumerState<CookooSwiper> {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        // The Hide target is 44 tall, so it takes the place of the design's
-        // 20 / 8 padding around the label rather than adding to it.
+        // The label keeps the 44-tall row the (hidden) Hide button gave it,
+        // plus the gap above that separates it from the group before.
         Padding(
-          padding: const EdgeInsets.fromLTRB(20, 0, 8, 0),
-          child: Row(
+          padding: const EdgeInsets.fromLTRB(20, 22, 8, 0),
+          child: SizedBox(
+            height: 44,
+            child: Row(
             children: [
               Expanded(
                 child: Text(
@@ -195,29 +197,31 @@ class _CookooSwiperState extends ConsumerState<CookooSwiper> {
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
-              Semantics(
-                button: true,
-                label: 'Hide the COOKOO card',
-                excludeSemantics: true,
-                child: InkWell(
-                  onTap: () => _promo.hide(_index),
-                  borderRadius: BorderRadius.circular(EcRadius.inner),
-                  child: SizedBox(
-                    height: 44,
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                      child: Center(
-                        widthFactor: 1,
-                        child: Text(
-                          'Hide',
-                          style: context.cookooUi(13, weight: FontWeight.w600, color: p.muted),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
+              // Hidden for now: the "Hide" button.
+//               Semantics(
+//                 button: true,
+//                 label: 'Hide the COOKOO card',
+//                 excludeSemantics: true,
+//                 child: InkWell(
+//                   onTap: () => _promo.hide(_index),
+//                   borderRadius: BorderRadius.circular(EcRadius.inner),
+//                   child: SizedBox(
+//                     height: 44,
+//                     child: Padding(
+//                       padding: const EdgeInsets.symmetric(horizontal: 12),
+//                       child: Center(
+//                         widthFactor: 1,
+//                         child: Text(
+//                           'Hide',
+//                           style: context.cookooUi(13, weight: FontWeight.w600, color: p.muted),
+//                         ),
+//                       ),
+//                     ),
+//                   ),
+//                 ),
+//               ),
             ],
+          ),
           ),
         ),
         SizedBox(

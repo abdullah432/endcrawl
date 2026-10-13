@@ -117,7 +117,8 @@ void main() {
   });
 
   group('7.4 privacy & data', () {
-    testWidgets('studio attribution identifies the app and placement', (tester) async {
+    // Skipped: the COOKOO Hide button and studio rows are hidden for now.
+    testWidgets(skip: true, 'studio attribution identifies the app and placement', (tester) async {
       await openSettings(tester);
       await tapText(tester, 'Made by COOKOO');
       final uri = app.links.opened.single;
