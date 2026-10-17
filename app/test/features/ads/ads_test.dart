@@ -28,6 +28,7 @@ void main() {
       final app = AppHarness();
       await app.pump(tester);
       expect(app.ads.appOpenShown, 0, reason: 'never on open');
+      expect(app.ads.appOpenPreloaded, 1, reason: 'loaded on open, for the first return');
 
       await leaveAndReturn(tester, app, const Duration(seconds: 15));
       expect(app.ads.appOpenShown, 1);
@@ -55,6 +56,7 @@ void main() {
       await app.pump(tester);
       await leaveAndReturn(tester, app, const Duration(minutes: 2));
       expect(app.ads.appOpenShown, 0);
+      expect(app.ads.appOpenPreloaded, 0, reason: 'Pro never loads one');
     });
 
     testWidgets('shows on a return mid-render, and the render still finishes', (tester) async {

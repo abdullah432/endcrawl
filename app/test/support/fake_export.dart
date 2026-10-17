@@ -143,6 +143,7 @@ class FakeAdService implements AdService {
   FakeAdService({this.nextReward = RewardOutcome.earned, this.privacyRequired = false});
 
   int appOpenShown = 0;
+  int appOpenPreloaded = 0;
 
   @override
   Widget nativeAd(AdPlacement placement, {required Widget Function(Widget creative) framed}) =>
@@ -150,6 +151,9 @@ class FakeAdService implements AdService {
 
   @override
   Future<void> showAppOpen() async => appOpenShown++;
+
+  @override
+  void preloadAppOpen() => appOpenPreloaded++;
 
   @override
   bool showingFullScreen = false;

@@ -5,9 +5,10 @@ import 'package:flutter/foundation.dart';
 /// always get Google's test units, so development never serves or
 /// clicks a real ad (which AdMob treats as invalid traffic).
 ///
-/// The app ID lives in the platform config, not here: `GADApplicationIdentifier`
-/// in ios/Runner/Info.plist and `com.google.android.gms.ads.APPLICATION_ID`
-/// in android/app/src/main/AndroidManifest.xml.
+/// The app ID lives in the platform config, not here, and switches with the
+/// build the same way: `ADMOB_APP_ID` in ios/Flutter/{Debug,Release}.xcconfig
+/// (read by `GADApplicationIdentifier` in Info.plist), and the `admobAppId`
+/// manifest placeholder in android/app/build.gradle.kts.
 class AdUnits {
   final String libraryNative;
   final String renderingNative;
@@ -38,18 +39,27 @@ class AdUnits {
     required bool releaseMode,
   }) => switch (platform) {
     TargetPlatform.android => releaseMode ? _androidRelease : _androidTest,
-    TargetPlatform.iOS => releaseMode ? null : _iosTest,
+    TargetPlatform.iOS => releaseMode ? _iosRelease : _iosTest,
     _ => null,
   };
 
   /// Verified Android app ca-app-pub-6644211975790806~5643195524.
-  /// iOS release ads remain disabled until a separate iOS app is configured.
   static const _androidRelease = AdUnits(
     libraryNative: 'ca-app-pub-6644211975790806/6465497619',
     renderingNative: 'ca-app-pub-6644211975790806/7706337805',
     exportReadyNative: 'ca-app-pub-6644211975790806/4888602772',
     proRenderRewarded: 'ca-app-pub-6644211975790806/1799405002',
     appOpenResume: 'ca-app-pub-6644211975790806/6421176298',
+  );
+
+  /// LastReel iOS app ca-app-pub-6644211975790806~3747523873 (its app ID is
+  /// set for Release builds in ios/Flutter/Release.xcconfig).
+  static const _iosRelease = AdUnits(
+    libraryNative: 'ca-app-pub-6644211975790806/7231930165',
+    renderingNative: 'ca-app-pub-6644211975790806/8683033622',
+    exportReadyNative: 'ca-app-pub-6644211975790806/2333072682',
+    proRenderRewarded: 'ca-app-pub-6644211975790806/9584876749',
+    appOpenResume: 'ca-app-pub-6644211975790806/2740441803',
   );
 
   // Google's published sample units: always test ads, safe to click.

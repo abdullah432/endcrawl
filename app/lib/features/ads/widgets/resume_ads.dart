@@ -5,7 +5,8 @@ import '../../../bootstrap.dart';
 import '../ads_providers.dart';
 
 /// The app-open ad, shown whenever the app comes back from the background
-/// — never on a cold start and never on Pro. A render in progress keeps
+/// — never on a cold start and never on Pro. One is loaded as soon as the
+/// plan reads as free, so the first return already has it. A render in progress keeps
 /// going behind it. How often it may show is AdMob's per-unit frequency
 /// cap, set in the console.
 class ResumeAds extends ConsumerStatefulWidget {
@@ -25,6 +26,10 @@ class _ResumeAdsState extends ConsumerState<ResumeAds> {
   void initState() {
     super.initState();
     _lifecycle = AppLifecycleListener(onHide: _onHide, onShow: _onShow);
+    ref.listenManual(entitlementProvider, (previous, next) {
+      final free = next.value?.showsAds ?? false;
+      if (free && !(previous?.value?.showsAds ?? false)) ref.read(adServiceProvider).preloadAppOpen();
+    }, fireImmediately: true);
   }
 
   @override
