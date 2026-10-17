@@ -17,6 +17,7 @@
   <base href="$FLUTTER_BASE_HREF">
 
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
   <meta name="description" content="A new Flutter project.">
 
@@ -42,6 +43,7 @@
     * https://docs.flutter.dev/platform-integration/web/initialization
   -->
   <script src="export_bridge.js"></script>
-  <script src="flutter_bootstrap.js" async></script>
+  <!-- Inline the generated loader so an older cached bootstrap cannot run. -->
+  <script>{{flutter_bootstrap_js}}</script>
 </body>
 </html>

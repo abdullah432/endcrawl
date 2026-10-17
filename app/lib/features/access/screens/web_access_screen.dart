@@ -5,12 +5,14 @@ import 'package:qr_flutter/qr_flutter.dart';
 
 import '../../../bootstrap.dart';
 import '../../../core/config/app_links.dart';
+import '../../../core/layout/layout_class.dart';
 import '../../../core/theme/theme_context.dart';
 import '../../../core/widgets/ec_button.dart';
 import '../../../core/widgets/ec_logo.dart';
 import '../../../core/widgets/ec_scaffold.dart';
 import '../../../core/widgets/ec_surfaces.dart';
 import '../../../domain/models/app_user.dart';
+import '../../desk/bigger_screens_page.dart';
 import '../../settings/controllers/settings_controller.dart';
 import '../controllers/web_access.dart';
 
@@ -40,6 +42,11 @@ class WebAccessScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // This screen can also be pushed above the auth gate from a preview.
+    // Apply the phone handoff here too when that route is still on top.
+    if (ref.watch(runningOnWebProvider) && MediaQuery.sizeOf(context).width < Breakpoints.medium) {
+      return const BiggerScreensPage();
+    }
     final user = ref.watch(authStateProvider).value;
     final check = ref.watch(accessCheckProvider);
     final unlocked = check.phase == AccessPhase.unlocked;

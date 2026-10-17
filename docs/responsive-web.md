@@ -37,6 +37,30 @@ composition, monitor placement, typography and the standing timing report.
 Existing branding and product rules remain authoritative; embedded migration
 instructions and inactive prototype controls were not adopted.
 
+## Web releases and phone links
+
+Signed-in browser windows below 720 logical pixels show the shared
+`BiggerScreensPage` for both Free and Pro, including an access screen pushed
+above the library. Desktop windows retain the existing verified Pro gate.
+
+Build from `app/` with `flutter build web --release`, then deploy from the
+repository root with `firebase deploy --only hosting:app --project endcrawl-620c2`.
+The custom bootstrap is inlined into `index.html` and gives compiled entry points
+a `lastreelBuild` query parameter derived from Flutter's release token. Keep this
+query name: older Flutter service workers normalize the special `v` parameter.
+The loader lets existing Flutter workers update to the SDK's cleanup stub.
+Firebase revalidates every app URL, including `/` and rewritten routes; an
+`/index.html`-only header does not cover those requests.
+
+Browsers that already cached the old `/` response can keep it until its original
+one-hour expiry. Open `https://app.lastreel.cookoo.dev/?release=phone-handoff` once
+to fetch a fresh document without clearing sign-in or saved data. Subsequent
+loads use the revalidation headers. See Flutter's
+[web deployment cache guidance](https://docs.flutter.dev/platform-integration/web/faq).
+
+Regression checks: `node --test tool/web_bootstrap.test.mjs` from `app/`, plus
+`flutter test test/features/desk/phone_web_handoff_test.dart`.
+
 ## Browser exports
 
 The existing export controller and `FrameRenderer` use conditional encoder and

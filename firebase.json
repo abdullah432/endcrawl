@@ -20,11 +20,11 @@
       ],
       "headers": [
         {
-          "source": "**/*.@(js|wasm|otf|ttf|png|jpg|svg|json)",
+          "source": "**",
           "headers": [
             {
               "key": "Cache-Control",
-              "value": "public, max-age=3600"
+              "value": "no-cache, max-age=0, must-revalidate"
             }
           ]
         },
