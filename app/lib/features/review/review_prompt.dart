@@ -70,8 +70,9 @@ final inlineRateProvider = NotifierProvider<InlineRateController, InlineRate>(In
 /// 6.2c — four or five: "Thank you", then the store's own review card (the
 /// same as Settings → Rate LastReel). 6.2b — one to three: "What should we
 /// fix?", which reaches the team privately and never the store. Every
-/// answer is logged to the team, and whatever they pick it is never asked
-/// again on this device.
+/// answer is logged to the team. Once someone has rated it never asks
+/// again; "Not now" or a low rating can be asked again 30 days later, up to
+/// [maxAsks] times in all (see [due]).
 abstract final class ReviewPrompt {
   /// At or above this, the person is sent to the store; below, to the team.
   static const storeThreshold = 4;
@@ -79,12 +80,29 @@ abstract final class ReviewPrompt {
   /// How long "Thank you" stays before the store's card opens.
   static const thanksPause = Duration(milliseconds: 1200);
 
+  /// Between asks: "Not now" or a low rating waits this long.
+  static const quiet = Duration(days: 30);
+
+  /// Asked on its own at most this often per device, however it went.
+  static const maxAsks = 3;
+
+  /// Whether it may ask now: never again once someone has rated (4–5 went
+  /// to the store, and asking again only annoys); otherwise 30 days after
+  /// the last ask, and no more than [maxAsks] times in all.
+  static bool due(ReviewPromptStore store, DateTime now) {
+    if (store.lastAnswer == ReviewAnswer.rated) return false;
+    if (store.timesAsked >= maxAsks) return false;
+    final last = store.lastAsked;
+    return last == null || !now.isBefore(last.add(quiet));
+  }
+
   static Future<void> maybeShow(BuildContext context) async {
     final container = ProviderScope.containerOf(context, listen: false);
     final store = container.read(reviewPromptStoreProvider);
+    final now = container.read(clockProvider)();
     // The web has no store to rate in.
-    if (kIsWeb || store.asked) return;
-    await store.markAsked();
+    if (kIsWeb || !due(store, now)) return;
+    await store.markAsked(now);
     container.read(reviewPromptShownThisSessionProvider.notifier).mark();
     container.read(analyticsProvider).logEvent('review_prompt_shown');
 
@@ -107,7 +125,10 @@ abstract final class ReviewPrompt {
   static Future<void> _askInSheet(BuildContext context, ProviderContainer container, {bool whileRendering = true}) async {
     final analytics = container.read(analyticsProvider);
     final rating = await showEcSheet<int>(context, builder: (_) => ReviewPromptSheet(whileRendering: whileRendering));
-    if (rating == null) return analytics.logEvent('review_prompt_later');
+    if (rating == null) {
+      await container.read(reviewPromptStoreProvider).recordAnswer(ReviewAnswer.later);
+      return analytics.logEvent('review_prompt_later');
+    }
     if (rating >= storeThreshold) return toStore(container, rating);
 
     analytics.logEvent('review_prompt_low', {'rating': rating});
@@ -119,12 +140,14 @@ abstract final class ReviewPrompt {
   /// Four or five stars: logged to the team, then the store's review card.
   static Future<void> toStore(ProviderContainer container, int rating) async {
     container.read(analyticsProvider).logEvent('review_prompt_rate', {'rating': rating});
+    await container.read(reviewPromptStoreProvider).recordAnswer(ReviewAnswer.rated);
     container.read(feedbackRepositoryProvider).submit(RatingFeedback(rating: rating));
     await container.read(settingsControllerProvider).rate();
   }
 
   /// One to three stars: the report, or on Skip the stars alone.
   static void sendToTeam(ProviderContainer container, RatingFeedback? report, int rating) {
+    container.read(reviewPromptStoreProvider).recordAnswer(ReviewAnswer.low);
     container.read(feedbackRepositoryProvider).submit(report ?? RatingFeedback(rating: rating));
     // Raised from the root navigator's own overlay context, which can't
     // look itself up; show the thanks on that overlay directly.
@@ -162,7 +185,7 @@ class _ReviewPromptTriggerState extends ConsumerState<ReviewPromptTrigger> {
   }
 
   void _fire({bool finished = false}) {
-    if (!mounted || ref.read(reviewPromptStoreProvider).asked) return;
+    if (!mounted || !ReviewPrompt.due(ref.read(reviewPromptStoreProvider), ref.read(clockProvider)())) return;
     if (!finished && !_rendering) return;
     if (ref.read(adServiceProvider).showingFullScreen) {
       return _schedule(const Duration(seconds: 2), finished: finished);
@@ -389,6 +412,7 @@ class _RateSlotState extends ConsumerState<RateSlot> {
               onRate: _rate,
               onLater: () {
                 ref.read(analyticsProvider).logEvent('review_prompt_later');
+                ref.read(reviewPromptStoreProvider).recordAnswer(ReviewAnswer.later);
                 ref.read(inlineRateProvider.notifier).close();
               },
             ),

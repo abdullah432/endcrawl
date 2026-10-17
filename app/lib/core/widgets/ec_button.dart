@@ -53,8 +53,15 @@ class EcButton extends StatelessWidget {
   final bool busy;
   final Widget? leading;
 
+  /// After the label — the ↗ on a button that leaves the app.
+  final Widget? trailing;
+
   /// Stretch to the available width. Defaults to true for large buttons.
   final bool? expand;
+
+  /// Overrides [size]'s height — the 50 px secondary pills under a
+  /// sheet's main action.
+  final double? height;
 
   const EcButton({
     super.key,
@@ -64,7 +71,9 @@ class EcButton extends StatelessWidget {
     this.size = EcButtonSize.large,
     this.busy = false,
     this.leading,
+    this.trailing,
     this.expand,
+    this.height,
   });
 
   const EcButton.secondary({
@@ -74,7 +83,9 @@ class EcButton extends StatelessWidget {
     this.size = EcButtonSize.large,
     this.busy = false,
     this.leading,
+    this.trailing,
     this.expand,
+    this.height,
   }) : variant = EcButtonVariant.secondary;
 
   const EcButton.text({
@@ -83,7 +94,9 @@ class EcButton extends StatelessWidget {
     required this.onPressed,
     this.size = EcButtonSize.medium,
     this.leading,
+    this.trailing,
     this.expand,
+    this.height,
   })  : variant = EcButtonVariant.text,
         busy = false;
 
@@ -93,7 +106,7 @@ class EcButton extends StatelessWidget {
     final t = context.type;
     final enabled = onPressed != null && !busy;
 
-    final height = switch (size) {
+    final height = this.height ?? switch (size) {
       EcButtonSize.large => 54.0,
       EcButtonSize.medium => 44.0,
       EcButtonSize.small => 36.0,
@@ -128,6 +141,7 @@ class EcButton extends StatelessWidget {
               children: [
                 if (leading != null) ...[leading!, const SizedBox(width: 10)],
                 Text(label, style: labelStyle, maxLines: 1),
+                if (trailing != null) ...[const SizedBox(width: 8), trailing!],
               ],
             ),
           );

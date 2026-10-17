@@ -40,6 +40,17 @@ abstract final class AppLinks {
   /// (D2's button and QR code).
   static final playStoreListing = Uri.parse('https://play.google.com/store/apps/details?id=com.lastreel.app');
 
+  /// LastReel on the App Store. Unset until the listing is public; until
+  /// then nothing links to the iPhone app.
+  static const Uri? appStoreListing = null;
+
+  /// The app's store page for this device — the web's "Open the LastReel
+  /// app" (1.8c). Null on an iPhone or iPad until [appStoreListing] is set.
+  static Uri? get appListing => switch (defaultTargetPlatform) {
+        TargetPlatform.iOS => appStoreListing,
+        _ => playStoreListing,
+      };
+
   /// Google Play's subscriptions page for LastReel — "Manage in Google
   /// Play" on the web, which never bills.
   static final playSubscriptions =

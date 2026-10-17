@@ -36,6 +36,7 @@ import '../../access/screens/web_access_screen.dart';
 import '../../home/widgets/app_side_nav.dart';
 import '../../review/review_prompt.dart';
 import '../../tester/tester_mode.dart';
+import '../../desk/desk_invite.dart';
 
 /// 7.1 — Settings.
 ///
@@ -140,6 +141,10 @@ class _SettingsGroups {
             value: ref.watch(testerProProvider),
             onChanged: ref.read(testerProProvider.notifier).set,
           ),
+          // The two prompts keep their 30-day schedules for testers too;
+          // these show them on demand without moving those schedules.
+          EcGroupRow(title: 'Show desk invite now', onTap: () => DeskInvite.showNow(context)),
+          EcGroupRow(title: 'Show rating prompt now', onTap: () => ReviewPrompt.askNow(context)),
         ],
       );
 

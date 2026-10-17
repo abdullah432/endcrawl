@@ -49,6 +49,9 @@ class AppHarness {
   FakeCookooContactClient contact;
   FakeFeedbackRepository feedback;
   InMemoryDeskInviteStore desk;
+
+  /// The desk invite's roll ("by chance"): a sure thing unless a test says.
+  bool deskChance;
   InMemoryTesterStore testerMode;
 
   /// Whether this account is listed as a tester (Firestore `testers/{uid}`).
@@ -73,6 +76,7 @@ class AppHarness {
     DateTime? now,
     this.web = false,
     this.testerAllowed = false,
+    this.deskChance = true,
   })  : auth = auth ?? FakeAuthRepository(initialUser: testUser),
         projects = projects ?? FakeProjectRepository(),
         session = session ?? InMemorySessionStore(),
@@ -140,6 +144,7 @@ class AppHarness {
           cookooContactClientProvider.overrideWithValue(contact),
           feedbackRepositoryProvider.overrideWithValue(feedback),
           deskInviteStoreProvider.overrideWithValue(desk),
+          deskInviteChanceProvider.overrideWithValue(() => deskChance),
           testerStoreProvider.overrideWithValue(testerMode),
           testerAllowedProvider.overrideWith((ref) => Stream.value(testerAllowed)),
         ],

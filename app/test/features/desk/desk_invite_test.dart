@@ -5,7 +5,6 @@ import 'package:lastreel/core/config/app_links.dart';
 import 'package:lastreel/domain/models/entitlement.dart';
 import 'package:lastreel/features/desk/desk_invite.dart';
 import 'package:lastreel/features/desk/desk_invite_store.dart';
-import 'package:lastreel/features/library/controllers/library_controller.dart';
 import 'package:lastreel/features/library/screens/library_screen.dart';
 
 import '../../support/app_harness.dart';
@@ -41,22 +40,44 @@ void main() {
   }
 
   group('1.8a free', () {
-    testWidgets('a full free library sells the desk as part of Pro', (tester) async {
+    testWidgets('sells the desk as part of Pro', (tester) async {
       final app = harness();
       await app.pump(tester);
       expect(freeSheet, findsOneWidget);
+      expect(find.text('LASTREEL PRO · DESKTOP & WEB'), findsOneWidget);
       expect(find.text('Upgrade to Pro'), findsOneWidget);
+      expect(find.text('Preview on the web'), findsOneWidget);
       expect(find.text('Email me the link'), findsNothing);
+      expect(find.text('We’ll send the link to'), findsNothing);
 
       await tapText(tester, 'Upgrade to Pro');
       expect(freeSheet, findsNothing);
       expect(app.analytics.names, containsAllInOrder(['desk_invite_shown', 'desk_invite_upgrade']));
     });
 
-    testWidgets('a free library with room to spare is left alone', (tester) async {
+    testWidgets('Preview on the web opens the web app', (tester) async {
+      final app = harness();
+      await app.pump(tester);
+      await tapText(tester, 'Preview on the web');
+      expect(freeSheet, findsNothing);
+      expect(app.links.opened, [AppLinks.webApp]);
+      expect(app.analytics.names, contains('desk_invite_preview'));
+    });
+
+    testWidgets('shows whatever the library holds — one project or many', (tester) async {
       final app = harness(projects: 1);
       await app.pump(tester);
+      expect(freeSheet, findsOneWidget);
+    });
+
+    testWidgets('the ✕ closes it like Not now', (tester) async {
+      final app = harness();
+      await app.pump(tester);
+      await tester.tap(find.byTooltip('Close'));
+      await tester.pumpAndSettle();
       expect(freeSheet, findsNothing);
+      expect(app.desk.turnedOff, isFalse);
+      expect(app.analytics.names, contains('desk_invite_later'));
     });
   });
 
@@ -88,10 +109,20 @@ void main() {
       await tester.pumpAndSettle();
     });
 
-    testWidgets('two Pro projects are not enough to ask', (tester) async {
-      final app = harness(projects: 2, isPro: true);
+    testWidgets('names the signed-in address, and Change sends it elsewhere', (tester) async {
+      final app = harness(projects: 3, isPro: true);
       await app.pump(tester);
-      expect(proSheet, findsNothing);
+      expect(find.text('INCLUDED WITH YOUR PRO PLAN'), findsOneWidget);
+      expect(find.text(testUser.email!), findsOneWidget);
+
+      await tapText(tester, 'Change');
+      await tester.enterText(find.byType(EditableText), 'desk@studio.test');
+      await tester.pump();
+      await tapText(tester, 'Done');
+      expect(find.text('desk@studio.test'), findsOneWidget);
+
+      await tapText(tester, 'Email me the link');
+      expect(app.links.composed.single, 'desk@studio.test');
     });
   });
 
@@ -105,11 +136,26 @@ void main() {
       expect(app.desk.turnedOff, isFalse);
     });
 
-    testWidgets('"Don\'t show this again" turns it off for good', (tester) async {
+    testWidgets('"Don\'t show this again" is a checkbox that counts however it closes', (tester) async {
       final app = harness();
       await app.pump(tester);
       await tapText(tester, 'Don’t show this again');
+      expect(freeSheet, findsOneWidget, reason: 'ticking it does not close the sheet');
+      expect(app.desk.turnedOff, isFalse);
+
+      await tester.tap(find.byTooltip('Close'));
+      await tester.pumpAndSettle();
       expect(app.desk.turnedOff, isTrue);
+      expect(app.analytics.names, contains('desk_invite_never'));
+    });
+
+    testWidgets('unticked again, it stays on', (tester) async {
+      final app = harness();
+      await app.pump(tester);
+      await tapText(tester, 'Don’t show this again');
+      await tapText(tester, 'Don’t show this again');
+      await tapText(tester, 'Not now');
+      expect(app.desk.turnedOff, isFalse);
     });
 
     testWidgets('stays away while it is quiet', (tester) async {
@@ -118,21 +164,85 @@ void main() {
       expect(freeSheet, findsNothing);
     });
 
+    testWidgets('not in the first three sessions', (tester) async {
+      final app = harness(desk: InMemoryDeskInviteStore(sessions: DeskInvite.firstSessions));
+      await app.pump(tester);
+      expect(freeSheet, findsNothing);
+      expect(app.desk.quietUntil, isNull);
+    });
+
+    testWidgets('by chance: a session that loses the roll waits for another', (tester) async {
+      final app = harness()..deskChance = false;
+      await app.pump(tester);
+      expect(freeSheet, findsNothing);
+      expect(app.desk.quietUntil, isNull, reason: 'not counted as shown');
+    });
+
     testWidgets('never on the web, which is the desk', (tester) async {
       final app = harness(projects: 3, isPro: true, web: true);
       await app.pump(tester, size: const Size(1440, 900));
       expect(proSheet, findsNothing);
     });
 
-    test('not in a session that already asked for a rating', () {
-      final view = LibraryView(
-        items: [for (var i = 0; i < 2; i++) LibraryItem(film().summary, i + 1)],
-        entitlement: const Entitlement.free(),
-      );
-      bool due({bool rated = false}) =>
-          DeskInvite.due(view: view, store: InMemoryDeskInviteStore(), now: DateTime.utc(2026, 10, 13), ratedThisSession: rated, web: false);
+    test('the rules, one by one', () {
+      final now = DateTime.utc(2026, 10, 13);
+      bool due({bool rated = false, bool web = false, int sessions = 10, DateTime? quietUntil, bool off = false}) =>
+          DeskInvite.due(
+            store: InMemoryDeskInviteStore(sessions: sessions, quietUntil: quietUntil, turnedOff: off),
+            now: now,
+            ratedThisSession: rated,
+            web: web,
+          );
       expect(due(), isTrue);
-      expect(due(rated: true), isFalse);
+      expect(due(rated: true), isFalse, reason: 'not in a session that already asked for a rating');
+      expect(due(web: true), isFalse);
+      expect(due(off: true), isFalse);
+      expect(due(sessions: 3), isFalse);
+      expect(due(sessions: 4), isTrue);
+      expect(due(quietUntil: now.add(const Duration(days: 1))), isFalse);
+      expect(due(quietUntil: now), isTrue, reason: '30 days on, it may show again');
+    });
+
+    test('counts each start of the app', () async {
+      final store = InMemoryDeskInviteStore(sessions: 0);
+      await store.countSession();
+      await store.countSession();
+      expect(store.sessions, 2);
+    });
+  });
+
+  group('1.8c the web at phone width', () {
+    testWidgets('a phone-width browser gets "made for bigger screens"', (tester) async {
+      final app = harness(projects: 3, isPro: true, web: true);
+      await app.pump(tester);
+      expect(find.textContaining('bigger screens.', findRichText: true), findsOneWidget);
+      expect(find.text('Sends to ${testUser.email}'), findsOneWidget);
+
+      await tapText(tester, 'Email me this link');
+      expect(app.links.composed.single, testUser.email);
+      expect(app.links.composedBodies.single, contains(AppLinks.webApp.toString()));
+    });
+
+    testWidgets('free accounts too, from Preview on the web', (tester) async {
+      final app = harness(web: true);
+      await app.pump(tester);
+      expect(find.textContaining('bigger screens.', findRichText: true), findsOneWidget);
+    });
+
+    testWidgets('widening the window loads the app, no reload', (tester) async {
+      final app = harness(projects: 3, isPro: true, web: true);
+      await app.pump(tester);
+      expect(find.textContaining('bigger screens.', findRichText: true), findsOneWidget);
+      tester.view.physicalSize = const Size(1440, 900);
+      await tester.pumpAndSettle();
+      expect(find.textContaining('bigger screens.', findRichText: true), findsNothing);
+    });
+
+    testWidgets('Open the LastReel app goes to the store listing', (tester) async {
+      final app = harness(web: true);
+      await app.pump(tester);
+      await tapText(tester, 'Open the LastReel app');
+      expect(app.links.opened, [AppLinks.playStoreListing]);
     });
   });
 
@@ -147,32 +257,37 @@ void main() {
       await tester.pumpAndSettle();
     }
 
-    testWidgets('shows through the quiet and the off switch, without counting', (tester) async {
-      final quietUntil = DateTime.utc(2026, 11, 1);
-      final app = harness(desk: InMemoryDeskInviteStore(turnedOff: true, quietUntil: quietUntil), testerAllowed: true);
+    testWidgets('keeps the 30-day quiet and the off switch like everyone', (tester) async {
+      final app = harness(desk: InMemoryDeskInviteStore(quietUntil: DateTime.utc(2026, 11, 1)), testerAllowed: true);
       await app.pump(tester);
+      expect(freeSheet, findsNothing);
+    }, variant: iOS);
+
+    testWidgets('gets it once, then not again on the way back to the library', (tester) async {
+      final app = harness(projects: 3, isPro: true, testerAllowed: true);
+      await app.pump(tester);
+      expect(proSheet, findsOneWidget);
+      await tapText(tester, 'Not now');
+      await visitAnotherScreen(tester);
+      expect(proSheet, findsNothing);
+      expect(app.desk.quietUntil, isNotNull);
+    }, variant: iOS);
+
+    testWidgets('can raise it on demand from Settings without moving its schedule', (tester) async {
+      final quietUntil = DateTime.utc(2026, 11, 1);
+      final app = harness(desk: InMemoryDeskInviteStore(quietUntil: quietUntil), testerAllowed: true);
+      await app.pump(tester);
+      expect(freeSheet, findsNothing);
+      await tester.tap(find.bySemanticsLabel('Account').first);
+      await tester.pumpAndSettle();
+      await tapText(tester, 'Show desk invite now');
       expect(freeSheet, findsOneWidget);
       await tapText(tester, 'Not now');
       expect(app.desk.quietUntil, quietUntil);
     }, variant: iOS);
 
-    testWidgets('comes back every time the library does', (tester) async {
-      final app = harness(projects: 3, isPro: true, testerAllowed: true);
-      await app.pump(tester);
-      expect(proSheet, findsOneWidget);
-      await tapText(tester, 'Not now');
-      expect(proSheet, findsNothing);
-
-      await visitAnotherScreen(tester);
-      expect(proSheet, findsOneWidget);
-      await tapText(tester, 'Not now');
-
-      await visitAnotherScreen(tester);
-      expect(proSheet, findsOneWidget);
-    }, variant: iOS);
-
-    testWidgets('still waits for a full library', (tester) async {
-      final app = harness(projects: 1, testerAllowed: true);
+    testWidgets('still waits out the first sessions', (tester) async {
+      final app = harness(desk: InMemoryDeskInviteStore(sessions: 1), testerAllowed: true);
       await app.pump(tester);
       expect(freeSheet, findsNothing);
     }, variant: iOS);

@@ -167,6 +167,8 @@ Future<AppServices> bootstrap() async {
   );
 
   final preferences = await SharedPreferences.getInstance();
+  final deskInviteStore = PreferencesDeskInviteStore(preferences);
+  await deskInviteStore.countSession();
 
   return AppServices(
     auth: FirebaseAuth.instance,
@@ -174,7 +176,7 @@ Future<AppServices> bootstrap() async {
     sessionStore: PreferencesSessionStore(preferences),
     cookooStore: PreferencesCookooStore(preferences),
     reviewPromptStore: PreferencesReviewPromptStore(preferences),
-    deskInviteStore: PreferencesDeskInviteStore(preferences),
+    deskInviteStore: deskInviteStore,
     testerStore: PreferencesTesterStore(preferences),
   );
 }
