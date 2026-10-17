@@ -87,3 +87,11 @@ abstract final class AppOpenPolicy {
   /// Google discards app-open ads after four hours.
   static const maxAdAge = Duration(hours: 4);
 }
+
+/// Retry only failed requests, with a pause rather than a no-fill loop.
+abstract final class AdRetryPolicy {
+  static const maxAttempts = 3;
+
+  static Duration delay(int attempt) =>
+      Duration(seconds: 30 * (1 << (attempt - 1).clamp(0, 2)));
+}

@@ -19,51 +19,103 @@ import 'ad_service.dart';
 class AdMobAdService implements AdService {
   final AdUnits? _units;
   final bool Function() _personalised;
+  final bool Function() _enabled;
 
   Future<bool>? _ready;
   AppOpenAd? _appOpen;
   DateTime? _appOpenLoadedAt;
   bool _appOpenLoading = false;
   bool _fullScreen = false;
+  bool _disposed = false;
+  Timer? _appOpenRetry;
+  int _appOpenAttempts = 0;
 
   /// [_personalised] reads the user's personalised-ads choice at request time.
-  AdMobAdService(this._personalised, {AdUnits? units}) : _units = units ?? AdUnits.current;
+  AdMobAdService(this._personalised, {AdUnits? units, bool Function()? enabled})
+    : _units = units ?? AdUnits.current,
+      _enabled = enabled ?? (() => true);
 
   /// Consent, then the SDK. False when ads can't be requested — no units
   /// for this platform, or consent not given.
-  Future<bool> _ensureReady() => _ready ??= _start();
+  Future<bool> _ensureReady() {
+    if (_disposed || !_enabled()) return Future.value(false);
+    final pending = _ready;
+    if (pending != null) return pending;
+    final attempt = _start();
+    _ready = attempt;
+    attempt.then((ready) {
+      if (!ready && identical(_ready, attempt)) _ready = null;
+    });
+    return attempt;
+  }
 
   Future<bool> _start() async {
-    if (_units == null) return false;
-    final consent = Completer<void>();
-    ConsentInformation.instance.requestConsentInfoUpdate(
-      ConsentRequestParameters(),
-      () => ConsentForm.loadAndShowConsentFormIfRequired((_) => consent.complete()),
-      (error) {
-        debugPrint('AdMob: consent update failed — ${error.errorCode}: ${error.message}');
-        consent.complete();
-      },
-    );
-    await consent.future;
-    if (!await ConsentInformation.instance.canRequestAds()) {
-      debugPrint('AdMob: consent does not allow ad requests yet');
-      _ready = null; // ask again next time; consent may change
+    if (_units == null || _disposed) return false;
+    try {
+      final consent = Completer<void>();
+      void complete() {
+        if (!consent.isCompleted) consent.complete();
+      }
+
+      ConsentInformation.instance.requestConsentInfoUpdate(
+        ConsentRequestParameters(),
+        () async {
+          try {
+            await ConsentForm.loadAndShowConsentFormIfRequired((error) {
+              if (error != null) {
+                debugPrint(
+                  'AdMob: consent form failed — ${error.errorCode}: ${error.message}',
+                );
+              }
+            });
+          } catch (error) {
+            debugPrint('AdMob: consent form failed — $error');
+          } finally {
+            complete();
+          }
+        },
+        (error) {
+          debugPrint(
+            'AdMob: consent update failed — ${error.errorCode}: ${error.message}',
+          );
+          complete();
+        },
+      );
+      // UMP can already permit requests from a previous session. Do not
+      // block those ads behind a slow consent network refresh.
+      if (!await ConsentInformation.instance.canRequestAds()) {
+        await consent.future;
+      }
+      if (_disposed ||
+          !_enabled() ||
+          !await ConsentInformation.instance.canRequestAds()) {
+        debugPrint('AdMob: consent does not allow ad requests yet');
+        return false;
+      }
+      await MobileAds.instance.initialize();
+      debugPrint(
+        'AdMob: SDK ready (${_units.libraryNative.contains('3940256099942544') ? 'test' : 'production'} units)',
+      );
+      return !_disposed && _enabled();
+    } catch (error) {
+      debugPrint('AdMob: initialization failed — $error');
       return false;
     }
-    await MobileAds.instance.initialize();
-    return true;
   }
 
   AdRequest get _request => AdRequest(nonPersonalizedAds: !_personalised());
 
   String _nativeUnit(AdPlacement placement) => switch (placement) {
-        AdPlacement.library => _units!.libraryNative,
-        AdPlacement.rendering => _units!.renderingNative,
-        AdPlacement.exportComplete => _units!.exportReadyNative,
-      };
+    AdPlacement.library => _units!.libraryNative,
+    AdPlacement.rendering => _units!.renderingNative,
+    AdPlacement.exportComplete => _units!.exportReadyNative,
+  };
 
   @override
-  Widget nativeAd(AdPlacement placement, {required Widget Function(Widget creative) framed}) {
+  Widget nativeAd(
+    AdPlacement placement, {
+    required Widget Function(Widget creative) framed,
+  }) {
     if (_units == null) return const SizedBox.shrink();
     return _NativeAdView(
       key: ValueKey(placement),
@@ -75,10 +127,17 @@ class AdMobAdService implements AdService {
           customOptions: colours,
           request: _request,
           listener: listener,
-          nativeAdOptions: NativeAdOptions(adChoicesPlacement: AdChoicesPlacement.topRightCorner),
+          nativeAdOptions: NativeAdOptions(
+            adChoicesPlacement: AdChoicesPlacement.topRightCorner,
+          ),
         );
-        await ad.load();
-        return ad;
+        try {
+          await ad.load();
+          return ad;
+        } catch (_) {
+          ad.dispose();
+          rethrow;
+        }
       },
       framed: framed,
     );
@@ -108,7 +167,9 @@ class AdMobAdService implements AdService {
       onAdDismissedFullScreenContent: (ad) {
         ad.dispose();
         _fullScreen = false;
-        ended.complete(earned ? RewardOutcome.earned : RewardOutcome.closedEarly);
+        ended.complete(
+          earned ? RewardOutcome.earned : RewardOutcome.closedEarly,
+        );
       },
       onAdFailedToShowFullScreenContent: (ad, _) {
         ad.dispose();
@@ -126,12 +187,15 @@ class AdMobAdService implements AdService {
 
   @override
   Future<void> showAppOpen() async {
-    if (_fullScreen || !await _ensureReady()) return;
+    if (_disposed || _fullScreen || !await _ensureReady()) return;
     final ad = _appOpen;
-    final fresh = _appOpenLoadedAt != null && DateTime.now().difference(_appOpenLoadedAt!) < AppOpenPolicy.maxAdAge;
+    final fresh =
+        _appOpenLoadedAt != null &&
+        DateTime.now().difference(_appOpenLoadedAt!) < AppOpenPolicy.maxAdAge;
     if (ad == null || !fresh) {
       ad?.dispose();
       _appOpen = null;
+      _appOpenAttempts = 0;
       _loadAppOpen();
       return;
     }
@@ -154,38 +218,70 @@ class AdMobAdService implements AdService {
 
   @override
   void preloadAppOpen() {
-    if (_units == null || _appOpen != null) return;
+    if (_disposed || !_enabled() || _units == null || _appOpen != null) return;
     _ensureReady().then((ready) {
-      if (ready && _appOpen == null) _loadAppOpen();
+      if (_disposed) return;
+      if (ready && _appOpen == null) {
+        _loadAppOpen();
+      } else if (!ready) {
+        _appOpenAttempts++;
+        _retryAppOpen();
+      }
     });
   }
 
   /// Loads the next app-open ad ahead of time, so a resume shows it at once.
   void _loadAppOpen() {
-    if (_appOpenLoading) return;
+    if (_disposed || !_enabled() || _appOpenLoading) return;
+    _appOpenRetry?.cancel();
     _appOpenLoading = true;
+    _appOpenAttempts++;
     AppOpenAd.load(
       adUnitId: _units!.appOpenResume,
       request: _request,
       adLoadCallback: AppOpenAdLoadCallback(
         onAdLoaded: (ad) {
           _appOpenLoading = false;
+          if (_disposed || !_enabled()) {
+            ad.dispose();
+            return;
+          }
           _appOpen = ad;
           _appOpenLoadedAt = DateTime.now();
+          _appOpenAttempts = 0;
+          debugPrint('AdMob: app open ad loaded');
         },
         onAdFailedToLoad: (error) {
           _appOpenLoading = false;
           _logFailure('app open', error);
+          _retryAppOpen();
         },
       ),
     );
+  }
+
+  void _retryAppOpen() {
+    if (_disposed || _appOpenAttempts >= AdRetryPolicy.maxAttempts) return;
+    _appOpenRetry?.cancel();
+    _appOpenRetry = Timer(
+      AdRetryPolicy.delay(_appOpenAttempts),
+      preloadAppOpen,
+    );
+  }
+
+  void dispose() {
+    _disposed = true;
+    _appOpenRetry?.cancel();
+    _appOpen?.dispose();
+    _appOpen = null;
   }
 
   @override
   Future<bool> privacyOptionsRequired() async {
     if (_units == null) return false;
     await _ensureReady();
-    return await ConsentInformation.instance.getPrivacyOptionsRequirementStatus() ==
+    return await ConsentInformation.instance
+            .getPrivacyOptionsRequirementStatus() ==
         PrivacyOptionsRequirementStatus.required;
   }
 
@@ -197,10 +293,10 @@ class AdMobAdService implements AdService {
   }
 }
 
-/// Why an ad didn't load, in the debug console — no fill, no network, a
-/// wrong unit. Silent in release builds.
-void _logFailure(String kind, LoadAdError error) =>
-    debugPrint('AdMob: $kind ad failed to load — ${error.code}: ${error.message}');
+/// Why an ad didn't load — no fill, no network, a wrong unit.
+void _logFailure(String kind, LoadAdError error) => debugPrint(
+  'AdMob: $kind ad failed to load — ${error.domain}/${error.code}: ${error.message}',
+);
 
 /// The native ad layout registered by the platform code —
 /// `LastReelNativeAdFactory` in ios/Runner/NativeAdFactory.swift and
@@ -209,7 +305,8 @@ const nativeCardFactoryId = 'lastreelCard';
 
 /// The palette as the native card reads it: "#RRGGBB" per role.
 Map<String, Object> nativeCardColours(EcPalette p) {
-  String hex(Color c) => '#${(c.toARGB32() & 0xFFFFFF).toRadixString(16).padLeft(6, '0').toUpperCase()}';
+  String hex(Color c) =>
+      '#${(c.toARGB32() & 0xFFFFFF).toRadixString(16).padLeft(6, '0').toUpperCase()}';
   return {
     'surface': hex(p.surface),
     'line': hex(p.line),
@@ -223,7 +320,11 @@ Map<String, Object> nativeCardColours(EcPalette p) {
 /// A native ad on the app's own card (see [nativeCardFactoryId]). Shows
 /// nothing until the ad has loaded, and nothing if it never does.
 class _NativeAdView extends StatefulWidget {
-  final Future<NativeAd?> Function(Map<String, Object> colours, NativeAdListener listener) load;
+  final Future<NativeAd?> Function(
+    Map<String, Object> colours,
+    NativeAdListener listener,
+  )
+  load;
   final Widget Function(Widget creative) framed;
 
   const _NativeAdView({super.key, required this.load, required this.framed});
@@ -236,34 +337,90 @@ class _NativeAdViewState extends State<_NativeAdView> {
   NativeAd? _ad;
   bool _loaded = false;
   bool _started = false;
+  bool _loading = false;
+  int _attempts = 0;
+  Timer? _retry;
+  late final AppLifecycleListener _lifecycle;
+
+  @override
+  void initState() {
+    super.initState();
+    _lifecycle = AppLifecycleListener(
+      onResume: () {
+        if (!_loaded && !_loading) {
+          _attempts = 0;
+          _load();
+        }
+      },
+    );
+  }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     if (_started) return;
     _started = true;
-    widget.load(
-      nativeCardColours(context.palette),
-      NativeAdListener(
-        onAdLoaded: (_) {
-          if (mounted) setState(() => _loaded = true);
-        },
-        onAdFailedToLoad: (ad, error) {
-          _logFailure('native', error);
-          ad.dispose();
-        },
-      ),
-    ).then((ad) {
+    _load();
+  }
+
+  Future<void> _load() async {
+    if (!mounted || _loading || _loaded) return;
+    _retry?.cancel();
+    _loading = true;
+    _attempts++;
+    var failed = false;
+    try {
+      final ad = await widget.load(
+        nativeCardColours(context.palette),
+        NativeAdListener(
+          onAdLoaded: (ad) {
+            if (!mounted) return;
+            _loading = false;
+            setState(() {
+              _ad = ad as NativeAd;
+              _loaded = true;
+            });
+            debugPrint('AdMob: native ad loaded');
+          },
+          onAdFailedToLoad: (ad, error) {
+            failed = true;
+            _logFailure('native', error);
+            ad.dispose();
+            if (!mounted) return;
+            _loading = false;
+            _ad = null;
+            _retryLater();
+          },
+        ),
+      );
       if (!mounted) {
-        ad?.dispose();
+        if (!failed) ad?.dispose();
         return;
       }
-      setState(() => _ad = ad);
-    });
+      if (failed) return;
+      _ad = ad;
+      if (ad == null) {
+        _loading = false;
+        _retryLater();
+      }
+    } catch (error) {
+      if (!mounted) return;
+      _loading = false;
+      debugPrint('AdMob: native request failed — $error');
+      _retryLater();
+    }
+  }
+
+  void _retryLater() {
+    if (!mounted || _attempts >= AdRetryPolicy.maxAttempts) return;
+    _retry?.cancel();
+    _retry = Timer(AdRetryPolicy.delay(_attempts), _load);
   }
 
   @override
   void dispose() {
+    _retry?.cancel();
+    _lifecycle.dispose();
     _ad?.dispose();
     super.dispose();
   }

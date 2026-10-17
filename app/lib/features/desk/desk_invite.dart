@@ -111,10 +111,15 @@ abstract final class DeskInvite {
   /// — and without moving it, so real users' 30-day rhythm is what ships.
   static Future<void> showNow(BuildContext context) async {
     final container = ProviderScope.containerOf(context, listen: false);
-    final view = container.read(libraryViewProvider).value;
-    if (view == null) return;
-    await _show(context, container, view, container.read(deskInviteStoreProvider), container.read(clockProvider)(),
-        countIt: false);
+    if (container.read(deskInviteOpenProvider)) return;
+    final pro = container.read(entitlementProvider).value?.isPro ?? false;
+    container.read(deskInviteOpenProvider.notifier).set(true);
+    try {
+      await _show(context, container, pro, container.read(deskInviteStoreProvider), container.read(clockProvider)(),
+          countIt: false);
+    } finally {
+      container.read(deskInviteOpenProvider.notifier).set(false);
+    }
   }
 
   static Future<void> maybeShow(BuildContext context) async {
@@ -145,7 +150,7 @@ abstract final class DeskInvite {
     if (!container.read(deskInviteChanceProvider)()) return;
     container.read(deskInviteOpenProvider.notifier).set(true);
     try {
-      await _show(context, container, view, store, now);
+      await _show(context, container, view.entitlement.isPro, store, now);
     } finally {
       container.read(deskInviteOpenProvider.notifier).set(false);
     }
@@ -154,7 +159,7 @@ abstract final class DeskInvite {
   static Future<void> _show(
     BuildContext context,
     ProviderContainer container,
-    LibraryView view,
+    bool pro,
     DeskInviteStore store,
     DateTime now, {
     bool countIt = true,
@@ -162,7 +167,6 @@ abstract final class DeskInvite {
     // Counted as shown before it opens, so a crash or a killed app can't
     // bring it straight back. A tester's on-demand showing doesn't count.
     if (countIt) await store.quietUntilDate(now.add(quiet));
-    final pro = view.entitlement.isPro;
     final analytics = container.read(analyticsProvider)..logEvent('desk_invite_shown', {'plan': pro ? 'pro' : 'free'});
     if (!context.mounted) return;
 

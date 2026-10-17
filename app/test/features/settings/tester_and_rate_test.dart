@@ -20,6 +20,7 @@ void main() {
     await openSettings(tester, app);
     expect(find.text('Free plan'), findsOneWidget);
 
+    await tester.ensureVisible(find.text('LastReel Pro (tester)'));
     await tester.tap(find.text('LastReel Pro (tester)'));
     await tester.pumpAndSettle();
     expect(app.testerMode.proOn, isTrue);

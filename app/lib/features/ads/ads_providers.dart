@@ -6,12 +6,20 @@ import 'data/admob_ad_service.dart';
 
 /// AdMob in the app; tests override it with a fake.
 final adServiceProvider = Provider<AdService>((ref) {
-  return AdMobAdService(() => ref.read(userProfileProvider).value?.preferences.personalisedAds ?? false);
+  final service = AdMobAdService(
+    () =>
+        ref.read(userProfileProvider).value?.preferences.personalisedAds ??
+        false,
+    enabled: () => ref.read(entitlementProvider).value?.showsAds ?? false,
+  );
+  ref.onDispose(service.dispose);
+  return service;
 });
 
 /// Whether 7.4 needs its "Ad privacy choices" row — only where the consent
 /// framework requires one, and never on Pro.
 final adPrivacyOptionsRequiredProvider = FutureProvider<bool>((ref) async {
   final showsAds = ref.watch(entitlementProvider).value?.showsAds ?? false;
-  return showsAds && await ref.watch(adServiceProvider).privacyOptionsRequired();
+  return showsAds &&
+      await ref.watch(adServiceProvider).privacyOptionsRequired();
 });

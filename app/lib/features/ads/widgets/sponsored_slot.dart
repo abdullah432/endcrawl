@@ -21,7 +21,7 @@ class SponsoredSlot extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final showsAds = ref.watch(entitlementProvider).value?.showsAds ?? true;
+    final showsAds = ref.watch(entitlementProvider).value?.showsAds ?? false;
     if (!showsAds) return const SizedBox.shrink();
     return ref.read(adServiceProvider).nativeAd(
           placement,

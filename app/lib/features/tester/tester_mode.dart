@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -22,7 +24,13 @@ final testerAllowedProvider = StreamProvider<bool>((ref) {
       .doc(uid)
       .snapshots()
       .map((doc) => doc.exists && doc.data()?['enabled'] == true)
-      .handleError((Object _) => false);
+      .transform(
+        StreamTransformer<bool, bool>.fromHandlers(
+          // handleError's return value is discarded. Emit a value so a
+          // missing/offline tester check cannot leave the invite loading.
+          handleError: (error, stack, sink) => sink.add(false),
+        ),
+      );
 });
 
 abstract interface class TesterStore {
@@ -60,7 +68,9 @@ final testerStoreProvider = Provider<TesterStore>((ref) {
 
 class TesterPro extends Notifier<bool> {
   @override
-  bool build() => (ref.watch(testerAllowedProvider).value ?? false) && ref.watch(testerStoreProvider).proOn;
+  bool build() =>
+      (ref.watch(testerAllowedProvider).value ?? false) &&
+      ref.watch(testerStoreProvider).proOn;
 
   Future<void> set(bool on) async {
     if (!(ref.read(testerAllowedProvider).value ?? false)) return;

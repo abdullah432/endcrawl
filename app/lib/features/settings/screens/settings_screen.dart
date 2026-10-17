@@ -37,6 +37,7 @@ import '../../home/widgets/app_side_nav.dart';
 import '../../review/review_prompt.dart';
 import '../../tester/tester_mode.dart';
 import '../../desk/desk_invite.dart';
+import '../../desk/desktop_web_card.dart';
 
 /// 7.1 — Settings.
 ///
@@ -78,6 +79,8 @@ class SettingsScreen extends ConsumerWidget {
               if (user != null) _ProfileCard(user: user),
               const SizedBox(height: 22),
               groups.plan(),
+              const SizedBox(height: 22),
+              groups.desktopWeb(),
               if (groups.testerAllowed) ...[const SizedBox(height: 22), groups.tester()],
               const SizedBox(height: 22),
               groups.defaults(),
@@ -127,6 +130,8 @@ class _SettingsGroups {
   /// The plan — on the web, the subscription's status (D15): the web never
   /// sells, so it links out to Google Play and re-checks access instead.
   Widget plan() => ref.watch(runningOnWebProvider) ? const _WebPlanCard() : const _PlanCard();
+
+  Widget desktopWeb() => const DesktopWebCard();
 
   /// Tester builds only: make this device read as LastReel Pro — no ads,
   /// no trial offers, every format — to check the Pro experience.
@@ -309,6 +314,8 @@ extension on _Section {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               groups.plan(),
+              const SizedBox(height: 18),
+              groups.desktopWeb(),
               if (groups.testerAllowed) ...[const SizedBox(height: 18), groups.tester()],
               const SizedBox(height: 18),
               groups.defaults(),
@@ -491,6 +498,8 @@ class _DesktopSettings extends StatelessWidget {
                               crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
                                 groups.plan(),
+                                gap,
+                                groups.desktopWeb(),
                                 gap,
                                 if (groups.testerAllowed) ...[groups.tester(), gap],
                                 if (user != null) ...[_ProfileCard(user: user), gap],
@@ -779,14 +788,14 @@ class _PlanCard extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.baseline,
-            textBaseline: TextBaseline.alphabetic,
+          Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 8,
+            runSpacing: 6,
             children: [
-              Expanded(
-                child: Text(entitlement.isPro ? 'LastReel Pro' : 'Free plan',
-                    style: t.titleM.copyWith(fontSize: 15.5, fontWeight: FontWeight.w700)),
-              ),
+              Text(entitlement.isPro ? 'LastReel Pro' : 'Free plan',
+                  style: t.titleM.copyWith(fontSize: 15.5, fontWeight: FontWeight.w700)),
               Text(status, style: t.mono.copyWith(fontSize: 10)),
             ],
           ),
