@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../bootstrap.dart';
-import '../../core/config/app_links.dart';
 import '../../core/theme/theme_context.dart';
 import '../../core/theme/tokens.dart';
 import '../../core/widgets/ec_button.dart';
@@ -10,7 +9,7 @@ import '../../core/widgets/ec_surfaces.dart';
 import 'desk_invite.dart';
 
 /// Settings' permanent way to discover the desk, independent of the
-/// occasional library invite. Uses the same Pro link sheet as that invite.
+/// occasional library invite. Reuses its Free upgrade/preview and Pro link sheets.
 class DesktopWebCard extends ConsumerWidget {
   const DesktopWebCard({super.key});
 
@@ -28,9 +27,7 @@ class DesktopWebCard extends ConsumerWidget {
         size: 16,
         color: p.ink,
       ),
-      onPressed: pro
-          ? () => DeskInvite.showNow(context)
-          : () => ref.read(externalLinksProvider).openUrl(AppLinks.webApp),
+      onPressed: () => DeskInvite.showNow(context),
     );
     final status = Row(
       crossAxisAlignment: CrossAxisAlignment.start,

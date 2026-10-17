@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lastreel/core/config/app_links.dart';
 import 'package:lastreel/domain/models/entitlement.dart';
+import 'package:lastreel/features/plan/screens/pro_sheet.dart';
 import 'package:lastreel/features/settings/screens/settings_screen.dart';
 
 import '../../support/app_harness.dart';
@@ -34,10 +35,44 @@ void main() {
       );
       await tester.tap(preview);
       await tester.pumpAndSettle();
+      expect(
+        find.textContaining('on a big screen.', findRichText: true),
+        findsOneWidget,
+      );
+      expect(find.text('Upgrade to Pro'), findsOneWidget);
+      expect(find.text('Preview on the web'), findsOneWidget);
+      expect(app.links.opened, isEmpty);
+      await tester.ensureVisible(find.text('Preview on the web'));
+      await tester.tap(find.text('Preview on the web'));
+      await tester.pumpAndSettle();
       expect(app.links.opened, [AppLinks.webApp]);
+      expect(app.desk.quietUntil, isNull);
       expect(app.desk.turnedOff, isTrue);
     },
   );
+
+  testWidgets('Free can upgrade from the desktop preview sheet', (
+    tester,
+  ) async {
+    final app = AppHarness();
+    await settings(tester, app);
+    await tester.ensureVisible(find.text('Preview'));
+    await tester.tap(find.text('Preview'));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Upgrade to Pro'));
+    await tester.tap(find.text('Upgrade to Pro'));
+    await tester.pumpAndSettle();
+    expect(find.byType(ProSheet), findsOneWidget);
+    expect(
+      find.textContaining('on a big screen.', findRichText: true),
+      findsNothing,
+    );
+    expect(app.links.opened, isEmpty);
+    expect(app.desk.quietUntil, isNull);
+    expect(app.desk.turnedOff, isTrue);
+    await tester.tap(find.byTooltip('Close'));
+    await tester.pumpAndSettle();
+  });
 
   testWidgets(
     'Pro can open the existing send-link sheet without changing the popup schedule',
