@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../layout/layout_class.dart';
+import '../theme/ec_type.dart';
 import '../theme/theme_context.dart';
 import '../theme/tokens.dart';
 import 'ec_sheet.dart';
@@ -8,18 +10,53 @@ import 'ec_sheet.dart';
 /// Settings (7.1), Privacy & data (7.4), Subscription (7.3).
 class EcGroup extends StatelessWidget {
   final String? label;
+
+  /// A quiet note on the label's right — "By COOKOO".
+  final String? trailing;
   final List<Widget> children;
 
-  const EcGroup({super.key, this.label, required this.children});
+  const EcGroup({super.key, this.label, this.trailing, required this.children});
+
+  Widget? _note(BuildContext context) => trailing == null
+      ? null
+      : Text(caps(trailing!), style: context.type.mono.copyWith(fontSize: 9, letterSpacing: 1, color: context.palette.faint));
 
   @override
   Widget build(BuildContext context) {
     final p = context.palette;
+    // Tablet and desktop (T7.1, D15) draw each group as a white card with
+    // its label inside; the phone keeps the label above a glass card.
+    if (context.layoutClass.isWide) {
+      return Container(
+        clipBehavior: Clip.antiAlias,
+        padding: EdgeInsets.fromLTRB(8, label == null ? 6 : 20, 8, 6),
+        decoration: BoxDecoration(
+          color: p.surface,
+          borderRadius: BorderRadius.circular(EcRadius.group),
+          boxShadow: p.glassShadow,
+        ),
+        child: Material(
+          type: MaterialType.transparency,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (label != null)
+                Padding(padding: const EdgeInsets.only(left: 10, right: 6), child: EcSectionLabel(label!, trailing: _note(context))),
+              for (var i = 0; i < children.length; i++) ...[
+                if (i > 0) Divider(height: 1, color: p.line, indent: 16, endIndent: 16),
+                children[i],
+              ],
+            ],
+          ),
+        ),
+      );
+    }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       mainAxisSize: MainAxisSize.min,
       children: [
-        if (label != null) EcSectionLabel(label!),
+        if (label != null) EcSectionLabel(label!, trailing: _note(context)),
         Container(
           clipBehavior: Clip.antiAlias,
           decoration: BoxDecoration(

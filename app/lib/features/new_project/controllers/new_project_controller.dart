@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../bootstrap.dart';
 import '../../../data/repositories/template_repository.dart';
+import '../../../domain/models/credit_block.dart';
 import '../../../domain/models/project.dart';
 import '../../../domain/models/user_profile.dart';
 import '../../library/controllers/library_controller.dart';
@@ -64,6 +65,15 @@ class NewProjectController {
   }
 
   List<TemplateSection> sectionsOf(ProjectTemplate template) => _templates.sections(template.id);
+
+  /// The block kinds a template starts with, in order — the code tags the
+  /// desktop's new-project dialog lists (D10).
+  List<BlockKind> blockKindsOf(ProjectTemplate template) => [for (final b in _templates.seed(template.id)) b.kind];
+
+  /// The sections a template ticks by default — what the one-step tablet and
+  /// desktop dialog (T2.1, D10) creates with; 2.2's choice stays on the phone.
+  Set<String> defaultSectionsOf(ProjectTemplate template) =>
+      {for (final s in _templates.sections(template.id)) if (s.includedByDefault) s.id};
 
   /// The blocks a template starts with — for "24 fps · 2.39:1 · 28 blocks",
   /// derived from the sections so it can never drift.

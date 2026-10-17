@@ -7,6 +7,7 @@ import '../../../data/sources/session_store.dart';
 import '../../../domain/models/entitlement.dart';
 import '../../../domain/models/project.dart';
 import '../../plan/controllers/editable_projects.dart';
+import '../../access/controllers/web_access.dart';
 
 /// Every stored project, newest first, kept live: a create, rename or
 /// delete anywhere — this screen, the editor, account deletion, another
@@ -119,6 +120,7 @@ class LibraryController {
   /// damaged or newer-format document). That only costs the undo: the
   /// delete goes ahead, so a card can never get stuck on the list.
   Future<Result<Project?>> delete(String id) async {
+    if (_ref.read(webPreviewProvider)) return const Err(webPreviewLocked);
     final repository = _ref.read(projectRepositoryProvider);
     final loaded = (await repository.load(id)).valueOrNull;
 
@@ -136,6 +138,7 @@ class LibraryController {
   /// Undo for [delete]: writes the project back unchanged, same id and
   /// timestamps, so it returns to the same place in the list.
   Future<Result<Project>> restore(Project project) async {
+    if (_ref.read(webPreviewProvider)) return const Err(webPreviewLocked);
     final saved = await _ref.read(projectRepositoryProvider).save(project);
     _refresh();
     return saved;
@@ -145,6 +148,7 @@ class LibraryController {
   /// plan has no slot left — the cap is enforced here, not by hiding a
   /// button, so no path around the UI can exceed it.
   Future<Result<Project>> duplicate(String id) async {
+    if (_ref.read(webPreviewProvider)) return const Err(webPreviewLocked);
     if (!await canAddProject()) return const Err(slotsFull);
 
     final repository = _ref.read(projectRepositoryProvider);
@@ -166,6 +170,7 @@ class LibraryController {
   }
 
   Future<Result<Project>> rename(String id, String title) async {
+    if (_ref.read(webPreviewProvider)) return const Err(webPreviewLocked);
     // Renaming touches the project, which would make it the editable one.
     if (_ref.read(readOnlyProjectIdsProvider).contains(id)) return Err(readOnlyOnFree);
     final clean = sanitizeProjectTitle(title);

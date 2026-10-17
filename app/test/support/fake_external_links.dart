@@ -5,6 +5,7 @@ class FakeExternalLinks implements ExternalLinks {
   int mailOpened = 0;
   final opened = <Uri>[];
   final composed = <String>[];
+  final composedBodies = <String?>[];
 
   @override
   Future<bool> openMailApp() async {
@@ -19,8 +20,9 @@ class FakeExternalLinks implements ExternalLinks {
   }
 
   @override
-  Future<bool> composeEmail(String to, {String? subject}) async {
+  Future<bool> composeEmail(String to, {String? subject, String? body}) async {
     composed.add(to);
+    composedBodies.add(body);
     return true;
   }
 }

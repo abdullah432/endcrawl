@@ -17,29 +17,28 @@ void main() {
       final app = AppHarness(
         plan: plan,
         projects: FakeProjectRepository(seed: [film()]),
+        web: true,
       );
-      await app.pump(tester, size: const Size(1440, 900), webAccess: true);
+      await app.pump(tester, size: const Size(1440, 900));
+      await tester.tap(find.text('Preview the app first'));
+      await tester.pumpAndSettle();
       expect(find.text('The Long Way Down'), findsOneWidget);
-      expect(find.textContaining('Preview · Pro required'), findsOneWidget);
+      expect(find.textContaining('Preview · Pro required'), findsNothing);
       final scope = ProviderScope.containerOf(
-        tester.element(find.text('Projects')),
+        tester.element(find.text('Projects').first),
       );
       expect(scope.read(webAccessAllowedProvider), isFalse);
       expect(scope.read(exportControllerProvider.notifier).start(), isFalse);
       expect(app.encoder.started, isEmpty);
-      await tester.tap(find.text('The Long Way Down'), warnIfMissed: false);
-      await tester.pumpAndSettle();
-      expect(find.text('Select a block to edit'), findsNothing);
       plan.entitlement = const Entitlement.pro();
       await tester.pumpAndSettle();
       expect(scope.read(webAccessAllowedProvider), isTrue);
-      expect(find.textContaining('Preview · Pro required'), findsNothing);
       await tester.tap(find.text('The Long Way Down'));
       await tester.pumpAndSettle();
-      expect(find.text('Select a block to edit'), findsOneWidget);
       plan.entitlement = const Entitlement.free(lapsed: true);
       await tester.pumpAndSettle();
-      expect(find.textContaining('Preview · Pro required'), findsOneWidget);
+      expect(scope.read(webAccessAllowedProvider), isFalse);
+      expect(scope.read(exportControllerProvider.notifier).start(), isFalse);
     },
   );
 }

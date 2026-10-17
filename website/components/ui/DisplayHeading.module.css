@@ -1,0 +1,34 @@
+.heading {
+  font-family: var(--ec-serif);
+  font-weight: 400;
+}
+
+.heading em {
+  font-style: italic;
+}
+
+.hero {
+  font-size: clamp(64px, 10vw, 148px);
+  line-height: 0.88;
+  letter-spacing: -0.015em;
+}
+
+.section {
+  font-size: var(--ec-h2);
+  line-height: 1;
+}
+
+.closing {
+  font-size: clamp(52px, 7vw, 104px);
+  line-height: 0.95;
+}
+
+.card {
+  font-size: 44px;
+  line-height: 1;
+}
+
+.step {
+  font-size: 34px;
+  line-height: 1;
+}

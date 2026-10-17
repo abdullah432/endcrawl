@@ -51,6 +51,10 @@ abstract interface class AdService {
   /// only when the app returns from the background.
   Future<void> showAppOpen();
 
+  /// Loads an app-open ad ahead of time, so the first return from the
+  /// background has one ready. Shows nothing.
+  void preloadAppOpen();
+
   /// An ad covers the app right now. A render keeps going behind it, even
   /// though the app is briefly inactive.
   bool get showingFullScreen;
@@ -74,6 +78,9 @@ class PlaceholderAdService implements AdService {
 
   @override
   Future<void> showAppOpen() async {}
+
+  @override
+  void preloadAppOpen() {}
 
   @override
   bool get showingFullScreen => false;

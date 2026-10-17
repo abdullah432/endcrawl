@@ -1,0 +1,52 @@
+.footer {
+  background: var(--ec-sheet);
+  border-top: 1px solid var(--ec-line);
+}
+
+.top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px 40px;
+  padding-block: 40px;
+}
+
+.brand {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.tagline {
+  font-size: 13.5px;
+  color: var(--ec-muted);
+}
+
+.nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 26px;
+  font-size: 14px;
+}
+
+.nav a {
+  color: var(--ec-ink2);
+  padding-block: 4px;
+}
+
+.nav a:hover {
+  color: var(--ec-accent);
+}
+
+.legal {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 10px;
+  padding-block: 16px 28px;
+  border-top: 1px solid var(--ec-line);
+  font-family: var(--ec-mono);
+  font-size: 11px;
+  color: var(--ec-muted);
+}

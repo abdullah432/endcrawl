@@ -22,7 +22,10 @@ import 'domain/models/app_user.dart';
 import 'domain/models/entitlement.dart';
 import 'domain/models/user_profile.dart';
 import 'features/cookoo/data/cookoo_store.dart';
+import 'features/access/controllers/web_access.dart';
 import 'features/review/review_prompt_store.dart';
+import 'features/desk/desk_invite_store.dart';
+import 'features/tester/tester_mode.dart';
 import 'firebase_options.dart';
 
 /// The app's dependency-injection seams.
@@ -156,6 +159,9 @@ final entitlementRepositoryProvider = Provider<EntitlementRepository>((ref) {
 /// store never makes the cap disappear.
 final entitlementProvider = StreamProvider<Entitlement>((ref) {
   ref.watch(currentUidProvider);
+  if (!ref.watch(runningOnWebProvider) && ref.watch(testerProProvider)) {
+    return Stream.value(const Entitlement.pro(period: BillingPeriod.yearly));
+  }
   return ref.watch(entitlementRepositoryProvider).watch();
 });
 
@@ -166,6 +172,8 @@ class AppServices {
   final SessionStore sessionStore;
   final CookooStore cookooStore;
   final ReviewPromptStore reviewPromptStore;
+  final DeskInviteStore deskInviteStore;
+  final TesterStore testerStore;
 
   const AppServices({
     required this.auth,
@@ -173,6 +181,8 @@ class AppServices {
     required this.sessionStore,
     required this.cookooStore,
     required this.reviewPromptStore,
+    required this.deskInviteStore,
+    required this.testerStore,
   });
 }
 
@@ -192,11 +202,16 @@ Future<AppServices> bootstrap() async {
 
   final preferences = await SharedPreferences.getInstance();
 
+  final deskInviteStore = PreferencesDeskInviteStore(preferences);
+  await deskInviteStore.countSession();
+
   return AppServices(
     auth: FirebaseAuth.instance,
     firestore: FirebaseFirestore.instance,
     sessionStore: PreferencesSessionStore(preferences),
     cookooStore: PreferencesCookooStore(preferences),
     reviewPromptStore: PreferencesReviewPromptStore(preferences),
+    deskInviteStore: deskInviteStore,
+    testerStore: PreferencesTesterStore(preferences),
   );
 }

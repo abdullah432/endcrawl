@@ -13,7 +13,11 @@ EcLayout layoutForWidth(double width) => switch (width) {
 bool isNativePhone(BuildContext context) {
   if (kIsWeb) return false;
   final display = View.of(context).display;
-  return display.size.shortestSide / display.devicePixelRatio < 600;
+  final size = display.size / display.devicePixelRatio;
+  if (size.shortestSide >= 600) return false;
+  // A short desktop/tablet window is not a phone turned sideways.
+  return size.width <= 600 ||
+      (size.longestSide < 1000 && size.aspectRatio >= 1.8);
 }
 
 /// Bounds readable content without constraining the surrounding screen ground.

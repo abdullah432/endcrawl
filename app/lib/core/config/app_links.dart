@@ -40,6 +40,41 @@ abstract final class AppLinks {
   static final privacyPolicy = Uri.parse(
     'https://cookoo.dev/lastreel/privacy-policy',
   );
+
+  /// The web app — the desk editor, Pro on a computer (1.8b's link).
+  static final webApp = Uri.parse('https://app.lastreel.cookoo.dev');
+
+  /// COOKOO's other apps on Google Play — Settings → Explore our other apps.
+  static final textCrawlListing = Uri.parse(
+    'https://play.google.com/store/apps/details?id=com.kukustudio.textcrawler',
+  );
+  static final aksListing = Uri.parse(
+    'https://play.google.com/store/apps/details?id=com.cookoo.aks',
+  );
+
+  /// LastReel on Google Play — where the web sends people to subscribe
+  /// (D2's button and QR code).
+  static final playStoreListing = Uri.parse(
+    'https://play.google.com/store/apps/details?id=com.lastreel.app',
+  );
+
+  /// LastReel on the App Store. Unset until the listing is public; until
+  /// then nothing links to the iPhone app.
+  static const Uri? appStoreListing = null;
+
+  /// The app's store page for this device — the web's "Open the LastReel
+  /// app" (1.8c). Null on an iPhone or iPad until [appStoreListing] is set.
+  static Uri? get appListing => switch (defaultTargetPlatform) {
+    TargetPlatform.iOS => appStoreListing,
+    _ => playStoreListing,
+  };
+
+  /// Google Play's subscriptions page for LastReel — "Manage in Google
+  /// Play" on the web, which never bills.
+  static final playSubscriptions = Uri.parse(
+    'https://play.google.com/store/account/subscriptions?package=com.lastreel.app',
+  );
+
   static String get storeName => defaultTargetPlatform == TargetPlatform.android
       ? 'Google Play'
       : 'App Store';

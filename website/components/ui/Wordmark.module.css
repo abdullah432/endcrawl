@@ -1,0 +1,17 @@
+.wordmark {
+  font-family: var(--ec-credit);
+  font-weight: 700;
+  font-size: 14px;
+  letter-spacing: 0.38em;
+  text-transform: uppercase;
+}
+
+.ink,
+.ink:hover {
+  color: var(--ec-ink);
+}
+
+.white,
+.white:hover {
+  color: #fff;
+}

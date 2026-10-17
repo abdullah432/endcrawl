@@ -33,24 +33,62 @@ class EcGlassCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final p = context.palette;
     final shape = BorderRadius.circular(radius);
-    return Container(
-      decoration: BoxDecoration(
-        color: highlighted ? p.surface : (strong ? p.glassStrong : p.glass),
-        borderRadius: shape,
-        border: Border.all(color: highlighted ? p.accentSolid : p.glassEdge, width: highlighted ? 1.5 : 1),
-        boxShadow: [
+    return CustomPaint(
+      // Painted outside the card only: under translucent glass a full
+      // shadow would show through as a grey box.
+      painter: OutsideShadowPainter(
+        radius: radius,
+        shadows: [
           if (highlighted) BoxShadow(color: p.accentWash, spreadRadius: 5),
           ...p.glassShadow,
         ],
       ),
-      child: Material(
-        type: MaterialType.transparency,
-        borderRadius: shape,
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(onTap: onTap, child: Padding(padding: padding, child: child)),
+      child: Container(
+        decoration: BoxDecoration(
+          color: highlighted ? p.surface : (strong ? p.glassStrong : p.glass),
+          borderRadius: shape,
+          border: Border.all(color: highlighted ? p.accentSolid : p.glassEdge, width: highlighted ? 1.5 : 1),
+        ),
+        child: Material(
+          type: MaterialType.transparency,
+          borderRadius: shape,
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
+            onTap: onTap,
+            child: Padding(padding: padding, child: child),
+          ),
+        ),
       ),
     );
   }
+}
+
+/// Box shadows drawn only outside a rounded rectangle, as CSS draws them —
+/// so a translucent surface over them doesn't show the shadow through.
+class OutsideShadowPainter extends CustomPainter {
+  final double radius;
+  final List<BoxShadow> shadows;
+  const OutsideShadowPainter({required this.radius, required this.shadows});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final rrect = RRect.fromRectAndRadius(Offset.zero & size, Radius.circular(radius));
+    canvas.save();
+    canvas.clipPath(
+      Path()
+        ..fillType = PathFillType.evenOdd
+        ..addRect((Offset.zero & size).inflate(200))
+        ..addRRect(rrect),
+    );
+    for (final shadow in shadows) {
+      final shape = rrect.shift(shadow.offset).inflate(shadow.spreadRadius);
+      canvas.drawRRect(shape, shadow.toPaint());
+    }
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(OutsideShadowPainter old) => old.radius != radius || old.shadows != shadows;
 }
 
 /// A glass list row — code tile, title, subtitle, trailing — radius 16.
@@ -104,9 +142,16 @@ class EcGlassRow extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text(title, style: t.titleS.copyWith(fontSize: 13.5), maxLines: 1, overflow: TextOverflow.ellipsis),
-                      if (subtitleWidget != null) ...[const SizedBox(height: 2), subtitleWidget!]
-                      else if (subtitle != null) ...[
+                      Text(
+                        title,
+                        style: t.titleS.copyWith(fontSize: 13.5),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      if (subtitleWidget != null) ...[
+                        const SizedBox(height: 2),
+                        subtitleWidget!,
+                      ] else if (subtitle != null) ...[
                         const SizedBox(height: 2),
                         Text(subtitle!, style: t.caption, maxLines: 2, overflow: TextOverflow.ellipsis),
                       ],
@@ -148,7 +193,10 @@ class EcCodeTile extends StatelessWidget {
       height: size,
       alignment: Alignment.center,
       decoration: BoxDecoration(color: fill, borderRadius: BorderRadius.circular(EcRadius.tile)),
-      child: Text(code, style: context.type.code.copyWith(color: fg, fontSize: code.length > 3 ? 8.5 : null)),
+      child: Text(
+        code,
+        style: context.type.code.copyWith(color: fg, fontSize: code.length > 3 ? 8.5 : null),
+      ),
     );
   }
 }
@@ -168,7 +216,10 @@ class EcGradientPill extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
       decoration: BoxDecoration(gradient: p.primary, borderRadius: BorderRadius.circular(EcRadius.pill)),
-      child: Text(label.toUpperCase(), style: context.type.pill.copyWith(fontSize: 8.5, color: p.onInk, letterSpacing: .85)),
+      child: Text(
+        label.toUpperCase(),
+        style: context.type.pill.copyWith(fontSize: 8.5, color: p.onInk, letterSpacing: .85),
+      ),
     );
   }
 }
@@ -253,8 +304,13 @@ class EcNotice extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(title, style: t.titleS.copyWith(fontSize: 14, fontWeight: FontWeight.w700)),
-                    if (bodyWidget != null) ...[const SizedBox(height: 3), bodyWidget!]
-                    else if (body != null) ...[const SizedBox(height: 3), Text(body!, style: t.bodyS)],
+                    if (bodyWidget != null) ...[
+                      const SizedBox(height: 3),
+                      bodyWidget!,
+                    ] else if (body != null) ...[
+                      const SizedBox(height: 3),
+                      Text(body!, style: t.bodyS),
+                    ],
                   ],
                 ),
               ),
@@ -327,7 +383,10 @@ class EcOrDivider extends StatelessWidget {
         line,
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 12),
-          child: Text(label, style: context.type.label.copyWith(fontWeight: FontWeight.w400, color: context.palette.muted)),
+          child: Text(
+            label,
+            style: context.type.label.copyWith(fontWeight: FontWeight.w400, color: context.palette.muted),
+          ),
         ),
         line,
       ],
@@ -362,6 +421,5 @@ class EcEyebrow extends StatelessWidget {
   const EcEyebrow(this.text, {super.key, this.color});
 
   @override
-  Widget build(BuildContext context) =>
-      Text(caps(text), style: context.type.eyebrow.copyWith(color: color));
+  Widget build(BuildContext context) => Text(caps(text), style: context.type.eyebrow.copyWith(color: color));
 }

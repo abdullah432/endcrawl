@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/config/orientations.dart';
+import '../../../core/layout/layout_class.dart';
 import '../../../core/theme/theme_context.dart';
 import '../../../core/widgets/ec_scaffold.dart';
 import '../../monitor/widgets/monitor_view.dart';
@@ -15,6 +16,7 @@ import '../widgets/scrub_bar.dart';
 import '../widgets/status_line.dart';
 import '../widgets/adaptive_editor.dart';
 import '../widgets/transport_bar.dart';
+import 'wide_editor.dart';
 
 /// 3.1 — the hub. Monitor on top, blocks below, four actions in a dock.
 /// Turning the phone opens the review monitor (3.4).
@@ -67,7 +69,12 @@ class _EditorScreenState extends ConsumerState<EditorScreen> {
   Widget build(BuildContext context) {
     return PopScope(
       onPopInvokedWithResult: (didPop, _) => _handlePop(didPop),
-      child: const AdaptiveEditor(mobile: _PortraitEditor()),
+      child:
+          context.layoutClass.isWide &&
+              MediaQuery.sizeOf(context).width >= 800 &&
+              MediaQuery.sizeOf(context).height > 600
+          ? const WideEditor()
+          : const AdaptiveEditor(mobile: _PortraitEditor()),
     );
   }
 }

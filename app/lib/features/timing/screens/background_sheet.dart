@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/layout/layout_class.dart';
 import '../../../core/theme/theme_context.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../core/widgets/ec_choice_card.dart';
@@ -10,18 +11,30 @@ import '../../../core/widgets/ec_toast.dart';
 import '../../../domain/models/project_settings.dart';
 import '../../monitor/widgets/monitor_background.dart';
 import '../../project/controllers/project_controller.dart';
+import '../../access/controllers/web_access.dart';
+import '../../access/widgets/locked_dialog.dart';
+import 'timing_look_screen.dart';
 
 /// 5.3 — what the roll plays over, and the safe-area guides. Transparent
 /// here is the same idea as an alpha codec at export.
-class BackgroundSheet extends ConsumerWidget {
+class BackgroundSheet extends StatelessWidget {
   const BackgroundSheet({super.key});
 
-  static Future<void> show(BuildContext context) => showEcSheet<void>(
-    context,
-    panel: true,
-    scrim: false,
-    builder: (_) => const BackgroundSheet(),
-  );
+  static Future<void> show(BuildContext context) async {
+    if (lockedOnWeb(context, LockedAction.look)) return;
+    if (context.layoutClass.isWide) return TimingLookScreen.open(context, TimingLookTab.look);
+    await showEcSheet<void>(context, scrim: false, builder: (_) => const BackgroundSheet());
+  }
+
+  @override
+  Widget build(BuildContext context) =>
+      EcSheet(title: 'Background', maxHeightFraction: 0.6, child: const BackgroundControls());
+}
+
+/// The background tiles and the safe-area guides — the phone's sheet (5.3)
+/// and part of the tablet and desktop Look panel (T5.2, D13).
+class BackgroundControls extends ConsumerWidget {
+  const BackgroundControls({super.key});
 
   static const _options = [
     (MonitorBackground.black, 'Full black', 'Delivery default'),
@@ -32,56 +45,47 @@ class BackgroundSheet extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final settings = ref.watch(
-      projectControllerProvider.select((s) => s.settings),
-    );
+    final settings = ref.watch(projectControllerProvider.select((s) => s.settings));
     final controller = ref.read(projectControllerProvider.notifier);
 
-    return EcSheet(
-      title: 'Background',
-      maxHeightFraction: 0.6,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          for (final row in [_options.sublist(0, 2), _options.sublist(2)]) ...[
-            Row(
-              children: [
-                for (final (i, (bg, label, detail)) in row.indexed) ...[
-                  if (i > 0) const SizedBox(width: 10),
-                  Expanded(
-                    child: _BackgroundTile(
-                      background: bg,
-                      label: label,
-                      detail: detail,
-                      selected: settings.background == bg,
-                      // A reference clip needs a clip to pick; until import
-                      // lands the tile explains rather than doing nothing.
-                      onTap: bg == MonitorBackground.reference
-                          ? () => showEcToast(
-                              context,
-                              'Reference clips are coming soon',
-                            )
-                          : () => controller.setBackground(bg),
-                    ),
-                  ),
-                ],
-              ],
-            ),
-            const SizedBox(height: 10),
-          ],
-          const SizedBox(height: 4),
-          EcGroup(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        for (final row in [_options.sublist(0, 2), _options.sublist(2)]) ...[
+          Row(
             children: [
-              EcGroupRow.toggle(
-                title: 'Safe-area guides',
-                subtitle: 'Title 80% · action 90%',
-                value: settings.safeGuides,
-                onChanged: (_) => controller.toggleSafeGuides(),
-              ),
+              for (final (i, (bg, label, detail)) in row.indexed) ...[
+                if (i > 0) const SizedBox(width: 10),
+                Expanded(
+                  child: _BackgroundTile(
+                    background: bg,
+                    label: label,
+                    detail: detail,
+                    selected: settings.background == bg,
+                    // A reference clip needs a clip to pick; until import
+                    // lands the tile explains rather than doing nothing.
+                    onTap: bg == MonitorBackground.reference
+                        ? () => showEcToast(context, 'Reference clips are coming soon')
+                        : () => controller.setBackground(bg),
+                  ),
+                ),
+              ],
             ],
           ),
+          const SizedBox(height: 10),
         ],
-      ),
+        const SizedBox(height: 4),
+        EcGroup(
+          children: [
+            EcGroupRow.toggle(
+              title: 'Safe-area guides',
+              subtitle: 'Title 80% · action 90%',
+              value: settings.safeGuides,
+              onChanged: (_) => controller.toggleSafeGuides(),
+            ),
+          ],
+        ),
+      ],
     );
   }
 }
@@ -129,11 +133,7 @@ class BackgroundPreview extends StatelessWidget {
   final MonitorBackground background;
   final double height;
 
-  const BackgroundPreview({
-    super.key,
-    required this.background,
-    this.height = 58,
-  });
+  const BackgroundPreview({super.key, required this.background, this.height = 58});
 
   @override
   Widget build(BuildContext context) {
@@ -167,18 +167,14 @@ class BackgroundPreview extends StatelessWidget {
         ),
       ],
     );
-    if (background == MonitorBackground.paper) {
-      credits = ColorFiltered(colorFilter: kPaperInvert, child: credits);
-    }
+    if (background == MonitorBackground.paper) credits = ColorFiltered(colorFilter: kPaperInvert, child: credits);
 
     return Container(
       height: height,
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(8),
-        border: background == MonitorBackground.black
-            ? null
-            : Border.all(color: p.line),
+        border: background == MonitorBackground.black ? null : Border.all(color: p.line),
       ),
       child: Stack(
         fit: StackFit.expand,
@@ -191,10 +187,7 @@ class BackgroundPreview extends StatelessWidget {
               bottom: 4,
               child: Text(
                 'SCENE_042.mov',
-                style: t.mono.copyWith(
-                  fontSize: 6.5,
-                  color: Colors.white.withValues(alpha: .55),
-                ),
+                style: t.mono.copyWith(fontSize: 6.5, color: Colors.white.withValues(alpha: .55)),
               ),
             ),
             Positioned(
@@ -206,10 +199,7 @@ class BackgroundPreview extends StatelessWidget {
                   color: Colors.white.withValues(alpha: .18),
                   borderRadius: BorderRadius.circular(EcRadius.pill),
                 ),
-                child: Text(
-                  'SOON',
-                  style: t.pill.copyWith(fontSize: 6.5, color: Colors.white),
-                ),
+                child: Text('SOON', style: t.pill.copyWith(fontSize: 6.5, color: Colors.white)),
               ),
             ),
           ],

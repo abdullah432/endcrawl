@@ -1,0 +1,92 @@
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  border-radius: 999px;
+  font-weight: 600;
+  white-space: nowrap;
+  transition: background-color 0.15s, border-color 0.15s, box-shadow 0.15s, transform 0.15s;
+}
+
+.button:active {
+  transform: translateY(1px);
+}
+
+.md {
+  min-height: 44px;
+  padding: 0 18px;
+  font-size: 14px;
+}
+
+.lg {
+  min-height: 54px;
+  padding: 0 24px;
+  font-size: 15px;
+}
+
+.store {
+  min-height: 58px;
+  padding: 0 24px;
+  border-radius: 14px;
+  font-size: 15px;
+}
+
+.block {
+  display: flex;
+  width: 100%;
+}
+
+.light,
+.light:hover {
+  background: #fff;
+  color: #000;
+  font-weight: 700;
+}
+
+.light:hover {
+  background: #e9eef5;
+}
+
+.ghost,
+.ghost:hover {
+  color: #fff;
+}
+
+.ghost:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.outline,
+.outline:hover {
+  background: #fff;
+  border: 1px solid var(--ec-line2);
+  color: var(--ec-ink);
+}
+
+.outline:hover {
+  border-color: var(--ec-ink2);
+}
+
+.outlineDark,
+.outlineDark:hover {
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  color: #fff;
+}
+
+.outlineDark:hover {
+  border-color: #fff;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.primary,
+.primary:hover {
+  background: var(--ec-primary);
+  box-shadow: var(--ec-primary-shadow);
+  color: #fff;
+  font-weight: 700;
+}
+
+.primary:hover {
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3), 0 14px 30px -8px rgba(12, 110, 200, 0.7);
+}

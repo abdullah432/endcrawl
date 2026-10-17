@@ -13,8 +13,9 @@ import 'features/cookoo/controllers/cookoo_contact_controller.dart';
 import 'features/cookoo/controllers/cookoo_promo_controller.dart';
 import 'features/plan/controllers/trial_analytics.dart';
 import 'features/review/review_prompt.dart';
+import 'features/desk/desk_invite.dart';
+import 'features/tester/tester_mode.dart';
 import 'features/auth/widgets/auth_gate.dart';
-import 'features/auth/widgets/web_access_gate.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -41,6 +42,8 @@ Future<void> main() async {
           reviewPromptStoreProvider.overrideWithValue(
             services.reviewPromptStore,
           ),
+          deskInviteStoreProvider.overrideWithValue(services.deskInviteStore),
+          testerStoreProvider.overrideWithValue(services.testerStore),
         ],
         child: const LastReelApp(),
       ),
@@ -65,9 +68,7 @@ class LastReelApp extends ConsumerWidget {
         navigatorKey: rootNavigatorKey,
         navigatorObservers: [EcToastObserver()],
         builder: (context, child) => EcOrientationPolicy(
-          child: ResumeAds(
-            child: ReviewPromptTrigger(child: WebAccessGate(child: child!)),
-          ),
+          child: ResumeAds(child: ReviewPromptTrigger(child: child!)),
         ),
         home: const AuthGate(),
       ),

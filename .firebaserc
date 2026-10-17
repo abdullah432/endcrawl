@@ -1,5 +1,18 @@
 {
   "projects": {
     "default": "endcrawl-620c2"
-  }
+  },
+  "targets": {
+    "endcrawl-620c2": {
+      "hosting": {
+        "app": [
+          "endcrawl-620c2"
+        ],
+        "website": [
+          "lastreel-site"
+        ]
+      }
+    }
+  },
+  "etags": {}
 }

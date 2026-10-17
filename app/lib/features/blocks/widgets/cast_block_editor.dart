@@ -17,7 +17,13 @@ const _leaders = [(LeaderStyle.dots, 'Dot leaders'), (LeaderStyle.rule, 'Rule'),
 /// so each pair reads the way it will render; an A–Z rail for long casts.
 class CastBlockEditor extends ConsumerStatefulWidget {
   final PairListBlock block;
-  const CastBlockEditor({super.key, required this.block});
+
+  /// Two under the tablet's monitor (T3.1): the separator and gutter share
+  /// a line and the rows run in two columns, so more of the cast fits in
+  /// the short panel. One everywhere else.
+  final int columns;
+
+  const CastBlockEditor({super.key, required this.block, this.columns = 1});
 
   @override
   ConsumerState<CastBlockEditor> createState() => _CastBlockEditorState();
@@ -55,62 +61,83 @@ class _CastBlockEditorState extends ConsumerState<CastBlockEditor> {
     final controller = ref.read(projectControllerProvider.notifier);
     final cg = computeCastGeometry(block, project.geometry);
     final aspect = project.settings.format.aspect;
-    final letters = block.rows.length > 8 ? _index(block) : const <String, int>{};
+    final split = widget.columns > 1 && block.rows.length > 1;
+    final letters = block.rows.length > 8 && !split ? _index(block) : const <String, int>{};
     final roleHint = block.kind == BlockKind.crewTwoColumn ? 'Job' : 'Role';
+
+    final leaders = EcSegmented(
+      labels: [for (final l in _leaders) l.$2],
+      selectedIndex: _leaders.indexWhere((l) => l.$1 == block.leader),
+      onChanged: (i) => controller.setCastLeader(block.id, _leaders[i].$1),
+    );
+    final gutterValue = Text(
+      '${(block.gutter * 100).round()}%',
+      style: t.mono.copyWith(fontSize: 12, color: p.accent, fontWeight: FontWeight.w500),
+    );
+    final slider = Slider(
+      value: (block.gutter * 100).clamp(2, 16),
+      min: 2,
+      max: 16,
+      divisions: 14,
+      label: '${(block.gutter * 100).round()}%',
+      onChanged: (v) => controller.setCastGutter(block.id, v / 100),
+    );
+    final fits = Text(
+      cg.collapse ? 'Too narrow for two columns on $aspect — rows stack as pairs.' : 'Holds two columns on $aspect.',
+      style: t.caption.copyWith(fontSize: 11, color: cg.collapse ? p.warn : p.muted),
+    );
+
+    Widget rowAt(int i) => Padding(
+          key: _keyFor(i),
+          padding: const EdgeInsets.only(bottom: 6),
+          child: _RowEditor(
+            blockId: block.id,
+            index: i,
+            row: block.rows[i],
+            roleHint: roleHint,
+            stacked: block.alwaysStacked,
+          ),
+        );
+    final half = (block.rows.length / 2).ceil();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        if (!block.alwaysStacked) ...[
-          EcSegmented(
-            labels: [for (final l in _leaders) l.$2],
-            selectedIndex: _leaders.indexWhere((l) => l.$1 == block.leader),
-            onChanged: (i) => controller.setCastLeader(block.id, _leaders[i].$1),
+        if (!block.alwaysStacked && split) ...[
+          Row(
+            children: [
+              Expanded(flex: 5, child: leaders),
+              const SizedBox(width: 18),
+              Text('Centre gutter', style: t.bodyS.copyWith(fontSize: 12, color: p.ink2)),
+              Expanded(flex: 4, child: slider),
+              gutterValue,
+            ],
           ),
+          const SizedBox(height: 4),
+          fits,
+          const SizedBox(height: 12),
+        ] else if (!block.alwaysStacked) ...[
+          leaders,
           const SizedBox(height: 14),
           Row(
             children: [
               Expanded(child: Text('Centre gutter', style: t.bodyS.copyWith(fontSize: 12, color: p.ink2))),
-              Text('${(block.gutter * 100).round()}%', style: t.mono.copyWith(fontSize: 12, color: p.accent, fontWeight: FontWeight.w500)),
+              gutterValue,
             ],
           ),
-          Slider(
-            value: (block.gutter * 100).clamp(2, 16),
-            min: 2,
-            max: 16,
-            divisions: 14,
-            label: '${(block.gutter * 100).round()}%',
-            onChanged: (v) => controller.setCastGutter(block.id, v / 100),
-          ),
-          Text(
-            cg.collapse
-                ? 'Too narrow for two columns on $aspect — rows stack as pairs.'
-                : 'Holds two columns on $aspect.',
-            style: t.caption.copyWith(fontSize: 11, color: cg.collapse ? p.warn : p.muted),
-          ),
+          slider,
+          fits,
           const SizedBox(height: 14),
         ],
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Expanded(
-              child: Column(
-                children: [
-                  for (final (i, row) in block.rows.indexed)
-                    Padding(
-                      key: _keyFor(i),
-                      padding: const EdgeInsets.only(bottom: 6),
-                      child: _RowEditor(
-                        blockId: block.id,
-                        index: i,
-                        row: row,
-                        roleHint: roleHint,
-                        stacked: block.alwaysStacked,
-                      ),
-                    ),
-                ],
-              ),
-            ),
+            if (split) ...[
+              Expanded(child: Column(children: [for (var i = 0; i < half; i++) rowAt(i)])),
+              const SizedBox(width: 14),
+              Expanded(child: Column(children: [for (var i = half; i < block.rows.length; i++) rowAt(i)])),
+            ] else
+              Expanded(child: Column(children: [for (var i = 0; i < block.rows.length; i++) rowAt(i)])),
             if (letters.isNotEmpty) ...[
               const SizedBox(width: 6),
               Column(

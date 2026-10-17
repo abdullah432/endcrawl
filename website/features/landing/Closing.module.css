@@ -1,0 +1,30 @@
+.band {
+  background: #000;
+  color: #fff;
+}
+
+.inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 28px;
+  padding-block: 120px;
+  text-align: center;
+}
+
+.eyebrow {
+  letter-spacing: 0.38em;
+  line-height: 1.8;
+}
+
+.signoff {
+  margin-top: 20px;
+  font-size: 12px;
+  letter-spacing: 0.3em;
+}
+
+@media (max-width: 640px) {
+  .inner {
+    padding-block: 88px;
+  }
+}

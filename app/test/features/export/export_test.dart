@@ -5,9 +5,10 @@ import 'package:lastreel/features/ads/data/ad_service.dart';
 import 'package:lastreel/features/export/data/video_encoder.dart';
 import 'package:lastreel/features/export/models/export_models.dart';
 import 'package:lastreel/features/export/screens/export_sheet.dart';
+import 'package:lastreel/features/review/data/feedback_repository.dart';
 import 'package:lastreel/features/review/review_prompt.dart';
 import 'package:lastreel/features/review/review_prompt_store.dart';
-import 'package:flutter/widgets.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../../support/app_harness.dart';
@@ -19,7 +20,9 @@ import '../../support/fixtures.dart';
 void main() {
   late AppHarness app;
 
-  setUp(() => app = AppHarness(projects: FakeProjectRepository(seed: [film()])));
+  setUp(
+    () => app = AppHarness(projects: FakeProjectRepository(seed: [film()])),
+  );
 
   Future<void> tapText(WidgetTester tester, String text) async {
     final finder = find.text(text).last;
@@ -47,36 +50,68 @@ void main() {
   RenderSummary? lastRender() => app.projects.projects.values.single.lastRender;
 
   group('6.1 settings', () {
-    testWidgets('primary fast-roll export uses 60 fps without doubling scroll speed', (tester) async {
-      final project = film().copyWith(settings: film().settings.copyWith(formatId: '9x16', fps: 30, ppf: 11));
-      app = AppHarness(projects: FakeProjectRepository(seed: [project]));
-      await openExport(tester);
-      await tapText(tester, 'Render H.264 · 60 fps');
-      await runRender(tester);
-      expect(app.encoder.started.single.fps, 60);
-      expect(app.projects.projects.values.single.settings.ppf, 5.5);
-      expect(find.text('Save to Files'), findsOneWidget);
-    });
+    testWidgets(
+      'primary fast-roll export uses 60 fps without doubling scroll speed',
+      (tester) async {
+        final project = film().copyWith(
+          settings: film().settings.copyWith(
+            formatId: '9x16',
+            fps: 30,
+            ppf: 11,
+          ),
+        );
+        app = AppHarness(projects: FakeProjectRepository(seed: [project]));
+        await openExport(tester);
+        await tapText(tester, 'Render H.264 · 60 fps');
+        await runRender(tester);
+        expect(app.encoder.started.single.fps, 60);
+        expect(app.projects.projects.values.single.settings.ppf, 5.5);
+        expect(find.text('Save to Files'), findsOneWidget);
+      },
+    );
 
-    testWidgets('60 fps export only offers resolutions supported at that rate', (tester) async {
-      final project = film().copyWith(settings: film().settings.copyWith(formatId: '9x16', fps: 60, ppf: 5.5));
-      app = AppHarness(
-        projects: FakeProjectRepository(seed: [project]),
-        encoder: FakeVideoEncoder(caps: const EncoderCapabilities({Codec.h264: 1920}, maxEdgeAt60: {Codec.h264: 1280})),
+    testWidgets(
+      '60 fps export only offers resolutions supported at that rate',
+      (tester) async {
+        final project = film().copyWith(
+          settings: film().settings.copyWith(
+            formatId: '9x16',
+            fps: 60,
+            ppf: 5.5,
+          ),
+        );
+        app = AppHarness(
+          projects: FakeProjectRepository(seed: [project]),
+          encoder: FakeVideoEncoder(
+            caps: const EncoderCapabilities(
+              {Codec.h264: 1920},
+              maxEdgeAt60: {Codec.h264: 1280},
+            ),
+          ),
+        );
+        await openExport(tester);
+        expect(find.text('1920 HD'), findsNothing);
+        await tapText(tester, 'Render H.264');
+        await runRender(tester);
+        final spec = app.encoder.started.single;
+        expect((spec.width, spec.height, spec.fps), (720, 1280, 60.0));
+      },
+    );
+
+    testWidgets('does not recommend 60 fps beyond the selected encoder limit', (
+      tester,
+    ) async {
+      final project = film().copyWith(
+        settings: film().settings.copyWith(formatId: '9x16', fps: 30, ppf: 11),
       );
-      await openExport(tester);
-      expect(find.text('1920 HD'), findsNothing);
-      await tapText(tester, 'Render H.264');
-      await runRender(tester);
-      final spec = app.encoder.started.single;
-      expect((spec.width, spec.height, spec.fps), (720, 1280, 60.0));
-    });
-
-    testWidgets('does not recommend 60 fps beyond the selected encoder limit', (tester) async {
-      final project = film().copyWith(settings: film().settings.copyWith(formatId: '9x16', fps: 30, ppf: 11));
       app = AppHarness(
         projects: FakeProjectRepository(seed: [project]),
-        encoder: FakeVideoEncoder(caps: const EncoderCapabilities({Codec.h264: 3840}, maxEdgeAt60: {Codec.h264: 1280})),
+        encoder: FakeVideoEncoder(
+          caps: const EncoderCapabilities(
+            {Codec.h264: 3840},
+            maxEdgeAt60: {Codec.h264: 1280},
+          ),
+        ),
       );
       await openExport(tester);
       expect(find.text('Use 60 fps · same runtime'), findsNothing);
@@ -84,47 +119,81 @@ void main() {
       expect(find.text('Use 60 fps · same runtime'), findsOneWidget);
     });
 
-    testWidgets('60 fps recommendation keeps a vertical roll at the same speed', (tester) async {
-      final project = film().copyWith(settings: film().settings.copyWith(formatId: '9x16', fps: 30, ppf: 11));
-      app = AppHarness(projects: FakeProjectRepository(seed: [project]));
-      await openExport(tester);
-      await tapText(tester, 'Use 60 fps · same runtime');
-      await tester.pump(const Duration(seconds: 1));
-      final saved = app.projects.projects.values.single.settings;
-      expect(saved.fps, 60);
-      expect(saved.ppf, 5.5);
-      expect(saved.mode, TimingMode.speed);
-      expect(find.text('Fast motion may strobe'), findsNothing);
-    });
+    testWidgets(
+      '60 fps recommendation keeps a vertical roll at the same speed',
+      (tester) async {
+        final project = film().copyWith(
+          settings: film().settings.copyWith(
+            formatId: '9x16',
+            fps: 30,
+            ppf: 11,
+          ),
+        );
+        app = AppHarness(projects: FakeProjectRepository(seed: [project]));
+        await openExport(tester);
+        await tapText(tester, 'Use 60 fps · same runtime');
+        await tester.pump(const Duration(seconds: 1));
+        final saved = app.projects.projects.values.single.settings;
+        expect(saved.fps, 60);
+        expect(saved.ppf, 5.5);
+        expect(saved.mode, TimingMode.speed);
+        expect(find.text('Fast motion may strobe'), findsNothing);
+      },
+    );
 
-    testWidgets('locked facts come first, then codecs with sizes and the resolution', (tester) async {
-      await openExport(tester);
+    testWidgets(
+      'locked facts come first, then codecs with sizes and the resolution',
+      (tester) async {
+        await openExport(tester);
 
-      expect(find.text('LOCKED FOR THIS RENDER'), findsOneWidget);
-      expect(find.text('1920 × 1080'), findsOneWidget);
-      expect(find.text('24 fps'), findsOneWidget);
-      expect(find.text('4.00 px/f'), findsOneWidget);
-      for (final c in Codec.values) {
-        expect(find.text(c.label), findsOneWidget);
-      }
-      expect(find.text('1920 HD'), findsOneWidget);
-      expect(find.text('Render H.264'), findsOneWidget);
-      expect(find.text('≈ 242 MB'), findsNothing); // runtime differs from the design's 2:41
-      expect(find.textContaining(RegExp(r'^≈ \d+ (MB|GB|KB)$')), findsNWidgets(Codec.values.length));
-    });
+        expect(find.text('LOCKED FOR THIS RENDER'), findsOneWidget);
+        expect(find.text('1920 × 1080'), findsOneWidget);
+        expect(find.text('24 fps'), findsOneWidget);
+        expect(find.text('4.00 px/f'), findsOneWidget);
+        for (final c in Codec.values) {
+          expect(find.text(c.label), findsOneWidget);
+        }
+        expect(find.text('1920 HD'), findsOneWidget);
+        expect(find.text('Render H.264'), findsOneWidget);
+        expect(
+          find.text('≈ 242 MB'),
+          findsNothing,
+        ); // runtime differs from the design's 2:41
+        expect(
+          find.textContaining(RegExp(r'^≈ \d+ (MB|GB|KB)$')),
+          findsNWidgets(Codec.values.length),
+        );
+      },
+    );
 
-    testWidgets('fast whole-pixel motion is flagged, with a one-tap slower fix', (tester) async {
-      app = AppHarness(projects: FakeProjectRepository(seed: [film().copyWith(settings: film().settings.copyWith(ppf: 11))]));
-      await openExport(tester);
+    testWidgets(
+      'fast whole-pixel motion is flagged, with a one-tap slower fix',
+      (tester) async {
+        app = AppHarness(
+          projects: FakeProjectRepository(
+            seed: [
+              film().copyWith(settings: film().settings.copyWith(ppf: 11)),
+            ],
+          ),
+        );
+        await openExport(tester);
 
-      expect(find.text('Fast motion may strobe'), findsOneWidget);
-      final fix = tester.widget<Text>(find.textContaining(RegExp(r'^Use \d+:\d\d · \d+ px/f$'))).data!;
-      await tapText(tester, fix);
-      expect(find.text('Fast motion may strobe'), findsNothing);
-    });
+        expect(find.text('Fast motion may strobe'), findsOneWidget);
+        final fix = tester
+            .widget<Text>(
+              find.textContaining(RegExp(r'^Use \d+:\d\d · \d+ px/f$')),
+            )
+            .data!;
+        await tapText(tester, fix);
+        expect(find.text('Fast motion may strobe'), findsNothing);
+      },
+    );
 
     testWidgets('only what this device can encode is offered', (tester) async {
-      app = AppHarness(projects: FakeProjectRepository(seed: [film()]), encoder: FakeVideoEncoder(caps: FakeVideoEncoder.android));
+      app = AppHarness(
+        projects: FakeProjectRepository(seed: [film()]),
+        encoder: FakeVideoEncoder(caps: FakeVideoEncoder.android),
+      );
       await openExport(tester);
 
       expect(find.text('ProRes 422 HQ'), findsNothing);
@@ -132,19 +201,36 @@ void main() {
       expect(find.text('4K UHD'), findsOneWidget);
 
       await tapText(tester, 'HEVC');
-      expect(find.text('4K UHD'), findsNothing, reason: 'this HEVC encoder stops at 1920');
+      expect(
+        find.text('4K UHD'),
+        findsNothing,
+        reason: 'this HEVC encoder stops at 1920',
+      );
     });
 
-    testWidgets('a transparent background falls back to PNG where ProRes can’t be made', (tester) async {
-      final base = film();
-      app = AppHarness(
-        projects: FakeProjectRepository(seed: [base.copyWith(settings: base.settings.copyWith(background: MonitorBackground.alpha))]),
-        encoder: FakeVideoEncoder(caps: FakeVideoEncoder.android),
-        plan: FakeEntitlementRepository(const Entitlement.pro(period: BillingPeriod.yearly)),
-      );
-      await openExport(tester);
-      expect(find.text('Render PNG sequence'), findsOneWidget);
-    });
+    testWidgets(
+      'a transparent background falls back to PNG where ProRes can’t be made',
+      (tester) async {
+        final base = film();
+        app = AppHarness(
+          projects: FakeProjectRepository(
+            seed: [
+              base.copyWith(
+                settings: base.settings.copyWith(
+                  background: MonitorBackground.alpha,
+                ),
+              ),
+            ],
+          ),
+          encoder: FakeVideoEncoder(caps: FakeVideoEncoder.android),
+          plan: FakeEntitlementRepository(
+            const Entitlement.pro(period: BillingPeriod.yearly),
+          ),
+        );
+        await openExport(tester);
+        expect(find.text('Render PNG sequence'), findsOneWidget);
+      },
+    );
 
     testWidgets('picking a codec renames the render button', (tester) async {
       await openExport(tester);
@@ -152,13 +238,23 @@ void main() {
       expect(find.text('Render HEVC'), findsOneWidget);
     });
 
-    testWidgets('a transparent background starts on an alpha codec', (tester) async {
+    testWidgets('a transparent background starts on an alpha codec', (
+      tester,
+    ) async {
       final base = film();
       app = AppHarness(
-        projects: FakeProjectRepository(seed: [
-          base.copyWith(settings: base.settings.copyWith(background: MonitorBackground.alpha)),
-        ]),
-        plan: FakeEntitlementRepository(const Entitlement.pro(period: BillingPeriod.yearly)),
+        projects: FakeProjectRepository(
+          seed: [
+            base.copyWith(
+              settings: base.settings.copyWith(
+                background: MonitorBackground.alpha,
+              ),
+            ),
+          ],
+        ),
+        plan: FakeEntitlementRepository(
+          const Entitlement.pro(period: BillingPeriod.yearly),
+        ),
       );
       await openExport(tester);
 
@@ -169,41 +265,56 @@ void main() {
   });
 
   group('Pro formats on the free plan', () {
-    testWidgets('a Pro pick stays selectable, marked PRO, with the ad offer instead of Render', (tester) async {
-      await openExport(tester);
-      expect(find.text('PRO'), findsNWidgets(4)); // ProRes ×2, PNG, 4K
-      await tapText(tester, 'ProRes 422 HQ');
+    testWidgets(
+      'a Pro pick stays selectable, marked PRO, with the ad offer instead of Render',
+      (tester) async {
+        await openExport(tester);
+        expect(find.text('PRO'), findsNWidgets(4)); // ProRes ×2, PNG, 4K
+        await tapText(tester, 'ProRes 422 HQ');
 
-      expect(find.text('ProRes 422 HQ is a Pro codec'), findsOneWidget);
-      expect(find.text('Watch a 30-second ad to use it for this render. Each ad unlocks one render.'), findsOneWidget);
-      expect(find.text('▶  Watch ad · render once'), findsOneWidget);
-      expect(find.text('Go Pro · every render, no ads'), findsOneWidget);
-      expect(find.text('Render ProRes 422 HQ'), findsNothing);
+        expect(find.text('ProRes 422 HQ is a Pro codec'), findsOneWidget);
+        expect(
+          find.text(
+            'Watch a 30-second ad to use it for this render. Each ad unlocks one render.',
+          ),
+          findsOneWidget,
+        );
+        expect(find.text('▶  Watch ad · render once'), findsOneWidget);
+        expect(find.text('Go Pro · every render, no ads'), findsOneWidget);
+        expect(find.text('Render ProRes 422 HQ'), findsNothing);
 
-      await tapText(tester, '4K UHD');
-      expect(find.text('ProRes 422 HQ and 4K UHD are Pro'), findsOneWidget);
-      await tapText(tester, 'H.264');
-      expect(find.text('4K UHD is a Pro resolution'), findsOneWidget);
-      await tapText(tester, '1920 HD');
-      expect(find.text('Render H.264'), findsOneWidget);
-    });
+        await tapText(tester, '4K UHD');
+        expect(find.text('ProRes 422 HQ and 4K UHD are Pro'), findsOneWidget);
+        await tapText(tester, 'H.264');
+        expect(find.text('4K UHD is a Pro resolution'), findsOneWidget);
+        await tapText(tester, '1920 HD');
+        expect(find.text('Render H.264'), findsOneWidget);
+      },
+    );
 
-    testWidgets('watching the ad through renders once, then the pick is locked again', (tester) async {
-      await openExport(tester);
-      await tapText(tester, 'ProRes 422 HQ');
-      await tapText(tester, '▶  Watch ad · render once');
-      await runRender(tester);
+    testWidgets(
+      'watching the ad through renders once, then the pick is locked again',
+      (tester) async {
+        await openExport(tester);
+        await tapText(tester, 'ProRes 422 HQ');
+        await tapText(tester, '▶  Watch ad · render once');
+        await runRender(tester);
 
-      expect(app.ads.rewardedShown, 1);
-      expect(app.encoder.started.single.codec, Codec.prores422);
-      expect(find.text('Save to Files'), findsOneWidget);
+        expect(app.ads.rewardedShown, 1);
+        expect(app.encoder.started.single.codec, Codec.prores422);
+        expect(find.text('Save to Files'), findsOneWidget);
 
-      await tester.tapAt(const Offset(10, 10)); // close the sheet
-      await tester.pumpAndSettle();
-      await tapText(tester, 'Export');
-      await tapText(tester, 'ProRes 422 HQ');
-      expect(find.text('▶  Watch ad · render once'), findsOneWidget, reason: 'one ad, one render');
-    });
+        await tester.tapAt(const Offset(10, 10)); // close the sheet
+        await tester.pumpAndSettle();
+        await tapText(tester, 'Export');
+        await tapText(tester, 'ProRes 422 HQ');
+        expect(
+          find.text('▶  Watch ad · render once'),
+          findsOneWidget,
+          reason: 'one ad, one render',
+        );
+      },
+    );
 
     testWidgets('closing the ad early unlocks nothing', (tester) async {
       app.ads.nextReward = RewardOutcome.closedEarly;
@@ -230,21 +341,34 @@ void main() {
       await openExport(tester);
       await tapText(tester, 'ProRes 4444');
       await tapText(tester, 'Go Pro · every render, no ads');
-      expect(find.textContaining('Pro formats. No ads.', findRichText: true), findsOneWidget);
+      expect(
+        find.textContaining('Pro formats. No ads.', findRichText: true),
+        findsOneWidget,
+      );
     });
 
     testWidgets('a 4K canvas opens on the largest free size', (tester) async {
       final base = film();
-      app = AppHarness(projects: FakeProjectRepository(seed: [base.copyWith(settings: base.settings.copyWith(formatId: 'uhd'))]));
+      app = AppHarness(
+        projects: FakeProjectRepository(
+          seed: [
+            base.copyWith(settings: base.settings.copyWith(formatId: 'uhd')),
+          ],
+        ),
+      );
       await openExport(tester);
       expect(find.text('Render H.264'), findsOneWidget);
       expect(find.text('1920 × 1080'), findsOneWidget);
     });
 
-    testWidgets('Pro renders any format with no chips, card or ad', (tester) async {
+    testWidgets('Pro renders any format with no chips, card or ad', (
+      tester,
+    ) async {
       app = AppHarness(
         projects: FakeProjectRepository(seed: [film()]),
-        plan: FakeEntitlementRepository(const Entitlement.pro(period: BillingPeriod.yearly)),
+        plan: FakeEntitlementRepository(
+          const Entitlement.pro(period: BillingPeriod.yearly),
+        ),
       );
       await openExport(tester);
       expect(find.text('PRO'), findsNothing);
@@ -256,23 +380,34 @@ void main() {
   });
 
   group('6.4 sponsored card', () {
-    testWidgets('free: one native ad below the destinations once the file is saved', (tester) async {
-      await openExport(tester);
-      await tapText(tester, 'Render H.264');
-      await runRender(tester);
+    testWidgets(
+      'free: one native ad below the destinations once the file is saved',
+      (tester) async {
+        await openExport(tester);
+        await tapText(tester, 'Render H.264');
+        await runRender(tester);
 
-      expect(find.text('Save to Files'), findsOneWidget);
-      expect(find.text('SPONSORED'), findsOneWidget);
-      expect(find.text('REMOVE ADS'), findsOneWidget);
-      expect(find.text('Soundstripe — score your next cut'), findsOneWidget);
-      final destinations = tester.getBottomLeft(find.text('Share sheet')).dy;
-      expect(tester.getTopLeft(find.text('SPONSORED')).dy, greaterThan(destinations));
-    });
+        expect(find.text('Save to Files'), findsOneWidget);
+        expect(find.text('SPONSORED'), findsOneWidget);
+        expect(find.text('REMOVE ADS'), findsOneWidget);
+        expect(find.text('Soundstripe — score your next cut'), findsOneWidget);
+        final destinations = tester.getBottomLeft(find.text('Share sheet')).dy;
+        expect(
+          tester.getTopLeft(find.text('SPONSORED')).dy,
+          greaterThan(destinations),
+        );
+      },
+    );
 
     testWidgets('never on a failed render, never on Pro', (tester) async {
       app = AppHarness(
         projects: FakeProjectRepository(seed: [film()]),
-        encoder: FakeVideoEncoder(failWith: const EncoderException(EncoderFailureKind.failed, 'Stopped.')),
+        encoder: FakeVideoEncoder(
+          failWith: const EncoderException(
+            EncoderFailureKind.failed,
+            'Stopped.',
+          ),
+        ),
       );
       await openExport(tester);
       await tapText(tester, 'Render H.264');
@@ -284,7 +419,9 @@ void main() {
     testWidgets('Pro sees no ad on 6.4', (tester) async {
       app = AppHarness(
         projects: FakeProjectRepository(seed: [film()]),
-        plan: FakeEntitlementRepository(const Entitlement.pro(period: BillingPeriod.yearly)),
+        plan: FakeEntitlementRepository(
+          const Entitlement.pro(period: BillingPeriod.yearly),
+        ),
       );
       await openExport(tester);
       await tapText(tester, 'Render H.264');
@@ -295,37 +432,61 @@ void main() {
   });
 
   group('6.2 – 6.4 rendering', () {
-    testWidgets('free renders show progress and the one ad, then land ready with the real size', (tester) async {
-      await openExport(tester);
-      await tapText(tester, 'Render H.264');
+    testWidgets(
+      'free renders show progress and the one ad, then land ready with the real size',
+      (tester) async {
+        await openExport(tester);
+        await tapText(tester, 'Render H.264');
 
-      expect(find.textContaining(RegExp(r'^frame \d+ / 48$')), findsOneWidget);
-      expect(find.text('SPONSORED · WHILE YOU WAIT'), findsOneWidget);
-      expect(find.text('Keep working · renders in background'), findsOneWidget);
+        expect(
+          find.textContaining(RegExp(r'^frame \d+ / 48$')),
+          findsOneWidget,
+        );
+        expect(find.text('SPONSORED · WHILE YOU WAIT'), findsOneWidget);
+        expect(
+          find.text('Keep working · renders in background'),
+          findsOneWidget,
+        );
 
-      await runRender(tester);
+        await runRender(tester);
 
-      final spec = app.encoder.started.single;
-      expect((spec.codec, spec.width, spec.height, spec.fps), (Codec.h264, 1920, 1080, 24.0));
-      expect(spec.bitsPerSecond, 12000000);
-      expect(spec.outputPath, '/renders/The Long Way Down.mp4');
-      expect(app.encoder.appended, 48);
-      expect(app.frames.opened.single, (1920, 1080));
+        final spec = app.encoder.started.single;
+        expect(
+          (spec.codec, spec.width, spec.height, spec.fps),
+          (Codec.h264, 1920, 1080, 24.0),
+        );
+        expect(spec.bitsPerSecond, 12000000);
+        expect(spec.outputPath, '/renders/The Long Way Down.mp4');
+        expect(app.encoder.appended, 48);
+        expect(app.frames.opened.single, (1920, 1080));
 
-      // 48 frames × 1000 bytes from the fake encoder: the file's own size.
-      expect(find.textContaining('H.264 · 1920 × 1080 · 24 fps · 48 KB'), findsOneWidget);
-      expect(find.text('SPONSORED · WHILE YOU WAIT'), findsNothing);
-      expect(lastRender()?.outcome, RenderOutcome.rendered);
-      expect(lastRender()?.codec, 'H.264');
-    });
+        // 48 frames × 1000 bytes from the fake encoder: the file's own size.
+        expect(
+          find.textContaining('H.264 · 1920 × 1080 · 24 fps · 48 KB'),
+          findsOneWidget,
+        );
+        expect(find.text('SPONSORED · WHILE YOU WAIT'), findsNothing);
+        expect(lastRender()?.outcome, RenderOutcome.rendered);
+        expect(lastRender()?.codec, 'H.264');
+      },
+    );
 
     testWidgets('the progress bar fills to its progress', (tester) async {
       Future<Size> fillAt(double progress) async {
-        await tester.pumpWidget(Directionality(
-          textDirection: TextDirection.ltr,
-          child: Center(child: SizedBox(width: 300, child: RenderProgressBar(progress))),
-        ));
-        return tester.getSize(find.descendant(of: find.byType(RenderProgressBar), matching: find.byType(DecoratedBox)));
+        await tester.pumpWidget(
+          Directionality(
+            textDirection: TextDirection.ltr,
+            child: Center(
+              child: SizedBox(width: 300, child: RenderProgressBar(progress)),
+            ),
+          ),
+        );
+        return tester.getSize(
+          find.descendant(
+            of: find.byType(RenderProgressBar),
+            matching: find.byType(DecoratedBox),
+          ),
+        );
       }
 
       expect(await fillAt(0.24), const Size(72, 8));
@@ -333,13 +494,17 @@ void main() {
       expect((await fillAt(0)).width, 0);
     });
 
-    testWidgets('the finished file goes to Photos and the share sheet', (tester) async {
+    testWidgets('the finished file goes to Photos and the share sheet', (
+      tester,
+    ) async {
       await openExport(tester);
       await tapText(tester, 'Render H.264');
       await runRender(tester);
 
       await tapText(tester, 'Save to Photos');
-      expect(app.destinations.savedToPhotos, ['/renders/The Long Way Down.mp4']);
+      expect(app.destinations.savedToPhotos, [
+        '/renders/The Long Way Down.mp4',
+      ]);
       expect(find.text('Saved to Photos'), findsOneWidget);
       await tester.pump(const Duration(seconds: 5)); // the toast leaves
       await tester.pumpAndSettle();
@@ -350,7 +515,12 @@ void main() {
     });
 
     testWidgets('an image sequence isn’t offered to Photos', (tester) async {
-      app = AppHarness(projects: FakeProjectRepository(seed: [film()]), plan: FakeEntitlementRepository(const Entitlement.pro(period: BillingPeriod.yearly)),);
+      app = AppHarness(
+        projects: FakeProjectRepository(seed: [film()]),
+        plan: FakeEntitlementRepository(
+          const Entitlement.pro(period: BillingPeriod.yearly),
+        ),
+      );
       await openExport(tester);
       await tapText(tester, 'PNG sequence');
       await tapText(tester, 'Render PNG sequence');
@@ -364,7 +534,9 @@ void main() {
     testWidgets('Pro renders show no ad', (tester) async {
       app = AppHarness(
         projects: FakeProjectRepository(seed: [film()]),
-        plan: FakeEntitlementRepository(const Entitlement.pro(period: BillingPeriod.yearly)),
+        plan: FakeEntitlementRepository(
+          const Entitlement.pro(period: BillingPeriod.yearly),
+        ),
       );
       await openExport(tester);
       await tapText(tester, 'Render H.264');
@@ -374,36 +546,54 @@ void main() {
       await runRender(tester);
     });
 
-    testWidgets('out of space names the cause and the size, and the retry is free', (tester) async {
-      app = AppHarness(
-        projects: FakeProjectRepository(seed: [film()]),
-        encoder: FakeVideoEncoder(failWith: const EncoderException.outOfSpace(), failAtFrame: 30),
-      );
-      await openExport(tester);
-      await tapText(tester, '4K UHD');
-      await tapText(tester, '▶  Watch ad · render once');
-      await runRender(tester);
+    testWidgets(
+      'out of space names the cause and the size, and the retry is free',
+      (tester) async {
+        app = AppHarness(
+          projects: FakeProjectRepository(seed: [film()]),
+          encoder: FakeVideoEncoder(
+            failWith: const EncoderException.outOfSpace(),
+            failAtFrame: 30,
+          ),
+        );
+        await openExport(tester);
+        await tapText(tester, '4K UHD');
+        await tapText(tester, '▶  Watch ad · render once');
+        await runRender(tester);
 
-      expect(find.text('STOPPED AT 62%'), findsOneWidget);
-      expect(find.textContaining('Not enough '), findsOneWidget);
-      expect(find.textContaining('Free up space or drop to 1920'), findsOneWidget);
-      expect(app.encoder.cancelled, 1, reason: 'the partial file is removed');
-      expect(lastRender()?.outcome, RenderOutcome.failed);
+        expect(find.text('STOPPED AT 62%'), findsOneWidget);
+        expect(find.textContaining('Not enough '), findsOneWidget);
+        expect(
+          find.textContaining('Free up space or drop to 1920'),
+          findsOneWidget,
+        );
+        expect(app.encoder.cancelled, 1, reason: 'the partial file is removed');
+        expect(lastRender()?.outcome, RenderOutcome.failed);
 
-      await tapText(tester, 'Try again');
-      expect(find.textContaining(RegExp(r'^frame \d')), findsOneWidget);
-      await runRender(tester);
+        await tapText(tester, 'Try again');
+        expect(find.textContaining(RegExp(r'^frame \d')), findsOneWidget);
+        await runRender(tester);
 
-      expect(find.textContaining('3840 × 2160'), findsOneWidget);
-      expect(lastRender()?.outcome, RenderOutcome.rendered);
-      expect(app.ads.rewardedShown, 1, reason: 'a failed render never costs a second ad');
-    });
+        expect(find.textContaining('3840 × 2160'), findsOneWidget);
+        expect(lastRender()?.outcome, RenderOutcome.rendered);
+        expect(
+          app.ads.rewardedShown,
+          1,
+          reason: 'a failed render never costs a second ad',
+        );
+      },
+    );
 
     testWidgets('lower resolution starts again at 1920', (tester) async {
       app = AppHarness(
         projects: FakeProjectRepository(seed: [film()]),
-        encoder: FakeVideoEncoder(failWith: const EncoderException.outOfSpace(), failAtFrame: 10),
-        plan: FakeEntitlementRepository(const Entitlement.pro(period: BillingPeriod.yearly)),
+        encoder: FakeVideoEncoder(
+          failWith: const EncoderException.outOfSpace(),
+          failAtFrame: 10,
+        ),
+        plan: FakeEntitlementRepository(
+          const Entitlement.pro(period: BillingPeriod.yearly),
+        ),
       );
       await openExport(tester);
       await tapText(tester, '4K UHD');
@@ -417,34 +607,54 @@ void main() {
       expect(find.textContaining('H.264 · 1920 × 1080'), findsOneWidget);
     });
 
-    testWidgets('a device that reports too little space stops before the first frame', (tester) async {
+    testWidgets(
+      'a device that reports too little space stops before the first frame',
+      (tester) async {
+        app = AppHarness(
+          projects: FakeProjectRepository(seed: [film()]),
+          encoder: FakeVideoEncoder(
+            caps: EncoderCapabilities(
+              FakeVideoEncoder.everything.maxEdge,
+              freeBytes: 1000,
+            ),
+          ),
+        );
+        await openExport(tester);
+        await tapText(tester, 'Render H.264');
+        await runRender(tester);
+
+        expect(find.text('STOPPED AT 0%'), findsOneWidget);
+        expect(app.encoder.started, isEmpty);
+      },
+    );
+
+    testWidgets('any other encoder failure says what the encoder said', (
+      tester,
+    ) async {
       app = AppHarness(
         projects: FakeProjectRepository(seed: [film()]),
-        encoder: FakeVideoEncoder(caps: EncoderCapabilities(FakeVideoEncoder.everything.maxEdge, freeBytes: 1000)),
-      );
-      await openExport(tester);
-      await tapText(tester, 'Render H.264');
-      await runRender(tester);
-
-      expect(find.text('STOPPED AT 0%'), findsOneWidget);
-      expect(app.encoder.started, isEmpty);
-    });
-
-    testWidgets('any other encoder failure says what the encoder said', (tester) async {
-      app = AppHarness(
-        projects: FakeProjectRepository(seed: [film()]),
-        encoder: FakeVideoEncoder(failWith: const EncoderException(EncoderFailureKind.failed, 'The encoder ran out of memory.')),
+        encoder: FakeVideoEncoder(
+          failWith: const EncoderException(
+            EncoderFailureKind.failed,
+            'The encoder ran out of memory.',
+          ),
+        ),
       );
       await openExport(tester);
       await tapText(tester, 'Render H.264');
       await runRender(tester);
 
       expect(find.textContaining('stopped.'), findsOneWidget);
-      expect(find.textContaining('The encoder ran out of memory.'), findsOneWidget);
+      expect(
+        find.textContaining('The encoder ran out of memory.'),
+        findsOneWidget,
+      );
       expect(find.text('Lower resolution'), findsNothing);
     });
 
-    testWidgets('cancel stops the render and removes the partial file', (tester) async {
+    testWidgets('cancel stops the render and removes the partial file', (
+      tester,
+    ) async {
       await openExport(tester);
       await tapText(tester, 'Render H.264');
       await tester.pump(const Duration(milliseconds: 200));
@@ -458,7 +668,9 @@ void main() {
       expect(lastRender(), isNull);
     });
 
-    testWidgets('the render pauses while the app is in the background', (tester) async {
+    testWidgets('the render pauses while the app is in the background', (
+      tester,
+    ) async {
       await openExport(tester);
       await tapText(tester, 'Render H.264');
       await tester.pump(const Duration(milliseconds: 200));
@@ -480,7 +692,9 @@ void main() {
       expect(find.text('Save to Files'), findsOneWidget);
     });
 
-    testWidgets('the render keeps going behind our own full-screen ad', (tester) async {
+    testWidgets('the render keeps going behind our own full-screen ad', (
+      tester,
+    ) async {
       await openExport(tester);
       await tapText(tester, 'Render H.264');
       await tester.pump(const Duration(milliseconds: 200));
@@ -498,7 +712,9 @@ void main() {
       expect(app.encoder.appended, 48);
     });
 
-    testWidgets('leaving the app with the ad up still pauses the render', (tester) async {
+    testWidgets('leaving the app with the ad up still pauses the render', (
+      tester,
+    ) async {
       await openExport(tester);
       await tapText(tester, 'Render H.264');
       await tester.pump(const Duration(milliseconds: 200));
@@ -518,30 +734,42 @@ void main() {
       expect(app.encoder.appended, 48);
     });
 
-    testWidgets('a render keeps going with the sheet closed and the library shows it', (tester) async {
-      app = AppHarness(projects: FakeProjectRepository(seed: [film()]), frames: FakeFrames(frames: 200));
-      await openExport(tester);
-      await tester.tap(find.text('Render H.264'));
-      await tester.pump(const Duration(milliseconds: 300));
-      await tester.tap(find.text('Keep working · renders in background'));
-      await tester.pump(const Duration(milliseconds: 400));
+    testWidgets(
+      'a render keeps going with the sheet closed and the library shows it',
+      (tester) async {
+        app = AppHarness(
+          projects: FakeProjectRepository(seed: [film()]),
+          frames: FakeFrames(frames: 200),
+        );
+        await openExport(tester);
+        await tester.tap(find.text('Render H.264'));
+        await tester.pump(const Duration(milliseconds: 300));
+        await tester.tap(find.text('Keep working · renders in background'));
+        await tester.pump(const Duration(milliseconds: 400));
 
-      await tester.tap(find.byTooltip('Back'));
-      await tester.pump(const Duration(milliseconds: 400));
-      expect(find.textContaining('RENDERING '), findsOneWidget);
+        await tester.tap(find.byTooltip('Back'));
+        await tester.pump(const Duration(milliseconds: 400));
+        expect(find.textContaining('RENDERING '), findsOneWidget);
 
-      for (var i = 0; i < 4; i++) {
-        await runRender(tester);
-      }
-      expect(find.textContaining('RENDERED'), findsOneWidget);
-    });
+        for (var i = 0; i < 4; i++) {
+          await runRender(tester);
+        }
+        expect(find.textContaining('RENDERED'), findsOneWidget);
+      },
+    );
   });
 
   group('estimates', () {
     test('sizes and times follow the design at 2:41 of 1080p', () {
       expect(formatBytes(estimateBytes(Codec.h264, 1920, 1080, 161)), '242 MB');
-      expect(formatBytes(estimateBytes(Codec.prores4444, 1920, 1080, 161)), '4.4 GB');
-      expect(formatAbout(estimateRenderSeconds(1920, 1080, 161)), 'about 3 min');
+      expect(
+        formatBytes(estimateBytes(Codec.prores4444, 1920, 1080, 161)),
+        '4.4 GB',
+      );
+      expect(
+        formatAbout(estimateRenderSeconds(1920, 1080, 161)),
+        'about 3 min',
+      );
     });
 
     test('H.264 and HEVC are encoded at the rate the estimate assumes', () {
@@ -549,13 +777,16 @@ void main() {
       expect(bitsPerSecond(Codec.hevc, 3840, 2160), 36000000);
     });
 
-    test('resolution is the long edge, keeps the canvas aspect, in even pixels', () {
-      expect(ExportResolution.hd.sizeFor(2048, 858), (1920, 804));
-      expect(ExportResolution.uhd.sizeFor(1920, 1080), (3840, 2160));
-      expect(ExportResolution.hd.sizeFor(1080, 1920), (1080, 1920));
-      expect(ExportResolution.nearest(1998, 1080), ExportResolution.hd);
-      expect(ExportResolution.nearest(1080, 1920), ExportResolution.hd);
-    });
+    test(
+      'resolution is the long edge, keeps the canvas aspect, in even pixels',
+      () {
+        expect(ExportResolution.hd.sizeFor(2048, 858), (1920, 804));
+        expect(ExportResolution.uhd.sizeFor(1920, 1080), (3840, 2160));
+        expect(ExportResolution.hd.sizeFor(1080, 1920), (1080, 1920));
+        expect(ExportResolution.nearest(1998, 1080), ExportResolution.hd);
+        expect(ExportResolution.nearest(1080, 1920), ExportResolution.hd);
+      },
+    );
 
     test('NTSC rates stay exact fractions', () {
       expect(frameRateFraction(24), (24, 1));
@@ -565,14 +796,22 @@ void main() {
     });
 
     test('file names keep the title, minus what filesystems refuse', () {
-      expect(exportFileName('The Long Way Down', Codec.hevc), 'The Long Way Down.mp4');
+      expect(
+        exportFileName('The Long Way Down', Codec.hevc),
+        'The Long Way Down.mp4',
+      );
       expect(exportFileName('A/B: "C"?', Codec.prores422), 'AB C.mov');
       expect(exportFileName('  ', Codec.png), 'LastReel render.zip');
     });
   });
 
   group('rating prompt', () {
-    setUp(() => app = AppHarness(projects: FakeProjectRepository(seed: [film()]), review: InMemoryReviewPromptStore()));
+    setUp(
+      () => app = AppHarness(
+        projects: FakeProjectRepository(seed: [film()]),
+        review: InMemoryReviewPromptStore(),
+      ),
+    );
 
     final prompt = find.textContaining('LastReel?', findRichText: true);
 
@@ -589,31 +828,75 @@ void main() {
       await tester.pumpAndSettle();
     }
 
-    testWidgets('asks once, a few seconds into the first render, over the Rendering sheet', (tester) async {
-      await openExport(tester);
-      await startLongRender(tester);
-      await tester.pump(const Duration(seconds: 2));
-      expect(prompt, findsNothing);
+    testWidgets(
+      'asks once, a few seconds into the first render, over the Rendering sheet',
+      (tester) async {
+        await openExport(tester);
+        await startLongRender(tester);
+        await tester.pump(const Duration(seconds: 2));
+        expect(prompt, findsNothing);
 
-      await tester.pump(const Duration(seconds: 1, milliseconds: 100));
-      await tester.pumpAndSettle();
-      expect(prompt, findsOneWidget);
-      expect(app.review.asked, isTrue);
-      await tapText(tester, 'Not now');
-      expect(prompt, findsNothing);
-      expect(find.text('Keep working · renders in background'), findsOneWidget); // still rendering
-      expect(app.analytics.names, containsAllInOrder(['review_prompt_shown', 'review_prompt_later']));
+        await tester.pump(const Duration(seconds: 1, milliseconds: 100));
+        await tester.pumpAndSettle();
+        expect(prompt, findsOneWidget);
+        expect(app.review.asked, isTrue);
+        await tapText(tester, 'Not now');
+        expect(prompt, findsNothing);
+        expect(
+          find.text('Keep working · renders in background'),
+          findsOneWidget,
+        ); // still rendering
+        expect(
+          app.analytics.names,
+          containsAllInOrder(['review_prompt_shown', 'review_prompt_later']),
+        );
 
-      // The render carries on; the next one isn't asked again.
-      await finish(tester);
-      await tester.tapAt(const Offset(10, 10)); // close Ready
-      await tester.pumpAndSettle();
-      await tapText(tester, 'Export');
-      await startLongRender(tester);
-      await finish(tester);
-      expect(prompt, findsNothing);
-      expect(app.analytics.names.where((n) => n == 'review_prompt_shown'), hasLength(1));
-    });
+        // The render carries on; the next one isn't asked again.
+        await finish(tester);
+        await tester.tapAt(const Offset(10, 10)); // close Ready
+        await tester.pumpAndSettle();
+        await tapText(tester, 'Export');
+        await startLongRender(tester);
+        await finish(tester);
+        expect(prompt, findsNothing);
+        expect(
+          app.analytics.names.where((n) => n == 'review_prompt_shown'),
+          hasLength(1),
+        );
+      },
+    );
+
+    testWidgets(
+      'inside the Rendering sheet it takes the ad\'s place, under the progress',
+      (tester) async {
+        await openExport(tester);
+        await startLongRender(tester);
+        await tester.pump(ReviewPromptTrigger.delay);
+        await tester.pumpAndSettle();
+        expect(prompt, findsOneWidget);
+        expect(find.textContaining('Sponsored'), findsNothing);
+        expect(
+          find.text('Keep working · renders in background'),
+          findsOneWidget,
+        );
+        await tester.tap(find.byKey(const ValueKey('star-2')));
+        await tester.pump();
+        await tapText(tester, 'Rate LastReel');
+        // 6.2b in the same sheet, the render still showing above it.
+        expect(
+          find.textContaining('What should we fix?', findRichText: true),
+          findsOneWidget,
+        );
+        expect(find.text('Rendering'), findsOneWidget);
+        await tapText(tester, 'Skip');
+        expect(app.feedback.sent.single.rating, 2);
+        expect(
+          find.text('Keep working · renders in background'),
+          findsOneWidget,
+        );
+        await finish(tester);
+      },
+    );
 
     testWidgets('with "Keep working" it asks over the editor', (tester) async {
       await openExport(tester);
@@ -625,7 +908,9 @@ void main() {
       await finish(tester);
     });
 
-    testWidgets('a render quicker than the delay asks as it finishes', (tester) async {
+    testWidgets('a render quicker than the delay asks as it finishes', (
+      tester,
+    ) async {
       await openExport(tester);
       await tapText(tester, 'Render H.264'); // 48 × 20 ms
       await runRender(tester);
@@ -646,29 +931,150 @@ void main() {
       await finish(tester);
     });
 
-    testWidgets('a cancelled render doesn\'t ask, and doesn\'t use up the ask', (tester) async {
-      await openExport(tester);
-      await startLongRender(tester);
-      await tester.pump(const Duration(seconds: 1));
-      await tapText(tester, 'Cancel render');
-      await tester.pump(const Duration(seconds: 4));
-      await tester.pumpAndSettle();
-      expect(prompt, findsNothing);
-      expect(app.review.asked, isFalse);
-    });
+    testWidgets(
+      'a cancelled render doesn\'t ask, and doesn\'t use up the ask',
+      (tester) async {
+        await openExport(tester);
+        await startLongRender(tester);
+        await tester.pump(const Duration(seconds: 1));
+        await tapText(tester, 'Cancel render');
+        await tester.pump(const Duration(seconds: 4));
+        await tester.pumpAndSettle();
+        expect(prompt, findsNothing);
+        expect(app.review.asked, isFalse);
+      },
+    );
 
     testWidgets('Rate LastReel hands over to the store rating', (tester) async {
       await openExport(tester);
       await startLongRender(tester);
       await tester.pump(ReviewPromptTrigger.delay);
       await tester.pumpAndSettle();
-      await tapText(tester, 'Rate LastReel');
+      await tester.tap(find.byKey(const ValueKey('star-5')));
+      await tester.pump();
+      await tester.tap(find.text('Rate LastReel'));
+      await tester.pump();
+      // 6.2c — a moment of thanks, then the store's card.
+      expect(
+        find.textContaining('Opening the review', findRichText: true),
+        findsOneWidget,
+      );
+      await tester.pump(ReviewPrompt.thanksPause);
+      await tester.pumpAndSettle();
       expect(prompt, findsNothing);
       expect(app.analytics.names, contains('review_prompt_rate'));
       await finish(tester);
     });
 
-    testWidgets('a device that was already asked is left alone', (tester) async {
+    Future<void> openPrompt(WidgetTester tester) async {
+      await openExport(tester);
+      await startLongRender(tester);
+      await tester.pump(ReviewPromptTrigger.delay);
+      await tester.pumpAndSettle();
+    }
+
+    bool lit(WidgetTester tester, int star) =>
+        (tester
+                    .widget<IconButton>(
+                      find.byKey(ValueKey('star-$star')).first,
+                    )
+                    .icon
+                as Icon)
+            .icon ==
+        Icons.star_rounded;
+
+    testWidgets('five stars start selected and can be reduced', (tester) async {
+      await openPrompt(tester);
+      expect([
+        for (var i = 1; i <= 5; i++) lit(tester, i),
+      ], everyElement(isTrue));
+
+      await tester.tap(find.byKey(const ValueKey('star-3')));
+      await tester.pump();
+      expect(
+        [for (var i = 1; i <= 5; i++) lit(tester, i)],
+        [true, true, true, false, false],
+      );
+      await finish(tester);
+    });
+
+    testWidgets(
+      'four or five stars go to the store, and the stars reach the team',
+      (tester) async {
+        await openPrompt(tester);
+        await tester.tap(find.byKey(const ValueKey('star-4')));
+        await tester.pump();
+        await tester.tap(find.text('Rate LastReel'));
+        await tester.pump(ReviewPrompt.thanksPause);
+        await tester.pumpAndSettle();
+        expect(
+          find.textContaining('What should we fix?', findRichText: true),
+          findsNothing,
+        );
+        expect(app.feedback.sent.single.rating, 4);
+        expect(app.analytics.names, contains('review_prompt_rate'));
+        await finish(tester);
+      },
+    );
+
+    testWidgets(
+      'under four stars asks what to fix and sends it to the team, not the store',
+      (tester) async {
+        await openPrompt(tester);
+        await tester.tap(find.byKey(const ValueKey('star-2')));
+        await tester.pump();
+        await tapText(tester, 'Rate LastReel');
+        expect(
+          find.textContaining('What should we fix?', findRichText: true),
+          findsOneWidget,
+        );
+        expect(app.analytics.names, isNot(contains('review_prompt_rate')));
+
+        await tapText(tester, 'Export speed');
+        await tapText(tester, 'Ads');
+        await tester.enterText(
+          find.byType(TextField).last,
+          'ProRes renders take ages.',
+        );
+        await tester.tap(find.text('Send to the team'));
+        // The toast counts down for four seconds; look before it leaves.
+        for (var i = 0; i < 5; i++) {
+          await tester.pump(const Duration(milliseconds: 100));
+        }
+
+        final sent = app.feedback.sent.single;
+        expect(sent.rating, 2);
+        expect(sent.topics, {FeedbackTopic.exportSpeed, FeedbackTopic.ads});
+        expect(sent.message, 'ProRes renders take ages.');
+        expect(find.text('Thanks. The team reads every one.'), findsOneWidget);
+        await finish(tester);
+      },
+    );
+
+    testWidgets('skipping the questions still sends the stars alone', (
+      tester,
+    ) async {
+      await openPrompt(tester);
+      await tester.tap(find.byKey(const ValueKey('star-1')));
+      await tester.pump();
+      await tapText(tester, 'Rate LastReel');
+      await tapText(tester, 'Skip');
+      final sent = app.feedback.sent.single;
+      expect(sent.rating, 1);
+      expect(sent.topics, isEmpty);
+      await finish(tester);
+    });
+
+    testWidgets('Not now sends nothing', (tester) async {
+      await openPrompt(tester);
+      await tapText(tester, 'Not now');
+      expect(app.feedback.sent, isEmpty);
+      await finish(tester);
+    });
+
+    testWidgets('a device that was already asked is left alone', (
+      tester,
+    ) async {
       app.review.asked = true;
       await openExport(tester);
       await startLongRender(tester);

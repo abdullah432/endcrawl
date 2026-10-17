@@ -426,6 +426,12 @@ class EcTextArea extends StatefulWidget {
   final bool expands;
   final ValueChanged<String>? onChanged;
 
+  /// A gutter numbering each line, scrolling with the text (D12).
+  final bool lineNumbers;
+
+  /// Lines (0-based, counting blank ones) to mark as needing a look.
+  final Set<int> flaggedLines;
+
   const EcTextArea({
     super.key,
     required this.controller,
@@ -436,6 +442,8 @@ class EcTextArea extends StatefulWidget {
     this.mono = false,
     this.expands = false,
     this.onChanged,
+    this.lineNumbers = false,
+    this.flaggedLines = const {},
   });
 
   @override
@@ -443,7 +451,9 @@ class EcTextArea extends StatefulWidget {
 }
 
 class _EcTextAreaState extends State<EcTextArea> {
+  static const _gutter = 30.0;
   final _focus = FocusNode();
+  final _scroll = ScrollController();
 
   @override
   void initState() {
@@ -457,6 +467,7 @@ class _EcTextAreaState extends State<EcTextArea> {
   void dispose() {
     _focus.removeListener(_onFocus);
     _focus.dispose();
+    _scroll.dispose();
     super.dispose();
   }
 
@@ -476,9 +487,56 @@ class _EcTextAreaState extends State<EcTextArea> {
         border: Border.all(color: focused ? p.accentSolid : p.line, width: focused ? 1.5 : 1),
         boxShadow: focused ? [BoxShadow(color: p.accentWash, spreadRadius: 3)] : null,
       ),
-      child: TextField(
+      child: widget.lineNumbers ? _numbered(style) : _field(style),
+    );
+
+    if (widget.label == null) return box;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: MainAxisSize.min,
+      children: [Text(widget.label!, style: t.label), const SizedBox(height: 7), widget.expands ? Expanded(child: box) : box],
+    );
+  }
+
+  /// The field over a painted gutter and line bands, kept in step with its
+  /// scroll; each line is measured, so a wrapped line keeps its number.
+  Widget _numbered(TextStyle style) {
+    final p = context.palette;
+    return LayoutBuilder(
+      builder: (context, constraints) => Stack(
+        children: [
+          Positioned.fill(
+            child: IgnorePointer(
+              child: ListenableBuilder(
+                listenable: Listenable.merge([_scroll, widget.controller]),
+                builder: (context, _) => CustomPaint(
+                  painter: _LineGutterPainter(
+                    lines: widget.controller.text.split('\n'),
+                    style: style,
+                    textWidth: constraints.maxWidth - _gutter,
+                    gutter: _gutter,
+                    offset: _scroll.hasClients ? _scroll.offset : 0,
+                    flagged: widget.flaggedLines,
+                    numberStyle: style.copyWith(color: p.faint),
+                    flaggedNumberStyle: style.copyWith(color: p.warn),
+                    band: p.warnWash,
+                  ),
+                ),
+              ),
+            ),
+          ),
+          Padding(padding: const EdgeInsets.only(left: _gutter), child: _field(style)),
+        ],
+      ),
+    );
+  }
+
+  Widget _field(TextStyle style) {
+    final p = context.palette;
+    return TextField(
         controller: widget.controller,
         focusNode: _focus,
+        scrollController: _scroll,
         minLines: widget.expands ? null : widget.minLines,
         maxLines: widget.expands ? null : widget.maxLines,
         expands: widget.expands,
@@ -492,14 +550,72 @@ class _EcTextAreaState extends State<EcTextArea> {
           hintText: widget.hint,
           hintStyle: style.copyWith(color: p.faint),
         ),
-      ),
-    );
+      );
+  }
+}
 
-    if (widget.label == null) return box;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      mainAxisSize: MainAxisSize.min,
-      children: [Text(widget.label!, style: t.label), const SizedBox(height: 7), widget.expands ? Expanded(child: box) : box],
-    );
+class _LineGutterPainter extends CustomPainter {
+  final List<String> lines;
+  final TextStyle style;
+  final double textWidth;
+  final double gutter;
+  final double offset;
+  final Set<int> flagged;
+  final TextStyle numberStyle;
+  final TextStyle flaggedNumberStyle;
+  final Color band;
+
+  _LineGutterPainter({
+    required this.lines,
+    required this.style,
+    required this.textWidth,
+    required this.gutter,
+    required this.offset,
+    required this.flagged,
+    required this.numberStyle,
+    required this.flaggedNumberStyle,
+    required this.band,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    canvas.clipRect(Offset.zero & size);
+    var y = -offset;
+    for (final (i, line) in lines.indexed) {
+      final measure = TextPainter(text: TextSpan(text: line.isEmpty ? ' ' : line, style: style), textDirection: TextDirection.ltr)
+        ..layout(maxWidth: textWidth.clamp(1, double.infinity));
+      final height = measure.height;
+      measure.dispose();
+      if (y > size.height) break;
+      if (y + height >= 0) {
+        final isFlagged = flagged.contains(i);
+        if (isFlagged) canvas.drawRect(Rect.fromLTWH(-10, y, size.width + 20, height), Paint()..color = band);
+        final number = TextPainter(
+          text: TextSpan(text: '${i + 1}', style: isFlagged ? flaggedNumberStyle : numberStyle),
+          textDirection: TextDirection.ltr,
+        )..layout();
+        number.paint(canvas, Offset(gutter - 12 - number.width, y));
+        number.dispose();
+      }
+      y += height;
+    }
+  }
+
+  @override
+  bool shouldRepaint(_LineGutterPainter old) =>
+      old.offset != offset ||
+      old.textWidth != textWidth ||
+      old.style != style ||
+      old.band != band ||
+      !_sameLines(old.lines, lines) ||
+      old.flagged.length != flagged.length ||
+      !old.flagged.containsAll(flagged);
+
+  static bool _sameLines(List<String> a, List<String> b) {
+    if (a.length != b.length) return false;
+    for (var i = 0; i < a.length; i++) {
+      if (a[i] != b[i]) return false;
+    }
+    return true;
   }
 }

@@ -23,6 +23,7 @@ class AdMobAdService implements AdService {
   Future<bool>? _ready;
   AppOpenAd? _appOpen;
   DateTime? _appOpenLoadedAt;
+  bool _appOpenLoading = false;
   bool _fullScreen = false;
 
   /// [_personalised] reads the user's personalised-ads choice at request time.
@@ -38,10 +39,14 @@ class AdMobAdService implements AdService {
     ConsentInformation.instance.requestConsentInfoUpdate(
       ConsentRequestParameters(),
       () => ConsentForm.loadAndShowConsentFormIfRequired((_) => consent.complete()),
-      (_) => consent.complete(),
+      (error) {
+        debugPrint('AdMob: consent update failed — ${error.errorCode}: ${error.message}');
+        consent.complete();
+      },
     );
     await consent.future;
     if (!await ConsentInformation.instance.canRequestAds()) {
+      debugPrint('AdMob: consent does not allow ad requests yet');
       _ready = null; // ask again next time; consent may change
       return false;
     }
@@ -88,7 +93,10 @@ class AdMobAdService implements AdService {
       request: _request,
       rewardedInterstitialAdLoadCallback: RewardedInterstitialAdLoadCallback(
         onAdLoaded: loaded.complete,
-        onAdFailedToLoad: (_) => loaded.complete(null),
+        onAdFailedToLoad: (error) {
+          _logFailure('rewarded', error);
+          loaded.complete(null);
+        },
       ),
     );
     final ad = await loaded.future;
@@ -144,17 +152,31 @@ class AdMobAdService implements AdService {
     await ad.show();
   }
 
+  @override
+  void preloadAppOpen() {
+    if (_units == null || _appOpen != null) return;
+    _ensureReady().then((ready) {
+      if (ready && _appOpen == null) _loadAppOpen();
+    });
+  }
+
   /// Loads the next app-open ad ahead of time, so a resume shows it at once.
   void _loadAppOpen() {
+    if (_appOpenLoading) return;
+    _appOpenLoading = true;
     AppOpenAd.load(
       adUnitId: _units!.appOpenResume,
       request: _request,
       adLoadCallback: AppOpenAdLoadCallback(
         onAdLoaded: (ad) {
+          _appOpenLoading = false;
           _appOpen = ad;
           _appOpenLoadedAt = DateTime.now();
         },
-        onAdFailedToLoad: (_) {},
+        onAdFailedToLoad: (error) {
+          _appOpenLoading = false;
+          _logFailure('app open', error);
+        },
       ),
     );
   }
@@ -174,6 +196,11 @@ class AdMobAdService implements AdService {
     return done.future;
   }
 }
+
+/// Why an ad didn't load, in the debug console — no fill, no network, a
+/// wrong unit. Silent in release builds.
+void _logFailure(String kind, LoadAdError error) =>
+    debugPrint('AdMob: $kind ad failed to load — ${error.code}: ${error.message}');
 
 /// The native ad layout registered by the platform code —
 /// `LastReelNativeAdFactory` in ios/Runner/NativeAdFactory.swift and
@@ -221,7 +248,10 @@ class _NativeAdViewState extends State<_NativeAdView> {
         onAdLoaded: (_) {
           if (mounted) setState(() => _loaded = true);
         },
-        onAdFailedToLoad: (ad, _) => ad.dispose(),
+        onAdFailedToLoad: (ad, error) {
+          _logFailure('native', error);
+          ad.dispose();
+        },
       ),
     ).then((ad) {
       if (!mounted) {

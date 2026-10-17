@@ -42,10 +42,18 @@ void main() {
         plan: FakeEntitlementRepository(const Entitlement.pro()),
       );
       await app.pump(tester, size: size);
+      await tester.ensureVisible(find.text('The Long Way Down'));
       await tester.tap(find.text('The Long Way Down'));
       await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);
-      expect(find.text('Select a block to edit'), findsOneWidget);
+      expect(
+        find.text(
+          size.width < 800 || size.height <= 600
+              ? 'Select a block to edit'
+              : 'Select a block to edit it here.',
+        ),
+        findsOneWidget,
+      );
       await tester.ensureVisible(
         find.byWidgetPredicate((w) => w is BlockRow && w.block.id == 'cst'),
       );
@@ -73,6 +81,7 @@ void main() {
       tester.platformDispatcher.textScaleFactorTestValue = 1.5;
       addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
       await app.pump(tester, size: size);
+      await tester.ensureVisible(find.text('The Long Way Down'));
       await tester.tap(find.text('The Long Way Down'));
       await tester.pumpAndSettle();
       await tester.ensureVisible(
@@ -121,8 +130,8 @@ void main() {
     tester.view.viewInsets = const FakeViewPadding(bottom: 320);
     addTearDown(tester.view.resetViewInsets);
     await tester.pumpAndSettle();
-    await tester.ensureVisible(find.text('Keyboard draft'));
-    expect(find.text('Keyboard draft'), findsOneWidget);
+    await tester.ensureVisible(find.text('Keyboard draft').last);
+    expect(find.text('Keyboard draft'), findsWidgets);
     expect(tester.takeException(), isNull);
   });
 
@@ -146,10 +155,12 @@ void main() {
     final position = scope.read(playbackControllerProvider).frame;
     tester.view.physicalSize = const Size(1440, 900);
     await tester.pumpAndSettle();
-    expect(find.text('Unsubmitted actor'), findsOneWidget);
+    expect(find.text('Unsubmitted actor'), findsWidgets);
     expect(scope.read(editorUiControllerProvider).focusedId, 'cst');
     expect(scope.read(projectControllerProvider).project, document);
     expect(scope.read(playbackControllerProvider).frame, position);
+    await tester.tap(find.byType(TextField).last);
+    await tester.pump();
     await tester.sendKeyEvent(LogicalKeyboardKey.space);
     await tester.pump();
     expect(
@@ -159,7 +170,7 @@ void main() {
     );
     tester.view.physicalSize = const Size(390, 844);
     await tester.pumpAndSettle();
-    expect(find.text('Unsubmitted actor'), findsOneWidget);
+    expect(find.text('Unsubmitted actor'), findsWidgets);
     expect(tester.takeException(), isNull);
   });
 }

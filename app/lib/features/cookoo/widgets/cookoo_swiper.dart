@@ -131,15 +131,22 @@ class _CookooSwiperState extends ConsumerState<CookooSwiper> {
       _scroll = scroll;
       if (!_seen) _scroll?.addListener(_checkSeen);
     }
-    final screen = MediaQuery.sizeOf(context).width;
-    // 358 wide with 16 at each side; narrow phones keep the 16 and shrink
+    _sizeFor(MediaQuery.sizeOf(context).width);
+  }
+
+  /// Sizes the pages for the width the swiper actually has — the screen on
+  /// a phone, a pane in Settings on a tablet or desktop.
+  void _sizeFor(double width) {
+    // 358 wide with 16 at each side; narrow widths keep the 16 and shrink
     // the card. Each page carries half the 10 px gap on either side.
-    _slideWidth = screen < 380 ? screen - 32 : CookooPromoCard.width;
-    final fraction = (_slideWidth + _gap) / screen;
+    _slideWidth = width < 380 ? width - 32 : CookooPromoCard.width;
+    final fraction = ((_slideWidth + _gap) / width).clamp(0.1, 1.0);
     if (_pages?.viewportFraction != fraction) {
       final old = _pages;
       _pages = PageController(viewportFraction: fraction, initialPage: _index);
-      old?.dispose();
+      // Disposed after this frame: the PageView still holds it until it
+      // rebuilds with the new one.
+      if (old != null) WidgetsBinding.instance.addPostFrameCallback((_) => old.dispose());
     }
   }
 
@@ -174,11 +181,13 @@ class _CookooSwiperState extends ConsumerState<CookooSwiper> {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        // The Hide target is 44 tall, so it takes the place of the design's
-        // 20 / 8 padding around the label rather than adding to it.
+        // The label keeps the 44-tall row the (hidden) Hide button gave it,
+        // plus the gap above that separates it from the group before.
         Padding(
-          padding: const EdgeInsets.fromLTRB(20, 0, 8, 0),
-          child: Row(
+          padding: const EdgeInsets.fromLTRB(20, 22, 8, 0),
+          child: SizedBox(
+            height: 44,
+            child: Row(
             children: [
               Expanded(
                 child: Text(
@@ -188,50 +197,57 @@ class _CookooSwiperState extends ConsumerState<CookooSwiper> {
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
-              Semantics(
-                button: true,
-                label: 'Hide the COOKOO card',
-                excludeSemantics: true,
-                child: InkWell(
-                  onTap: () => _promo.hide(_index),
-                  borderRadius: BorderRadius.circular(EcRadius.inner),
-                  child: SizedBox(
-                    height: 44,
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                      child: Center(
-                        widthFactor: 1,
-                        child: Text(
-                          'Hide',
-                          style: context.cookooUi(13, weight: FontWeight.w600, color: p.muted),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
+              // Hidden for now: the "Hide" button.
+//               Semantics(
+//                 button: true,
+//                 label: 'Hide the COOKOO card',
+//                 excludeSemantics: true,
+//                 child: InkWell(
+//                   onTap: () => _promo.hide(_index),
+//                   borderRadius: BorderRadius.circular(EcRadius.inner),
+//                   child: SizedBox(
+//                     height: 44,
+//                     child: Padding(
+//                       padding: const EdgeInsets.symmetric(horizontal: 12),
+//                       child: Center(
+//                         widthFactor: 1,
+//                         child: Text(
+//                           'Hide',
+//                           style: context.cookooUi(13, weight: FontWeight.w600, color: p.muted),
+//                         ),
+//                       ),
+//                     ),
+//                   ),
+//                 ),
+//               ),
             ],
+          ),
           ),
         ),
         SizedBox(
           height: CookooPromoCard.height,
-          child: PageView.builder(
-            controller: _pages,
-            itemCount: cookooSlides.length,
-            onPageChanged: _onPage,
-            itemBuilder: (context, i) {
-              final slide = cookooSlides[i];
-              return Semantics(
-                container: true,
-                label: 'Slide ${i + 1} of ${cookooSlides.length}',
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: _gap / 2),
-                  child: CookooPromoCard(
-                    slide: slide,
-                    onTellUs: () => _tellUs(slide),
-                    onFooterTap: slide.caseSlug == null ? null : () => _openCase(slide),
-                  ),
-                ),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              _sizeFor(constraints.maxWidth);
+              return PageView.builder(
+                controller: _pages,
+                itemCount: cookooSlides.length,
+                onPageChanged: _onPage,
+                itemBuilder: (context, i) {
+                  final slide = cookooSlides[i];
+                  return Semantics(
+                    container: true,
+                    label: 'Slide ${i + 1} of ${cookooSlides.length}',
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: _gap / 2),
+                      child: CookooPromoCard(
+                        slide: slide,
+                        onTellUs: () => _tellUs(slide),
+                        onFooterTap: slide.caseSlug == null ? null : () => _openCase(slide),
+                      ),
+                    ),
+                  );
+                },
               );
             },
           ),

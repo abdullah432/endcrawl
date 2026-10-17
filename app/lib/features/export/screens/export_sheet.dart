@@ -25,6 +25,8 @@ import '../../../domain/engine/roll_engine.dart';
 import '../../../domain/models/project_settings.dart';
 import '../../plan/screens/pro_sheet.dart';
 import '../../project/controllers/project_controller.dart';
+import '../../review/data/feedback_repository.dart';
+import '../../review/review_prompt.dart';
 import '../../timing/screens/timing_sheet.dart';
 import '../controllers/export_controller.dart';
 import '../models/export_models.dart';
@@ -58,6 +60,11 @@ class ExportSheet extends ConsumerWidget {
     );
     final run = ref.watch(exportControllerProvider.select((s) => s.run));
     final mine = run != null && run.projectId == projectId;
+
+    final rate = ref.watch(inlineRateProvider);
+    if (rate.phase == InlineRatePhase.feedback) {
+      return _WhatToFix(rating: rate.rating, run: mine ? run : null);
+    }
 
     return switch (mine ? run.phase : null) {
       ExportPhase.running => _Rendering(run: run!),
@@ -130,6 +137,7 @@ class _Settings extends ConsumerWidget {
         device.supports60Fps(codec, resolution.edge);
     final unsupportedRate =
         e.fps > 30 && !device.supports60Fps(codec, resolution.edge);
+    final wide = EcSheetPresentation.isDialog(context);
 
     final facts = [
       ('Format', '${project.formatW} × ${project.formatH}'),
@@ -139,7 +147,7 @@ class _Settings extends ConsumerWidget {
     ];
 
     return EcSheet(
-      title: 'Export',
+      title: wide ? 'Render a master.' : 'Export',
       maxHeightFraction: 0.94,
       footer: Padding(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
@@ -168,6 +176,13 @@ class _Settings extends ConsumerWidget {
                 ],
               ),
             ),
+            if (wide && busyWith == null) ...[
+              const SizedBox(height: 6),
+              Text(
+                'Estimated render ${formatAbout(estimateRenderSeconds(w, h, seconds))} · keeps running if you close this',
+                style: t.caption,
+              ),
+            ],
             const SizedBox(height: 10),
             if (busyWith != null) ...[
               Text(
@@ -212,7 +227,7 @@ class _Settings extends ConsumerWidget {
                 ),
               ] else
                 EcButton(
-                  label: 'Render ${codec.label}',
+                  label: wide ? 'Render' : 'Render ${codec.label}',
                   onPressed: busyWith != null || unsupportedRate
                       ? null
                       : controller.start,
@@ -709,13 +724,63 @@ class _Rendering extends ConsumerWidget {
               ],
             ),
           ),
-          const SponsoredSlot(
-            AdPlacement.rendering,
-            label: 'Sponsored · while you wait',
-            hideLabel: 'Remove ads',
-            gap: 14,
+          const RateSlot(
+            ad: SponsoredSlot(
+              AdPlacement.rendering,
+              label: 'Sponsored · while you wait',
+              hideLabel: 'Remove ads',
+              gap: 14,
+            ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _WhatToFix extends ConsumerWidget {
+  final int rating;
+  final ExportRun? run;
+  const _WhatToFix({required this.rating, required this.run});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final p = context.palette;
+    final t = context.type;
+    final run = this.run;
+    final container = ProviderScope.containerOf(context, listen: false);
+    void finish(RatingFeedback? report) {
+      ReviewPrompt.sendToTeam(container, report, rating);
+      ref.read(inlineRateProvider.notifier).close();
+    }
+
+    return EcSheet(
+      header: run == null
+          ? null
+          : Padding(
+              padding: const EdgeInsets.fromLTRB(20, 14, 20, 8),
+              child: Row(
+                children: [
+                  Text(
+                    run.phase == ExportPhase.done ? 'Ready' : 'Rendering',
+                    style: t.titleS.copyWith(fontSize: 13),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(child: RenderProgressBar(run.progress)),
+                  const SizedBox(width: 12),
+                  Text(
+                    run.phase == ExportPhase.done
+                        ? '100%'
+                        : '${(run.progress * 100).floor()}% · ${formatClock(run.secondsLeft.toDouble())}',
+                    style: t.mono.copyWith(fontSize: 10.5, color: p.accent),
+                  ),
+                ],
+              ),
+            ),
+      child: ReviewFeedbackForm(
+        rating: rating,
+        onSend: finish,
+        onSkip: () => finish(null),
       ),
     );
   }
@@ -946,10 +1011,12 @@ class _Ready extends ConsumerWidget {
           ),
           // The file has saved by the time this shows; the ad sits below
           // every destination and never stands between the user and them.
-          const SponsoredSlot(
-            AdPlacement.exportComplete,
-            hideLabel: 'Remove ads',
-            gap: 20,
+          const RateSlot(
+            ad: SponsoredSlot(
+              AdPlacement.exportComplete,
+              hideLabel: 'Remove ads',
+              gap: 20,
+            ),
           ),
         ],
       ),

@@ -159,6 +159,7 @@ class FakeAdService implements AdService {
   });
 
   int appOpenShown = 0;
+  int appOpenPreloaded = 0;
 
   @override
   Widget nativeAd(
@@ -168,6 +169,9 @@ class FakeAdService implements AdService {
 
   @override
   Future<void> showAppOpen() async => appOpenShown++;
+
+  @override
+  void preloadAppOpen() => appOpenPreloaded++;
 
   @override
   bool showingFullScreen = false;

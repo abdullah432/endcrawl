@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../layout/layout_class.dart';
 import '../theme/ec_type.dart';
+import 'ec_dialog.dart';
 import '../theme/theme_context.dart';
 import '../theme/tokens.dart';
 import 'ec_scaffold.dart';
@@ -19,22 +21,26 @@ Future<T?> showEcSheet<T>(
   bool dismissible = true,
   bool scrim = true,
   bool panel = false,
+  double dialogWidth = 640,
 }) {
   final host = panel ? EcToolHost.maybeOf(context) : null;
   if (host != null && host.enabled) {
     return host.present(builder).then((value) => value as T?);
   }
-  if (MediaQuery.sizeOf(context).width >= 600) {
+  if (context.layoutClass.isWide || MediaQuery.sizeOf(context).width >= 600) {
     return showDialog<T>(
       context: context,
       barrierDismissible: dismissible,
       barrierColor: scrim ? context.palette.scrim : Colors.transparent,
-      builder: (context) => Dialog(
-        backgroundColor: Colors.transparent,
-        insetPadding: const EdgeInsets.all(24),
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 640),
-          child: builder(context),
+      builder: (dialogContext) => EcSheetPresentation(
+        dialog: true,
+        child: Dialog(
+          backgroundColor: Colors.transparent,
+          insetPadding: const EdgeInsets.all(24),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(maxWidth: dialogWidth),
+            child: Builder(builder: builder),
+          ),
         ),
       ),
     );
@@ -49,6 +55,26 @@ Future<T?> showEcSheet<T>(
     barrierColor: scrim ? context.palette.scrim : Colors.transparent,
     builder: builder,
   );
+}
+
+/// Marks a sheet opened as a centred dialog on tablet or desktop.
+class EcSheetPresentation extends InheritedWidget {
+  final bool dialog;
+  const EcSheetPresentation({
+    super.key,
+    required this.dialog,
+    required super.child,
+  });
+
+  static bool isDialog(BuildContext context) =>
+      context
+          .dependOnInheritedWidgetOfExactType<EcSheetPresentation>()
+          ?.dialog ??
+      false;
+
+  @override
+  bool updateShouldNotify(EcSheetPresentation oldWidget) =>
+      dialog != oldWidget.dialog;
 }
 
 /// Every bottom sheet's chrome: sheet colour, 28 px top radius, grab handle,
@@ -83,6 +109,7 @@ class EcSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final embedded = EcPanelPresentation.maybeOf(context) != null;
+    final dialog = EcSheetPresentation.isDialog(context);
     final p = context.palette;
     final t = context.type;
     final maxHeight = MediaQuery.sizeOf(context).height * maxHeightFraction;
@@ -135,12 +162,13 @@ class EcSheet extends StatelessWidget {
 
     return Container(
       constraints: embedded ? null : BoxConstraints(maxHeight: maxHeight),
+      clipBehavior: dialog ? Clip.antiAlias : Clip.none,
       decoration: BoxDecoration(
         color: p.sheet,
-        borderRadius: embedded
+        borderRadius: embedded || dialog
             ? BorderRadius.circular(22)
             : const BorderRadius.vertical(top: Radius.circular(EcRadius.sheet)),
-        boxShadow: p.sheetShadow,
+        boxShadow: dialog ? EcDialog.shadow : p.sheetShadow,
       ),
       // A transparent Material so list tiles and ink inside the sheet paint
       // on the sheet itself rather than under its fill.
@@ -156,7 +184,7 @@ class EcSheet extends StatelessWidget {
               mainAxisSize: embedded ? MainAxisSize.max : MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                if (!embedded)
+                if (!embedded && !dialog)
                   Center(
                     child: Container(
                       width: 40,
