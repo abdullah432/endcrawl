@@ -370,7 +370,7 @@ class _Grid extends ConsumerWidget {
           preview: preview,
           renderProgress: ref.watch(renderProgressProvider(item.summary.id)),
           onOpen: () => actions.open(item),
-          onMore: preview ? null : (anchor) => _menu(anchor, actions, item),
+          onMore: preview ? null : (anchor) => showProjectMenu(anchor, actions, item),
         ),
       if (showPlanCell) _PlanCell(used: view.count),
       if (preview && needle.isEmpty) const _LockedNewCell(),
@@ -446,58 +446,60 @@ class _Grid extends ConsumerWidget {
       },
     );
   }
+}
 
-  /// T1.3: the action menu anchors to the card's "···". Delete is red and
-  /// set apart from the everyday actions.
-  Future<void> _menu(BuildContext anchor, LibraryActions actions, LibraryItem item) async {
-    final p = anchor.palette;
-    final t = anchor.type;
-    final box = anchor.findRenderObject()! as RenderBox;
-    final overlay = Overlay.of(anchor).context.findRenderObject()! as RenderBox;
-    final rect = Rect.fromPoints(
-      box.localToGlobal(Offset.zero, ancestor: overlay),
-      box.localToGlobal(box.size.bottomRight(Offset.zero), ancestor: overlay),
-    );
-    PopupMenuItem<ProjectAction> entry(ProjectAction value, String label, {bool destructive = false}) => PopupMenuItem(
-      value: value,
-      height: 46,
-      child: Text(
-        label,
-        style: t.row.copyWith(
-          fontSize: 14,
-          fontWeight: value == ProjectAction.open ? FontWeight.w600 : FontWeight.w500,
-          color: destructive ? p.warn : p.ink,
-        ),
+/// T1.3: the action menu anchors to the card's "···". Delete is red and
+/// set apart from the everyday actions.
+Future<void> showProjectMenu(BuildContext anchor, LibraryActions actions, LibraryItem item) async {
+  final p = anchor.palette;
+  final t = anchor.type;
+  final box = anchor.findRenderObject()! as RenderBox;
+  final overlay = Overlay.of(anchor).context.findRenderObject()! as RenderBox;
+  final rect = Rect.fromPoints(
+    box.localToGlobal(Offset.zero, ancestor: overlay),
+    box.localToGlobal(box.size.bottomRight(Offset.zero), ancestor: overlay),
+  );
+  PopupMenuItem<ProjectAction> entry(ProjectAction value, String label, {bool destructive = false}) => PopupMenuItem(
+    value: value,
+    height: 46,
+    child: Text(
+      label,
+      style: t.row.copyWith(
+        fontSize: 14,
+        fontWeight: value == ProjectAction.open ? FontWeight.w600 : FontWeight.w500,
+        color: destructive ? p.warn : p.ink,
       ),
-    );
-    final action = await showMenu<ProjectAction>(
-      context: anchor,
-      position: RelativeRect.fromRect(rect, Offset.zero & overlay.size),
-      color: p.surface,
-      elevation: 12,
-      shadowColor: const Color(0x55000000),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      constraints: const BoxConstraints(minWidth: 220),
-      items: [
-        entry(ProjectAction.open, 'Open'),
-        entry(ProjectAction.rename, 'Rename…'),
-        entry(ProjectAction.duplicate, 'Duplicate'),
-        const PopupMenuDivider(),
-        entry(ProjectAction.delete, 'Delete…', destructive: true),
-      ],
-    );
-    switch (action) {
-      case ProjectAction.open:
-        actions.open(item);
-      case ProjectAction.rename:
-        await actions.rename(item);
-      case ProjectAction.duplicate:
-        await actions.duplicate(item);
-      case ProjectAction.delete:
-        await actions.delete(item);
-      case null:
-        break;
-    }
+    ),
+  );
+  final action = await showMenu<ProjectAction>(
+    context: anchor,
+    position: RelativeRect.fromRect(rect, Offset.zero & overlay.size),
+    color: p.surface,
+    elevation: 12,
+    shadowColor: const Color(0x55000000),
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+    constraints: const BoxConstraints(minWidth: 220),
+    items: [
+      entry(ProjectAction.open, 'Open'),
+      entry(ProjectAction.rename, 'Rename…'),
+      entry(ProjectAction.duplicate, 'Duplicate'),
+      const PopupMenuDivider(),
+      entry(ProjectAction.delete, 'Delete…', destructive: true),
+    ],
+  );
+  switch (action) {
+    case ProjectAction.open:
+      actions.open(item);
+    case ProjectAction.rename:
+      await actions.rename(item);
+    case ProjectAction.duplicate:
+      await actions.duplicate(item);
+    case ProjectAction.export:
+      actions.export(item);
+    case ProjectAction.delete:
+      await actions.delete(item);
+    case null:
+      break;
   }
 }
 

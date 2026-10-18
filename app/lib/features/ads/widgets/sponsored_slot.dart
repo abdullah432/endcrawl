@@ -7,6 +7,8 @@ import '../../plan/screens/pro_sheet.dart';
 import '../../plan/controllers/release_policy.dart';
 import '../ads_providers.dart';
 import '../data/ad_service.dart';
+import 'tablet_ad.dart';
+import '../../home/tablet_layout.dart';
 
 /// A native ad slot on the free plan: nothing at all on Pro, otherwise
 /// "Sponsored" with a way out to Pro above the placement's ad.
@@ -25,17 +27,84 @@ class SponsoredSlot extends ConsumerWidget {
     final showsAds = ref.watch(entitlementProvider).value?.showsAds ?? false;
     if (!showsAds) return const SizedBox.shrink();
     final freeLaunch = ref.watch(iosFreeLaunchProvider);
+    // The tablet reports its slots (§7); the phone's stay as they were.
+    final tablet = context.isTablet;
+    final analytics = ref.read(analyticsProvider);
+    void log(String event) => analytics.logEvent(event, {'slot': TabletAdSlot.slotName(placement)});
     return ref.read(adServiceProvider).nativeAd(
           placement,
+          style: tablet
+              ? AdSlotStyle(
+                  onShown: () => log('ad_slot_shown'),
+                  onEmpty: () => log('ad_slot_empty'),
+                  onTapped: () => log('ad_tapped'),
+                )
+              : const AdSlotStyle(),
           framed: (creative) => Padding(
             padding: EdgeInsets.only(top: gap),
             child: EcAdSlot(
               label: label,
               hideLabel: hideLabel,
-              onHideAds: freeLaunch ? null : () => ProSheet.show(context),
+              onHideAds: freeLaunch
+                  ? null
+                  : () {
+                      if (tablet) log('remove_ads_tapped');
+                      ProSheet.show(context);
+                    },
               creative: creative,
             ),
           ),
         );
+  }
+}
+
+/// A tablet ad slot on the free plan (§5): the library's foot strip
+/// (`library_foot`) or the card under the Settings list (`settings_list`).
+/// Nothing on Pro. Keeps its height while the ad loads and closes up if
+/// none arrives, so the screen never jumps.
+class TabletAdSlot extends ConsumerWidget {
+  final AdPlacement placement;
+  final AdLayout layout;
+  final bool portrait;
+
+  const TabletAdSlot(this.placement, {super.key, required this.layout, this.portrait = false});
+
+  /// The slot's analytics name.
+  static String slotName(AdPlacement placement) => switch (placement) {
+    AdPlacement.library => 'library_foot',
+    AdPlacement.settings => 'settings_list',
+    AdPlacement.rendering => 'render_wait',
+    AdPlacement.exportComplete => 'export_ready',
+  };
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final showsAds = ref.watch(entitlementProvider).value?.showsAds ?? false;
+    if (!showsAds) return const SizedBox.shrink();
+    final freeLaunch = ref.watch(iosFreeLaunchProvider);
+    final analytics = ref.read(analyticsProvider);
+    void log(String event) => analytics.logEvent(event, {'slot': slotName(placement)});
+    return ref.read(adServiceProvider).nativeAd(
+      placement,
+      style: AdSlotStyle(
+        layout: layout,
+        portrait: portrait,
+        reserve: TabletAdMetrics.height(layout, portrait: portrait),
+        onShown: () => log('ad_slot_shown'),
+        onEmpty: () => log('ad_slot_empty'),
+        onTapped: () => log('ad_tapped'),
+      ),
+      framed: (creative) => TabletAdCard(
+        layout: layout,
+        portrait: portrait,
+        creative: creative,
+        onRemoveAds: freeLaunch
+            ? null
+            : () {
+                log('remove_ads_tapped');
+                ProSheet.show(context);
+              },
+      ),
+    );
   }
 }

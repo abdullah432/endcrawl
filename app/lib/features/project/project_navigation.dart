@@ -3,7 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/result.dart';
 import '../../core/widgets/ec_toast.dart';
+import '../editor/controllers/editor_ui_controller.dart';
 import '../editor/screens/editor_screen.dart';
+import '../home/tablet_layout.dart';
 import '../library/controllers/library_controller.dart';
 import '../monitor/controllers/playback_controller.dart';
 import 'controllers/project_controller.dart';
@@ -24,12 +26,19 @@ Future<void> openStoredProject(BuildContext context, String id) async {
   _opening = true;
   try {
     final container = ProviderScope.containerOf(context, listen: false);
+    // Back from the tablet's Settings tab: the edit was left open, so pick
+    // it up where it was instead of reloading the stored document.
+    if (resumesParked(container, id)) {
+      await enterEditor(context, resume: true, onShown: () => _opening = false);
+      return;
+    }
     final result = await container.read(projectControllerProvider.notifier).openProject(id);
     if (!context.mounted) return;
     switch (result) {
       case Ok():
         await enterEditor(context, onShown: () => _opening = false);
       case Err(:final failure):
+        container.read(editorLaunchProvider.notifier).take();
         showEcToast(context, failure.message);
     }
   } finally {
@@ -42,9 +51,13 @@ Future<void> openStoredProject(BuildContext context, String id) async {
 /// library when the editor closes. [replaceFlow] drops the new-project
 /// screens underneath, so Back from the editor returns to the library.
 /// [onShown] runs once the editor route is pushed, before it closes.
-Future<void> enterEditor(BuildContext context, {bool replaceFlow = false, VoidCallback? onShown}) async {
+/// [resume] keeps the playhead of an edit parked for Settings.
+Future<void> enterEditor(BuildContext context, {bool replaceFlow = false, bool resume = false, VoidCallback? onShown}) async {
   final container = ProviderScope.containerOf(context, listen: false);
-  container.read(playbackControllerProvider.notifier).resetToHead();
+  if (!resume) {
+    clearParked(container, resumed: false);
+    container.read(playbackControllerProvider.notifier).resetToHead();
+  }
   // Flags the document as open before the editor appears, so a kill while
   // editing leaves something to recover. For a new project this is also its
   // first save, which is what makes it appear in the library.
@@ -53,6 +66,7 @@ Future<void> enterEditor(BuildContext context, {bool replaceFlow = false, VoidCa
   final route = MaterialPageRoute<void>(builder: (_) => const EditorScreen());
   final navigator = Navigator.of(context);
   final closed = replaceFlow ? navigator.pushAndRemoveUntil(route, (r) => r.isFirst) : navigator.push(route);
+  if (resume) clearParked(container, resumed: true);
   onShown?.call();
   await closed;
   container.invalidate(projectSummariesProvider);

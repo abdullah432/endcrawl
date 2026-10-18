@@ -13,6 +13,7 @@ import '../../project/controllers/project_controller.dart';
 import 'read_only_banner.dart';
 import '../controllers/editor_ui_controller.dart';
 import 'block_row.dart';
+import '../../home/tablet_layout.dart';
 
 /// The document: an ordered list of blocks under a count and a
 /// Select/Done switch (3.1, 3.3). Drag the handle — or long-press a row —
@@ -37,7 +38,13 @@ class BlockList extends ConsumerWidget {
 
     // The desktop's dense index runs closer to the pane's edges (D11).
     final side = context.layoutClass == LayoutClass.expanded ? 8.0 : 16.0;
-    final count = ui.selectMode ? '${ui.selectedIds.length} of ${blocks.length} selected' : plural(blocks.length, 'block');
+    // The tablet (T3.1, P3.1) adds the roll's runtime: "14 blocks · 02:41".
+    final runtime = context.isTablet
+        ? ' · ${formatRuntime(ref.watch(projectControllerProvider.select((s) => s.runtime)))}'
+        : '';
+    final count = ui.selectMode
+        ? '${ui.selectedIds.length} of ${blocks.length} selected'
+        : '${plural(blocks.length, 'block')}$runtime';
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,

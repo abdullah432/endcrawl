@@ -15,7 +15,11 @@ import 'google_mark.dart';
 class SocialSignInButtons extends ConsumerWidget {
   final bool compact;
 
-  const SocialSignInButtons({super.key, this.compact = false});
+  /// The tablet's sign-in (T0.1, P0.1): "Continue with …" in full and 52
+  /// tall, side by side when [compact].
+  final bool tablet;
+
+  const SocialSignInButtons({super.key, this.compact = false, this.tablet = false});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -23,18 +27,22 @@ class SocialSignInButtons extends ConsumerWidget {
     final controller = ref.read(authControllerProvider.notifier);
     final idle = !form.busy;
 
+    final short = compact && !tablet;
+    final height = tablet ? 52.0 : null;
     final apple = EcButton(
-      label: compact ? 'Apple' : 'Continue with Apple',
+      label: short ? 'Apple' : 'Continue with Apple',
       variant: EcButtonVariant.black,
-      size: compact ? EcButtonSize.medium : EcButtonSize.large,
+      size: short ? EcButtonSize.medium : EcButtonSize.large,
+      height: height,
       expand: true,
       busy: form.isRunning(AuthAction.apple),
       leading: const Icon(Icons.apple, size: 20, color: Colors.white),
       onPressed: idle ? controller.signInWithApple : null,
     );
     final google = EcButton.secondary(
-      label: compact ? 'Google' : 'Continue with Google',
-      size: compact ? EcButtonSize.medium : EcButtonSize.large,
+      label: short ? 'Google' : 'Continue with Google',
+      size: short ? EcButtonSize.medium : EcButtonSize.large,
+      height: height,
       expand: true,
       busy: form.isRunning(AuthAction.google),
       leading: const GoogleMark(),
@@ -42,9 +50,11 @@ class SocialSignInButtons extends ConsumerWidget {
     );
 
     if (!Features.appleSignIn) return google;
+    // The tablet leads with Google (T0.1); the phone with Apple.
+    final pair = tablet ? [google, apple] : [apple, google];
     if (compact) {
-      return Row(children: [Expanded(child: apple), const SizedBox(width: 10), Expanded(child: google)]);
+      return Row(children: [Expanded(child: pair[0]), const SizedBox(width: 10), Expanded(child: pair[1])]);
     }
-    return Column(mainAxisSize: MainAxisSize.min, children: [apple, const SizedBox(height: 10), google]);
+    return Column(mainAxisSize: MainAxisSize.min, children: [pair[0], const SizedBox(height: 10), pair[1]]);
   }
 }

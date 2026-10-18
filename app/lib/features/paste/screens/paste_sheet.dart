@@ -18,6 +18,7 @@ import '../controllers/paste_controller.dart';
 import '../models/paste_models.dart';
 import '../../access/controllers/web_access.dart';
 import '../../access/widgets/locked_dialog.dart';
+import '../../home/tablet_layout.dart';
 
 /// 4.2 / 4.3 — bulk entry. Raw text on the left, the split result on the
 /// right, updated live. Lines no rule can split are listed underneath to
@@ -27,7 +28,25 @@ class PasteSheet extends ConsumerStatefulWidget {
 
   static Future<void> show(BuildContext context) async {
     if (lockedOnWeb(context, LockedAction.paste)) return;
-    final added = await showEcSheet<int>(context, dialogWidth: 1080, builder: (_) => const PasteSheet());
+    final tablet = context.tabletLayout;
+    // T4.2: full screen beside nothing else; P4.2: a full-height sheet,
+    // raw over structured.
+    final added = tablet == TabletLayout.landscape
+        ? await Navigator.of(context).push<int>(
+            MaterialPageRoute(
+              fullscreenDialog: true,
+              builder: (_) => const EcSheetPresentation(
+                dialog: true,
+                child: Scaffold(body: SafeArea(child: PasteSheet())),
+              ),
+            ),
+          )
+        : await showEcSheet<int>(
+            context,
+            dialogWidth: 1080,
+            fromBottom: tablet == TabletLayout.portrait,
+            builder: (_) => const PasteSheet(),
+          );
     if (added != null && added > 0 && context.mounted) showEcToast(context, 'Added ${plural(added, 'row')}');
   }
 
@@ -54,9 +73,13 @@ class _PasteSheetState extends ConsumerState<PasteSheet> {
 
     if (EcSheetPresentation.isDialog(context)) return _wide(context, state, controller);
 
+    final tablet = context.isTablet;
     return EcSheet(
-      title: 'Bulk entry',
-      maxHeightFraction: 0.92,
+      title: tablet ? 'Paste & split' : 'Bulk entry',
+      eyebrow: tablet
+          ? (target == null ? 'Bulk entry · new cast block' : 'Bulk entry · into ${describeBlock(target).title}')
+          : null,
+      maxHeightFraction: tablet ? 0.97 : 0.92,
       footer: importing
           ? null
           : Padding(
@@ -129,6 +152,7 @@ class _PasteSheetState extends ConsumerState<PasteSheet> {
     final rows = state.rows;
     final importing = state.mode == PasteMode.file;
     final lines = _raw.text.split('\n').where((l) => l.trim().isNotEmpty).length;
+    final fullScreen = context.isTablet;
     final height = (MediaQuery.sizeOf(context).height - 48).clamp(420.0, 760.0);
     // The parser counts only non-blank lines; the gutter counts them all.
     final flaggedRaw = <int>{};
@@ -140,9 +164,13 @@ class _PasteSheetState extends ConsumerState<PasteSheet> {
     }
 
     return Container(
-      height: height,
+      height: fullScreen ? null : height,
       clipBehavior: Clip.antiAlias,
-      decoration: BoxDecoration(color: p.sheet, borderRadius: BorderRadius.circular(EcRadius.sheet), boxShadow: EcDialog.shadow),
+      decoration: BoxDecoration(
+        color: p.sheet,
+        borderRadius: BorderRadius.circular(fullScreen ? 0 : EcRadius.sheet),
+        boxShadow: fullScreen ? null : EcDialog.shadow,
+      ),
       child: Material(
         type: MaterialType.transparency,
         child: Column(
@@ -323,14 +351,7 @@ class _PasteSheetState extends ConsumerState<PasteSheet> {
             ? 'Structured · ${plural(parsed.length, 'row')}'
             : 'Structured · ${parsed.length - unparsed.length} of ${parsed.length}';
 
-    return [
-      SizedBox(
-        height: 190,
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Expanded(
-              child: Column(
+    final rawColumn = Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Text(caps('Raw'), style: t.section),
@@ -345,11 +366,8 @@ class _PasteSheetState extends ConsumerState<PasteSheet> {
                     ),
                   ),
                 ],
-              ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Column(
+              );
+    final structuredColumn = Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Text(caps(structuredLabel), style: t.section.copyWith(color: p.accent)),
@@ -371,11 +389,26 @@ class _PasteSheetState extends ConsumerState<PasteSheet> {
                     ),
                   ),
                 ],
-              ),
-            ),
-          ],
+              );
+    return [
+      // P4.2: raw on top, structured under it, read in the order the split
+      // happens; side by side on the phone.
+      if (context.tabletLayout == TabletLayout.portrait) ...[
+        SizedBox(height: 210, child: rawColumn),
+        const SizedBox(height: 14),
+        SizedBox(height: 240, child: structuredColumn),
+      ] else
+        SizedBox(
+          height: 190,
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(child: rawColumn),
+              const SizedBox(width: 8),
+              Expanded(child: structuredColumn),
+            ],
+          ),
         ),
-      ),
       const SizedBox(height: 14),
       EcSectionLabel('Split on · lines matched'),
       Wrap(

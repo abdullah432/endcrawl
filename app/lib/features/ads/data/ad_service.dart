@@ -1,6 +1,7 @@
 import 'package:flutter/widgets.dart';
 
 import '../../../core/widgets/ec_ad_slot.dart';
+import '../widgets/tablet_ad.dart';
 
 /// Where a native ad sits. The free plan has exactly these, plus the
 /// opt-in rewarded ad on 6.1a — never the editor, the monitor, the
@@ -13,12 +14,57 @@ enum AdPlacement {
   rendering('Artlist — royalty-free score', 'Static, silent, gone when the render ends.'),
 
   /// Below the destinations once the file has saved (6.4).
-  exportComplete('Soundstripe — score your next cut', 'Music licensing for filmmakers');
+  exportComplete('Soundstripe — score your next cut', 'Music licensing for filmmakers'),
+
+  /// Under the tablet's Settings section list (T7.1) — never in a
+  /// section's detail.
+  settings('Musicbed — Songs cleared for festival cuts', 'Music licensing for filmmakers');
 
   /// House copy for where no ad network is wired in.
   final String houseHeadline;
   final String houseBody;
   const AdPlacement(this.houseHeadline, this.houseBody);
+}
+
+/// How a native ad is drawn.
+enum AdLayout {
+  /// The phone's row (1.1, 6.2): icon, headline, "Ad" and body, a pill.
+  row,
+
+  /// The tablet library's foot strip (T8.1, P1.2): a 16:9 image, the "Ad"
+  /// tag and advertiser, the headline, a line of body and the action.
+  strip,
+
+  /// The tablet Settings card (T7.1, P7.1): "Ad" over a 72 × 56 image
+  /// and the headline.
+  compact,
+}
+
+/// The shape of one slot, and what it reports (`ad_slot_shown`,
+/// `ad_slot_empty`, `ad_tapped`).
+class AdSlotStyle {
+  final AdLayout layout;
+
+  /// Portrait strips (P1.2) put "Remove ads" under the headline rather
+  /// than under the action.
+  final bool portrait;
+
+  /// The height the slot keeps for its ad while it loads, so nothing
+  /// moves when it arrives. The slot closes up if no ad fills it.
+  final double? reserve;
+
+  final VoidCallback? onShown;
+  final VoidCallback? onEmpty;
+  final VoidCallback? onTapped;
+
+  const AdSlotStyle({
+    this.layout = AdLayout.row,
+    this.portrait = false,
+    this.reserve,
+    this.onShown,
+    this.onEmpty,
+    this.onTapped,
+  });
 }
 
 /// How a rewarded ad ended.
@@ -38,10 +84,15 @@ enum RewardOutcome {
 ///
 /// Only ever called on the free plan; callers check the entitlement first.
 abstract interface class AdService {
-  /// A native ad for [placement], wrapped by [framed] (the "Sponsored"
-  /// label and the way out to Pro). Nothing at all — frame included —
-  /// while there's no ad, so a slot never shows an empty frame.
-  Widget nativeAd(AdPlacement placement, {required Widget Function(Widget creative) framed});
+  /// A native ad for [placement], drawn as [style] and wrapped by
+  /// [framed] (the "Sponsored" label, or the tablet card, and the way out
+  /// to Pro). Nothing at all — frame included — while there's no ad, so a
+  /// slot never shows an empty frame; at most the space [style] reserves.
+  Widget nativeAd(
+    AdPlacement placement, {
+    required Widget Function(Widget creative) framed,
+    AdSlotStyle style = const AdSlotStyle(),
+  });
 
   /// Shows a rewarded ad full screen — only ever because the user asked
   /// for it. Completes when it's dismissed.
@@ -70,8 +121,14 @@ class PlaceholderAdService implements AdService {
   const PlaceholderAdService();
 
   @override
-  Widget nativeAd(AdPlacement placement, {required Widget Function(Widget creative) framed}) =>
-      framed(EcAdPlaceholder(headline: placement.houseHeadline, body: placement.houseBody));
+  Widget nativeAd(
+    AdPlacement placement, {
+    required Widget Function(Widget creative) framed,
+    AdSlotStyle style = const AdSlotStyle(),
+  }) => framed(switch (style.layout) {
+    AdLayout.row => EcAdPlaceholder(headline: placement.houseHeadline, body: placement.houseBody),
+    _ => TabletAdPlaceholder(placement: placement, layout: style.layout, portrait: style.portrait),
+  });
 
   @override
   Future<RewardOutcome> showRewarded() async => RewardOutcome.unavailable;

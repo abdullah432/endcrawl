@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart' show TargetPlatform, defaultTargetPlatform;
 import 'package:flutter/material.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 
@@ -109,16 +110,19 @@ class AdMobAdService implements AdService {
     AdPlacement.library => _units!.libraryNative,
     AdPlacement.rendering => _units!.renderingNative,
     AdPlacement.exportComplete => _units!.exportReadyNative,
+    AdPlacement.settings => _units!.settingsNative,
   };
 
   @override
   Widget nativeAd(
     AdPlacement placement, {
     required Widget Function(Widget creative) framed,
+    AdSlotStyle style = const AdSlotStyle(),
   }) {
     if (_units == null) return const SizedBox.shrink();
     return _NativeAdView(
-      key: ValueKey(placement),
+      key: ValueKey((placement, style.layout, style.portrait)),
+      style: style,
       load: (colours, listener) async {
         if (!await _ensureReady()) return null;
         final ad = NativeAd(
@@ -317,8 +321,26 @@ Map<String, Object> nativeCardColours(EcPalette p) {
   };
 }
 
+/// Which of the card's layouts the platform factory draws. The phone row
+/// is the factory's default. Only Android draws the tablet shapes; iOS
+/// keeps its row until iPad ships (§1).
+Map<String, Object> nativeCardLayout(AdSlotStyle style, EcPalette p) {
+  if (style.layout == AdLayout.row || defaultTargetPlatform != TargetPlatform.android) return const {};
+  // "#AARRGGBB": the "Ad" tag's ink and the still's translucent strong line.
+  String argb(Color c) => '#${c.toARGB32().toRadixString(16).padLeft(8, '0').toUpperCase()}';
+  return {
+    'layout': switch (style.layout) {
+      AdLayout.compact => 'compact',
+      _ => style.portrait ? 'stripPortrait' : 'strip',
+    },
+    'ink2': argb(p.ink2),
+    'line2': argb(p.line2),
+  };
+}
+
 /// A native ad on the app's own card (see [nativeCardFactoryId]). Shows
-/// nothing until the ad has loaded, and nothing if it never does.
+/// nothing until the ad has loaded — at most the space [AdSlotStyle.reserve]
+/// keeps for it — and nothing if it never does.
 class _NativeAdView extends StatefulWidget {
   final Future<NativeAd?> Function(
     Map<String, Object> colours,
@@ -326,8 +348,9 @@ class _NativeAdView extends StatefulWidget {
   )
   load;
   final Widget Function(Widget creative) framed;
+  final AdSlotStyle style;
 
-  const _NativeAdView({super.key, required this.load, required this.framed});
+  const _NativeAdView({super.key, required this.load, required this.framed, required this.style});
 
   @override
   State<_NativeAdView> createState() => _NativeAdViewState();
@@ -338,6 +361,7 @@ class _NativeAdViewState extends State<_NativeAdView> {
   bool _loaded = false;
   bool _started = false;
   bool _loading = false;
+  bool _failed = false;
   int _attempts = 0;
   Timer? _retry;
   late final AppLifecycleListener _lifecycle;
@@ -371,7 +395,7 @@ class _NativeAdViewState extends State<_NativeAdView> {
     var failed = false;
     try {
       final ad = await widget.load(
-        nativeCardColours(context.palette),
+        {...nativeCardColours(context.palette), ...nativeCardLayout(widget.style, context.palette)},
         NativeAdListener(
           onAdLoaded: (ad) {
             if (!mounted) return;
@@ -380,8 +404,10 @@ class _NativeAdViewState extends State<_NativeAdView> {
               _ad = ad as NativeAd;
               _loaded = true;
             });
+            widget.style.onShown?.call();
             debugPrint('AdMob: native ad loaded');
           },
+          onAdClicked: (_) => widget.style.onTapped?.call(),
           onAdFailedToLoad: (ad, error) {
             failed = true;
             _logFailure('native', error);
@@ -412,7 +438,13 @@ class _NativeAdViewState extends State<_NativeAdView> {
   }
 
   void _retryLater() {
-    if (!mounted || _attempts >= AdRetryPolicy.maxAttempts) return;
+    if (!mounted) return;
+    // Nothing filled the slot: close up the reserved space, quietly.
+    if (!_failed) {
+      setState(() => _failed = true);
+      widget.style.onEmpty?.call();
+    }
+    if (_attempts >= AdRetryPolicy.maxAttempts) return;
     _retry?.cancel();
     _retry = Timer(AdRetryPolicy.delay(_attempts), _load);
   }
@@ -428,8 +460,15 @@ class _NativeAdViewState extends State<_NativeAdView> {
   @override
   Widget build(BuildContext context) {
     final ad = _ad;
-    if (!_loaded || ad == null) return const SizedBox.shrink();
-    // The card draws its own rounded corners natively; nothing to clip here.
-    return widget.framed(SizedBox(height: 76, child: AdWidget(ad: ad)));
+    if (!_loaded || ad == null) {
+      final reserve = widget.style.reserve;
+      return reserve == null || _failed ? const SizedBox.shrink() : SizedBox(height: reserve);
+    }
+    // The tablet shapes fill the card the slot draws around them; the
+    // phone row draws its own rounded corners natively.
+    final creative = widget.style.layout == AdLayout.row || defaultTargetPlatform != TargetPlatform.android
+        ? SizedBox(height: 76, child: AdWidget(ad: ad))
+        : AdWidget(ad: ad);
+    return widget.framed(creative);
   }
 }

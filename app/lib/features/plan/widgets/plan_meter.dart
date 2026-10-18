@@ -13,7 +13,11 @@ class PlanMeter extends StatelessWidget {
   final double thickness;
   final double gap;
 
-  const PlanMeter({super.key, required this.used, required this.limit, this.thickness = 6, this.gap = 6});
+  /// A solid fill for used slots — ink on the tablet's plan cards (T1.2,
+  /// T7.1) — in place of the primary gradient.
+  final Color? fill;
+
+  const PlanMeter({super.key, required this.used, required this.limit, this.thickness = 6, this.gap = 6, this.fill});
 
   @override
   Widget build(BuildContext context) {
@@ -28,8 +32,8 @@ class PlanMeter extends StatelessWidget {
               child: Container(
                 height: thickness,
                 decoration: BoxDecoration(
-                  gradient: i < used ? p.primary : null,
-                  color: i < used ? null : p.tint,
+                  gradient: i < used && fill == null ? p.primary : null,
+                  color: i < used ? fill : p.tint,
                   borderRadius: BorderRadius.circular(EcRadius.pill),
                 ),
               ),

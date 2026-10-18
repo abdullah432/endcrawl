@@ -19,6 +19,7 @@ import '../../../core/widgets/ec_headline.dart';
 import '../../../core/widgets/ec_scaffold.dart';
 import '../../../core/widgets/ec_settings.dart';
 import '../../../core/widgets/ec_sheet.dart';
+import '../../../core/widgets/ec_tool_host.dart';
 import '../../../core/widgets/ec_surfaces.dart';
 import '../../../core/widgets/ec_toast.dart';
 import '../../../domain/engine/roll_engine.dart';
@@ -31,6 +32,7 @@ import '../../review/review_prompt.dart';
 import '../../timing/screens/timing_sheet.dart';
 import '../controllers/export_controller.dart';
 import '../models/export_models.dart';
+import '../../home/tablet_layout.dart';
 
 /// Export: settings (6.1), rendering (6.2), failed (6.3), ready (6.4).
 ///
@@ -42,11 +44,30 @@ class ExportSheet extends ConsumerWidget {
 
   static Future<void> show(BuildContext context) async {
     final container = ProviderScope.containerOf(context, listen: false);
-    await showEcSheet<void>(
-      context,
-      panel: true,
-      builder: (_) => const ExportSheet(),
-    );
+    if (context.isTablet) {
+      // T6.1 / P6.1: the whole screen, every phase drawn on the page.
+      await Navigator.of(context).push<void>(
+        MaterialPageRoute(
+          fullscreenDialog: true,
+          builder: (page) => Scaffold(
+            backgroundColor: page.palette.sheet,
+            body: SafeArea(
+              child: EcPanelPresentation(
+                fullScreen: true,
+                complete: (_) => Navigator.of(page).maybePop(),
+                child: const ExportSheet(),
+              ),
+            ),
+          ),
+        ),
+      );
+    } else {
+      await showEcSheet<void>(
+        context,
+        panel: true,
+        builder: (_) => const ExportSheet(),
+      );
+    }
     // A delivered file is done with; a failure stays, to be resumed.
     if (container.read(exportControllerProvider).run?.phase ==
         ExportPhase.done) {
@@ -67,14 +88,28 @@ class ExportSheet extends ConsumerWidget {
       return _WhatToFix(rating: rate.rating, run: mine ? run : null);
     }
 
-    return switch (mine ? run.phase : null) {
+    final phase = switch (mine ? run.phase : null) {
       ExportPhase.running => _Rendering(run: run!),
       ExportPhase.failed => _Failed(run: run!),
       ExportPhase.done => _Ready(run: run!),
-      null => _Settings(
-        busyWith: run?.phase == ExportPhase.running ? run!.projectTitle : null,
-      ),
+      null => null,
     };
+    if (phase == null) {
+      return _Settings(
+        busyWith: run?.phase == ExportPhase.running ? run!.projectTitle : null,
+      );
+    }
+    // On the tablet's full-screen export the progress and the result read
+    // as one comfortable column.
+    if (EcPanelPresentation.maybeOf(context)?.fullScreen ?? false) {
+      return Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 680),
+          child: phase,
+        ),
+      );
+    }
+    return phase;
   }
 }
 
@@ -146,6 +181,97 @@ class _Settings extends ConsumerWidget {
       ('Runtime', formatTimecode(e.totalFrames, e.fps)),
       ('Scroll rate', '${e.ppf.toStringAsFixed(2)} px/f'),
     ];
+
+    if (context.tabletLayout case final layout?) {
+      return _TabletSettings(
+        portrait: layout == TabletLayout.portrait,
+        facts: [
+          '${project.formatW} × ${project.formatH}',
+          formatFps(e.fps),
+          formatTimecode(e.totalFrames, e.fps),
+          '${e.ppf.toStringAsFixed(2)} px/f',
+        ].join(' · '),
+        codecs: [
+          for (final c in device.codecs)
+            _TabletCodecCard(
+              codec: c,
+              selected: c == codec,
+              showPro: !isPro,
+              size: formatBytes(estimateBytes(c, w, h, seconds)),
+              onTap: () => controller.setCodec(c),
+            ),
+        ],
+        resolution: EcSegmented(
+          labels: [for (final r in resolutions) r.label],
+          selectedIndex: resolutions.indexOf(resolution),
+          onChanged: (i) => controller.setResolution(resolutions[i]),
+          trailing: {
+            if (!isPro)
+              for (final (i, r) in resolutions.indexed)
+                if (r.isPro) i: const EcGradientPill('Pro'),
+          },
+        ),
+        notices: [
+          if (unsupportedRate)
+            EcNotice(
+              tone: EcTone.warn,
+              title: 'This device cannot export this frame rate',
+              body: 'Use 30 fps and a slower scroll for smoother motion.',
+              actions: [
+                EcButton.secondary(
+                  label: 'Use 30 fps · same runtime',
+                  onPressed: () => ref.read(projectControllerProvider.notifier).setFps(30),
+                ),
+              ],
+            ),
+          if (transparent && !codec.alpha)
+            EcNotice(
+              tone: EcTone.warn,
+              title: '${codec.label} has no alpha',
+              body: 'The transparent background will render as black. ProRes 4444 or PNG keep it.',
+            ),
+          EcGroup(
+            children: [
+              EcGroupRow.toggle(
+                title: 'Motion blur',
+                subtitle: 'A film-style 180° shutter. Softens moving text; it does not remove judder.',
+                value: project.settings.motionSmoothing,
+                onChanged: ref.read(projectControllerProvider.notifier).setMotionSmoothing,
+              ),
+            ],
+          ),
+        ],
+        locked: access == ExportAccess.locked,
+        proTitle: _proTablet(codec, resolution),
+        note: 'H.264 and HEVC up to 1080p are free, with no watermark. Estimated render '
+            '${formatAbout(estimateRenderSeconds(w, h, seconds))}; it keeps running if you close this.',
+        busyWith: busyWith,
+        onWatchAd: busyWith != null ? null : () => _unlockWithAd(context, ref, _proLabel(codec, resolution)),
+        onPro: ref.watch(iosFreeLaunchProvider) ? null : () => ProSheet.show(context),
+        render: prefer60
+            ? [
+                EcButton(
+                  label: 'Render ${codec.label} · 60 fps',
+                  onPressed: busyWith != null ? null : controller.startAt60Fps,
+                ),
+                const SizedBox(height: 8),
+                EcButton.secondary(
+                  label: 'Render current ${formatFps(e.fps)}',
+                  onPressed: busyWith != null ? null : controller.start,
+                ),
+              ]
+            : [
+                EcButton(
+                  label: 'Render',
+                  onPressed: busyWith != null || unsupportedRate ? null : controller.start,
+                ),
+              ],
+        onEdit: () {
+          closeEcSheet(context);
+          TimingSheet.show(context);
+        },
+      );
+    }
 
     return EcSheet(
       title: wide ? 'Render a master.' : 'Export',
@@ -413,6 +539,341 @@ class _Settings extends ConsumerWidget {
   }
 }
 
+/// T6.1: "ProRes 422 HQ is a Pro format."
+String _proTablet(Codec codec, ExportResolution resolution) => switch ((codec.isPro, resolution.isPro)) {
+  (true, true) => '${codec.label} in ${resolution.label} is Pro.',
+  (true, false) => '${codec.label} is a Pro format.',
+  _ => '${resolution.label} is a Pro resolution.',
+};
+
+/// T6.1 / P6.1 — export on a tablet: what is locked, the formats as cards,
+/// the resolution, then the action. Picking a Pro format on Free swaps
+/// Render for the opt-in rewarded ad, with the Pro screen beside it.
+/// Landscape puts the formats left and the rest right; portrait reads top
+/// to bottom, the action at the foot.
+class _TabletSettings extends ConsumerWidget {
+  final bool portrait;
+  final String facts;
+  final List<Widget> codecs;
+  final Widget resolution;
+  final List<Widget> notices;
+  final bool locked;
+  final String proTitle;
+  final String note;
+  final String? busyWith;
+  final VoidCallback? onWatchAd;
+  final VoidCallback? onPro;
+  final List<Widget> render;
+  final VoidCallback onEdit;
+
+  const _TabletSettings({
+    required this.portrait,
+    required this.facts,
+    required this.codecs,
+    required this.resolution,
+    required this.notices,
+    required this.locked,
+    required this.proTitle,
+    required this.note,
+    required this.busyWith,
+    required this.onWatchAd,
+    required this.onPro,
+    required this.render,
+    required this.onEdit,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final p = context.palette;
+    final t = context.type;
+    final title = ref.watch(projectControllerProvider.select((s) => s.name));
+
+    final header = Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(caps('Export · $title'), style: t.eyebrow.copyWith(fontSize: 10.5, letterSpacing: 10.5 * .14)),
+              const SizedBox(height: 8),
+              Semantics(header: true, child: Text('Render the roll.', style: t.displayL.copyWith(fontSize: 40))),
+            ],
+          ),
+        ),
+        EcCircleButton.tint(icon: Icons.close_rounded, size: 48, tooltip: 'Close', onPressed: () => closeEcSheet(context)),
+      ],
+    );
+    final lockedBar = Container(
+      padding: const EdgeInsets.fromLTRB(14, 10, 8, 10),
+      decoration: BoxDecoration(
+        color: p.surface,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: p.line),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: portrait
+                ? Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('LOCKED FOR THIS RENDER', style: t.eyebrow.copyWith(fontSize: 9.5)),
+                      const SizedBox(height: 4),
+                      Text(facts, style: t.mono.copyWith(fontSize: 12.5, color: p.ink)),
+                    ],
+                  )
+                : Text.rich(
+                    TextSpan(
+                      children: [
+                        TextSpan(text: 'Locked for this render  ', style: t.mono.copyWith(fontSize: 11.5, color: p.muted)),
+                        TextSpan(text: facts, style: t.mono.copyWith(fontSize: 12, color: p.ink)),
+                      ],
+                    ),
+                  ),
+          ),
+          EcButton.text(label: 'Edit', size: EcButtonSize.small, onPressed: onEdit),
+        ],
+      ),
+    );
+    final cards = <Widget>[
+      for (final c in codecs) ...[c, const SizedBox(height: 8)],
+    ];
+    final busy = busyWith == null
+        ? null
+        : Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Text(
+              'Rendering “$busyWith” — one render at a time.',
+              textAlign: TextAlign.center,
+              style: t.caption,
+            ),
+          );
+    final proCard = Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: p.accentWash,
+        border: Border.all(color: p.accentLine),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: portrait
+          ? Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  '$proTitle Watch one short ad to use it for this render. Each ad unlocks one render.',
+                  style: t.body.copyWith(fontSize: 14, height: 1.45, color: p.ink2),
+                ),
+                const SizedBox(height: 12),
+                ?busy,
+                Row(
+                  children: [
+                    Expanded(
+                      child: EcButton(
+                        label: 'Watch ad & render',
+                        variant: EcButtonVariant.ink,
+                        height: 56,
+                        onPressed: onWatchAd,
+                      ),
+                    ),
+                    if (onPro != null) ...[
+                      const SizedBox(width: 8),
+                      EcButton.secondary(label: 'See Pro', height: 56, expand: false, onPressed: onPro),
+                    ],
+                  ],
+                ),
+              ],
+            )
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(proTitle, style: t.titleM.copyWith(fontSize: 15, fontWeight: FontWeight.w700)),
+                const SizedBox(height: 8),
+                Text(
+                  'Watch one short ad to use it for this render. Each ad unlocks one render. '
+                  '${onPro == null ? '' : 'Or get Pro for every render, with no ads.'}',
+                  style: t.body.copyWith(fontSize: 13.5, height: 1.45, color: p.ink2),
+                ),
+                const SizedBox(height: 14),
+                ?busy,
+                EcButton(label: 'Watch ad · render once', height: 50, onPressed: onWatchAd),
+                if (onPro != null) ...[
+                  const SizedBox(height: 10),
+                  EcButton.secondary(label: 'See LastReel Pro', height: 46, onPressed: onPro),
+                ],
+              ],
+            ),
+    );
+    final action = locked
+        ? proCard
+        : Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [?busy, ...render]);
+    final resolutionBlock = Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        portrait
+            ? Text('Resolution', style: t.label.copyWith(fontSize: 13, color: p.ink))
+            : Text('RESOLUTION', style: t.eyebrow.copyWith(fontSize: 10, letterSpacing: 1.4)),
+        const SizedBox(height: 8),
+        resolution,
+      ],
+    );
+    final extras = [
+      for (final n in notices) ...[n, const SizedBox(height: 12)],
+    ];
+
+    if (portrait) {
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(28, 28, 28, 24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            header,
+            const SizedBox(height: 14),
+            Expanded(
+              child: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    lockedBar,
+                    const SizedBox(height: 14),
+                    ...cards,
+                    const SizedBox(height: 10),
+                    resolutionBlock,
+                    const SizedBox(height: 16),
+                    ...extras,
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            action,
+          ],
+        ),
+      );
+    }
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(30, 28, 30, 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          header,
+          const SizedBox(height: 14),
+          lockedBar,
+          const SizedBox(height: 14),
+          Expanded(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(child: ListView(padding: EdgeInsets.zero, children: cards)),
+                const SizedBox(width: 16),
+                SizedBox(
+                  width: 400,
+                  child: ListView(
+                    padding: EdgeInsets.zero,
+                    children: [
+                      resolutionBlock,
+                      const SizedBox(height: 18),
+                      action,
+                      const SizedBox(height: 14),
+                      Text(note, style: t.caption.copyWith(fontSize: 12, height: 1.45)),
+                      const SizedBox(height: 16),
+                      ...extras,
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// A format on the tablet's export screen: a white card with a radio, the
+/// name, "PRO" on Free, what it is for, and the size.
+class _TabletCodecCard extends StatelessWidget {
+  final Codec codec;
+  final bool selected;
+  final bool showPro;
+  final String size;
+  final VoidCallback onTap;
+
+  const _TabletCodecCard({
+    required this.codec,
+    required this.selected,
+    required this.showPro,
+    required this.size,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.palette;
+    final t = context.type;
+    return Semantics(
+      selected: selected,
+      button: true,
+      label: codec.label,
+      child: Material(
+        color: p.surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(color: selected ? p.accentSolid : p.line, width: selected ? 1.5 : 1),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            child: Row(
+              children: [
+                AnimatedContainer(
+                  duration: EcMotion.fast,
+                  width: 20,
+                  height: 20,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: p.surface,
+                    border: Border.all(color: selected ? p.accentSolid : p.line2, width: selected ? 6 : 1.5),
+                  ),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Flexible(child: Text(codec.label, style: t.titleM.copyWith(fontSize: 15, fontWeight: FontWeight.w700))),
+                          if (showPro && codec.isPro) ...[
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                              decoration: BoxDecoration(color: p.inkSurface, borderRadius: BorderRadius.circular(999)),
+                              child: Text('PRO', style: t.pill.copyWith(fontSize: 8.5, color: p.onInk, letterSpacing: .8)),
+                            ),
+                          ],
+                        ],
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        codec.alpha ? '${codec.description}, alpha' : codec.description,
+                        style: t.bodyS.copyWith(fontSize: 12.5, color: p.muted),
+                      ),
+                    ],
+                  ),
+                ),
+                Text(size, style: t.mono.copyWith(fontSize: 11.5, color: p.ink2)),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 /// What a Pro pick unlocks, as the ad and the card name it.
 String _proLabel(Codec codec, ExportResolution resolution) =>
     switch ((codec.isPro, resolution.isPro)) {
@@ -440,6 +901,7 @@ Future<void> _unlockWithAd(
   if (!context.mounted) return;
   switch (outcome) {
     case RewardOutcome.earned:
+      if (context.isTablet) ref.read(analyticsProvider).logEvent('rewarded_ad_completed', {'format': unlocking});
       controller.grantPass();
       controller.start();
     case RewardOutcome.closedEarly:
@@ -1014,12 +1476,15 @@ class _Ready extends ConsumerWidget {
           ),
           // The file has saved by the time this shows; the ad sits below
           // every destination and never stands between the user and them.
-          const RateSlot(
-            ad: SponsoredSlot(
-              AdPlacement.exportComplete,
-              hideLabel: 'Remove ads',
-              gap: 20,
-            ),
+          // The tablet's one export ad is the wait's (§5): none once done.
+          RateSlot(
+            ad: context.isTablet
+                ? const SizedBox.shrink()
+                : const SponsoredSlot(
+                    AdPlacement.exportComplete,
+                    hideLabel: 'Remove ads',
+                    gap: 20,
+                  ),
           ),
         ],
       ),

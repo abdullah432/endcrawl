@@ -22,12 +22,15 @@ Future<T?> showEcSheet<T>(
   bool scrim = true,
   bool panel = false,
   double dialogWidth = 640,
+  bool fromBottom = false,
 }) {
   final host = panel ? EcToolHost.maybeOf(context) : null;
   if (host != null && host.enabled) {
     return host.present(builder).then((value) => value as T?);
   }
-  if (context.layoutClass.isWide || MediaQuery.sizeOf(context).width >= 600) {
+  // [fromBottom]: a full-width sheet whatever the width — the portrait
+  // tablet's tall sheets (P4.1), with the monitor still showing above.
+  if (!fromBottom && (context.layoutClass.isWide || MediaQuery.sizeOf(context).width >= 600)) {
     return showDialog<T>(
       context: context,
       barrierDismissible: dismissible,
@@ -49,6 +52,7 @@ Future<T?> showEcSheet<T>(
     context: context,
     isScrollControlled: true,
     useSafeArea: true,
+    constraints: fromBottom ? const BoxConstraints() : null,
     isDismissible: dismissible,
     enableDrag: dismissible,
     backgroundColor: Colors.transparent,
@@ -108,7 +112,9 @@ class EcSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final embedded = EcPanelPresentation.maybeOf(context) != null;
+    final panel = EcPanelPresentation.maybeOf(context);
+    final embedded = panel != null;
+    final page = panel?.fullScreen ?? false;
     final dialog = EcSheetPresentation.isDialog(context);
     final p = context.palette;
     final t = context.type;
@@ -165,10 +171,12 @@ class EcSheet extends StatelessWidget {
       clipBehavior: dialog ? Clip.antiAlias : Clip.none,
       decoration: BoxDecoration(
         color: p.sheet,
-        borderRadius: embedded || dialog
+        borderRadius: page
+            ? null
+            : embedded || dialog
             ? BorderRadius.circular(22)
             : const BorderRadius.vertical(top: Radius.circular(EcRadius.sheet)),
-        boxShadow: dialog ? EcDialog.shadow : p.sheetShadow,
+        boxShadow: page ? null : (dialog ? EcDialog.shadow : p.sheetShadow),
       ),
       // A transparent Material so list tiles and ink inside the sheet paint
       // on the sheet itself rather than under its fill.

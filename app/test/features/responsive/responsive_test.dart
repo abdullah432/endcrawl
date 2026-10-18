@@ -203,7 +203,8 @@ void main() {
       await tester.tap(find.text('Settings').first);
       await tester.pumpAndSettle();
 
-      expect(find.text('PLAN'), findsOneWidget);
+      // T7.1: the pane's eyebrow and the card's own label.
+      expect(find.text('PLAN'), findsNWidgets(2));
       expect(find.text('Restore purchase'), findsOneWidget);
       expect(find.text('Frame rate'), findsOneWidget);
     });

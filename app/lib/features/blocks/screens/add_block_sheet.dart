@@ -14,6 +14,7 @@ import '../../project/controllers/project_controller.dart';
 import 'block_editor_sheet.dart';
 import '../../access/controllers/web_access.dart';
 import '../../access/widgets/locked_dialog.dart';
+import '../../home/tablet_layout.dart';
 
 /// 4.1 — every block type, in seven groups, searchable and filterable.
 ///
@@ -30,9 +31,12 @@ class AddBlockSheet extends ConsumerStatefulWidget {
     final blocks = container.read(projectControllerProvider).blocks;
     final after = blocks.where((b) => b.id == focusedId).firstOrNull;
 
+    final tablet = context.tabletLayout;
     final kind = await showEcSheet<BlockKind>(
       context,
-      dialogWidth: 860,
+      // T4.1: wide over the editor; P4.1: a tall sheet from the bottom.
+      dialogWidth: tablet == TabletLayout.landscape ? MediaQuery.sizeOf(context).width - 122 : 860,
+      fromBottom: tablet == TabletLayout.portrait,
       builder: (_) => AddBlockSheet(afterTitle: after == null ? null : describeBlock(after).title),
     );
     if (kind == null || !context.mounted) return;
@@ -65,35 +69,52 @@ class _AddBlockSheetState extends ConsumerState<AddBlockSheet> {
     final t = context.type;
     final p = context.palette;
     final visible = BlockKind.values.where(_matches).toList();
+    final tablet = context.tabletLayout;
+
+    final search = _SearchField(onChanged: (v) => setState(() => _query = v), height: tablet == null ? 46 : 48);
+    final chips = Wrap(
+      spacing: 6,
+      runSpacing: 6,
+      children: [
+        EcChip(
+          label: 'All · ${BlockKind.values.length}',
+          selected: _group == null,
+          height: tablet == null ? 32 : 38,
+          ink: tablet != null,
+          onTap: () => setState(() => _group = null),
+        ),
+        for (final g in BlockGroup.values)
+          EcChip(
+            label: g.label.split(' ').first,
+            selected: _group == g,
+            height: tablet == null ? 32 : 38,
+            ink: tablet != null,
+            onTap: () => setState(() => _group = _group == g ? null : g),
+          ),
+      ],
+    );
 
     return EcSheet(
-      title: 'Add block',
+      title: tablet == null ? 'Add block' : 'Add a block',
       eyebrow: widget.afterTitle == null ? 'Adds to the end' : 'Insert after · ${widget.afterTitle}',
-      maxHeightFraction: 0.94,
+      maxHeightFraction: tablet == TabletLayout.portrait ? 0.7 : 0.94,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _SearchField(onChanged: (v) => setState(() => _query = v)),
-          const SizedBox(height: 12),
-          Wrap(
-            spacing: 6,
-            runSpacing: 6,
-            children: [
-              EcChip(
-                label: 'All · ${BlockKind.values.length}',
-                selected: _group == null,
-                height: 32,
-                onTap: () => setState(() => _group = null),
-              ),
-              for (final g in BlockGroup.values)
-                EcChip(
-                  label: g.label.split(' ').first,
-                  selected: _group == g,
-                  height: 32,
-                  onTap: () => setState(() => _group = _group == g ? null : g),
-                ),
-            ],
-          ),
+          if (tablet == TabletLayout.landscape)
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SizedBox(width: 300, child: search),
+                const SizedBox(width: 10),
+                Expanded(child: Padding(padding: const EdgeInsets.only(top: 5), child: chips)),
+              ],
+            )
+          else ...[
+            search,
+            const SizedBox(height: 12),
+            chips,
+          ],
           const SizedBox(height: 18),
           if (visible.isEmpty)
             Padding(
@@ -102,12 +123,18 @@ class _AddBlockSheetState extends ConsumerState<AddBlockSheet> {
             ),
           for (final g in BlockGroup.values)
             if (visible.any((k) => k.group == g)) ...[
-              EcSectionLabel(
-                g.label,
-                trailing: Text('${visible.where((k) => k.group == g).length}', style: t.section),
-              ),
-              EcSheetPresentation.isDialog(context)
-                  ? _KindGrid(kinds: [for (final k in visible) if (k.group == g) k])
+              if (tablet != null)
+                EcSectionLabel('${g.label.split(' ').first} · ${visible.where((k) => k.group == g).length}')
+              else
+                EcSectionLabel(
+                  g.label,
+                  trailing: Text('${visible.where((k) => k.group == g).length}', style: t.section),
+                ),
+              EcSheetPresentation.isDialog(context) || tablet != null
+                  ? _KindGrid(
+                      kinds: [for (final k in visible) if (k.group == g) k],
+                      columns: tablet == TabletLayout.portrait ? 2 : null,
+                    )
                   : _KindGroup(kinds: [for (final k in visible) if (k.group == g) k]),
               const SizedBox(height: 18),
             ],
@@ -119,19 +146,20 @@ class _AddBlockSheetState extends ConsumerState<AddBlockSheet> {
 
 class _SearchField extends StatelessWidget {
   final ValueChanged<String> onChanged;
-  const _SearchField({required this.onChanged});
+  final double height;
+  const _SearchField({required this.onChanged, this.height = 46});
 
   @override
   Widget build(BuildContext context) {
     final p = context.palette;
     final t = context.type;
     return Container(
-      height: 46,
+      height: height,
       padding: const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
         color: p.surface,
         borderRadius: BorderRadius.circular(EcRadius.pill),
-        border: Border.all(color: p.line),
+        border: Border.all(color: height > 46 ? p.line2 : p.line),
       ),
       child: Row(
         children: [
@@ -160,7 +188,10 @@ class _SearchField extends StatelessWidget {
 /// a card.
 class _KindGrid extends StatelessWidget {
   final List<BlockKind> kinds;
-  const _KindGrid({required this.kinds});
+
+  /// Two across in a portrait tablet's sheet (P4.1); otherwise by width.
+  final int? columns;
+  const _KindGrid({required this.kinds, this.columns});
 
   @override
   Widget build(BuildContext context) {
@@ -168,7 +199,7 @@ class _KindGrid extends StatelessWidget {
     final t = context.type;
     return LayoutBuilder(
       builder: (context, constraints) {
-        final columns = constraints.maxWidth >= 640 ? 3 : 2;
+        final columns = this.columns ?? (constraints.maxWidth >= 640 ? 3 : 2);
         final width = (constraints.maxWidth - 10 * (columns - 1)) / columns;
         return Wrap(
           spacing: 10,

@@ -15,6 +15,7 @@ import '../widgets/social_sign_in_buttons.dart';
 import 'create_account_screen.dart';
 import 'reset_password_screen.dart';
 import '../widgets/auth_split.dart';
+import '../../home/tablet_layout.dart';
 
 /// 0.2 — signing in with email.
 ///
@@ -45,9 +46,72 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
 
   void _submit() => ref.read(authControllerProvider.notifier).signIn(email: _email.text, password: _password.text);
 
+  void _createAccount() =>
+      (widget.root ? pushAuthScreen : replaceAuthScreen)(context, ref, const CreateAccountScreen());
+
+  /// T0.1 / P0.1: Google (and Apple) first, then the email form, centred
+  /// beside the monitor or under its band.
+  Widget _tablet(BuildContext context, AuthFormState form) {
+    final t = context.type;
+    final portrait = context.tabletLayout == TabletLayout.portrait;
+    return AuthSplit(
+      hero: AuthHero.roll,
+      child: TabletAuthForm(
+        footer: EcInlineLink(
+          lead: 'New here?',
+          action: 'Create an account',
+          onTap: form.busy ? null : _createAccount,
+        ),
+        children: [
+          Semantics(header: true, child: Text('Welcome back.', style: t.displayL.copyWith(fontSize: portrait ? 44 : 42))),
+          const SizedBox(height: 18),
+          SocialSignInButtons(compact: portrait, tablet: true),
+          const SizedBox(height: 18),
+          const AuthEmailDivider(),
+          const SizedBox(height: 18),
+          AutofillGroup(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                EcTextField(
+                  controller: _email,
+                  label: 'Email',
+                  hint: 'you@studio.com',
+                  keyboardType: TextInputType.emailAddress,
+                  autofillHints: const [AutofillHints.email],
+                  error: form.errorFor(AuthField.email),
+                ),
+                const SizedBox(height: 14),
+                EcPasswordField(
+                  controller: _password,
+                  error: form.errorFor(AuthField.password),
+                  onSubmitted: (_) => _submit(),
+                ),
+              ],
+            ),
+          ),
+          Align(
+            alignment: Alignment.centerRight,
+            child: EcButton.text(
+              label: 'Forgot password?',
+              size: EcButtonSize.small,
+              onPressed: form.busy
+                  ? null
+                  : () => pushAuthScreen(context, ref, ResetPasswordScreen(initialEmail: _email.text)),
+            ),
+          ),
+          const SizedBox(height: 6),
+          AuthErrorBanner(form.formError),
+          EcButton(label: 'Sign in', busy: form.isRunning(AuthAction.email), onPressed: form.busy ? null : _submit),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final form = ref.watch(authControllerProvider);
+    if (context.isTablet) return _tablet(context, form);
 
     return AuthSplit(
       hero: AuthHero.roll,

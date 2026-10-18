@@ -24,11 +24,14 @@ import '../../settings/screens/settings_screen.dart';
 import '../../desk/desk_invite.dart';
 import '../../tester/tester_mode.dart';
 import '../controllers/library_controller.dart';
+import '../../editor/controllers/editor_ui_controller.dart';
 import '../widgets/delete_project_sheet.dart';
 import '../widgets/project_actions_sheet.dart';
 import '../widgets/project_card.dart';
 import '../widgets/rename_sheet.dart';
 import 'wide_library.dart';
+import '../../home/screens/tablet_home.dart';
+import '../../home/tablet_layout.dart';
 import '../../access/controllers/web_access.dart';
 import '../../access/widgets/locked_dialog.dart';
 
@@ -49,6 +52,8 @@ class LibraryScreen extends ConsumerWidget {
     // check too, so the invite gets another look once it has answered.
     ref.watch(testerAllowedProvider);
     DeskInvite.check(context, view.value);
+    // T1.1 / P1.1: a tablet gets the Projects and Settings tabs.
+    if (context.isTablet) return const TabletHome();
     if (context.layoutClass.isWide && MediaQuery.sizeOf(context).height > 600) {
       return const WideLibrary();
     }
@@ -307,6 +312,13 @@ class LibraryActions {
     openStoredProject(context, item.summary.id);
   }
 
+  /// "Export…" (T1.3): the editor, with the export panel up.
+  void export(LibraryItem item) {
+    if (lockedOnWeb(context, LockedAction.export)) return;
+    ref.read(editorLaunchProvider.notifier).request(EditorLaunchAction.export);
+    open(item);
+  }
+
   Future<void> more(LibraryItem item) async {
     final action = await ProjectActionsSheet.show(
       context,
@@ -321,6 +333,8 @@ class LibraryActions {
         await duplicate(item);
       case ProjectAction.rename:
         await rename(item);
+      case ProjectAction.export:
+        export(item);
       case ProjectAction.delete:
         await delete(item);
       case null:

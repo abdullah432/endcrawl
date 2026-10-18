@@ -53,7 +53,7 @@ class SettingsScreen extends ConsumerWidget {
     final user = ref.watch(authStateProvider).value;
     final version = ref.watch(appVersionProvider).value;
     final t = context.type;
-    final groups = _SettingsGroups(context, ref);
+    final groups = SettingsGroups(context, ref);
 
     switch (context.layoutClass) {
       case LayoutClass.expanded:
@@ -113,13 +113,14 @@ class SettingsScreen extends ConsumerWidget {
   }
 }
 
-/// The Settings groups, built once and laid out three ways: one column on
-/// the phone (7.1), a split view on a tablet (T7.1), two columns of cards
-/// on a desktop browser (D15).
-class _SettingsGroups {
+/// The Settings groups, built once and laid out four ways: one column on
+/// the phone (7.1), the tablet's Settings tab (T7.1, P7.1), a split view
+/// in a medium browser window, two columns of cards on a desktop browser
+/// (D15).
+class SettingsGroups {
   final BuildContext context;
   final WidgetRef ref;
-  _SettingsGroups(this.context, this.ref);
+  SettingsGroups(this.context, this.ref);
 
   SettingsController get _settings => ref.read(settingsControllerProvider);
   Preferences get _prefs => (ref.watch(userProfileProvider).value ?? const UserProfile()).preferences;
@@ -158,7 +159,8 @@ class _SettingsGroups {
         ],
       );
 
-  Widget defaults() {
+  /// [brief]: frame rate and canvas only, under the plan (T7.1).
+  Widget defaults({bool brief = false}) {
     final prefs = _prefs;
     return EcGroup(label: 'Defaults for new projects', children: [
       EcGroupRow(
@@ -187,6 +189,7 @@ class _SettingsGroups {
           if (id != null) _update((p) => p.copyWith(defaultFormatId: id));
         },
       ),
+      if (!brief) ...[
       EcGroupRow.toggle(
         title: 'Safe-area guides',
         value: prefs.safeGuides,
@@ -198,7 +201,18 @@ class _SettingsGroups {
         value: prefs.readabilityWarnings,
         onChanged: (v) => _update((p) => p.copyWith(readabilityWarnings: v)),
       ),
+      ],
     ]);
+  }
+
+  /// "24 fps · 16:9 HD · guides on" — the defaults in one line (P7.1).
+  String defaultsSummary() {
+    final prefs = _prefs;
+    return [
+      formatFps(prefs.defaultFps),
+      CanvasFormat.byId(prefs.defaultFormatId).label,
+      prefs.safeGuides ? 'guides on' : 'guides off',
+    ].join(' · ');
   }
 
   Widget app() {
@@ -258,6 +272,20 @@ class _SettingsGroups {
     );
   }
 
+  /// The tablet's Legal section (T7.1): Privacy & data is a section of
+  /// its own there.
+  Widget legalLinks() {
+    final links = ref.read(externalLinksProvider);
+    return EcGroup(label: 'Legal', children: [
+      EcGroupRow(title: 'Terms of service', onTap: () => LegalDocumentScreen.open(context, termsOfService)),
+      EcGroupRow(title: 'Privacy policy', onTap: () => links.openUrl(AppLinks.privacyPolicy)),
+      EcGroupRow(
+        title: 'Open-source licences',
+        onTap: () => showLicensePage(context: context, applicationName: 'LastReel', applicationVersion: _version),
+      ),
+    ]);
+  }
+
   Widget legal() {
     final links = ref.read(externalLinksProvider);
     return EcGroup(label: 'Legal & privacy', children: [
@@ -314,7 +342,7 @@ extension on _Section {
         _Section.studio => 'COOKOO',
       };
 
-  Widget body(_SettingsGroups groups) => switch (this) {
+  Widget body(SettingsGroups groups) => switch (this) {
         _Section.plan => Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -351,7 +379,7 @@ extension on _Section {
 /// by how often each is needed; Sign out and Delete sit alone at the
 /// bottom of the list.
 class _SplitSettings extends StatefulWidget {
-  final _SettingsGroups groups;
+  final SettingsGroups groups;
   final AppUser? user;
   final String? version;
   const _SplitSettings({required this.groups, required this.user, required this.version});
@@ -474,7 +502,7 @@ class _SplitSettingsState extends State<_SplitSettings> {
 /// D15 — Settings in the desktop rail: the subscription and account on the
 /// left, defaults, app and the rest on the right.
 class _DesktopSettings extends StatelessWidget {
-  final _SettingsGroups groups;
+  final SettingsGroups groups;
   final AppUser? user;
   final String? version;
   const _DesktopSettings({required this.groups, required this.user, required this.version});

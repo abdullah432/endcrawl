@@ -31,6 +31,20 @@ class ProjectTile extends StatelessWidget {
   /// to it (T1.3). Null hides the button.
   final void Function(BuildContext anchor)? onMore;
 
+  /// The footer's title size and padding, and the credit's name size: the
+  /// tablet's big portrait cards (P1.2) set larger ones.
+  final double titleSize;
+  final double nameSize;
+  final EdgeInsets footerPadding;
+
+  /// The "···" button's height; the tablet grid keeps its footer to the
+  /// design's line height.
+  final double moreHeight;
+
+  /// The footer's height for [titleSize], [footerPadding] and [moreHeight].
+  static double footerHeight({double titleSize = 21, EdgeInsets padding = const EdgeInsets.fromLTRB(14, 12, 8, 14), double moreHeight = 32}) =>
+      padding.vertical + (titleSize * 1.1 > moreHeight ? titleSize * 1.1 : moreHeight) + 13;
+
   const ProjectTile({
     super.key,
     required this.item,
@@ -42,6 +56,10 @@ class ProjectTile extends StatelessWidget {
     this.highlighted = false,
     this.readOnly = false,
     this.preview = false,
+    this.titleSize = 21,
+    this.nameSize = 15,
+    this.footerPadding = const EdgeInsets.fromLTRB(14, 12, 8, 14),
+    this.moreHeight = 32,
   });
 
   @override
@@ -80,10 +98,10 @@ class ProjectTile extends StatelessWidget {
                 // The frame takes what the grid cell leaves after the footer,
                 // so larger text never overflows the cell.
                 Expanded(
-                  child: _Frame(item: item, renderProgress: renderProgress, preview: preview),
+                  child: _Frame(item: item, renderProgress: renderProgress, preview: preview, nameSize: nameSize),
                 ),
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(14, 12, 8, 14),
+                  padding: footerPadding,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
@@ -96,7 +114,7 @@ class ProjectTile extends StatelessWidget {
                               s.title,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: t.displayS.copyWith(fontSize: 21, height: 1.1),
+                              style: t.displayS.copyWith(fontSize: titleSize, height: 1.1),
                             ),
                           ),
                           if (readOnly && !preview)
@@ -108,14 +126,18 @@ class ProjectTile extends StatelessWidget {
                             Builder(
                               builder: (anchor) => IconButton(
                                 tooltip: 'Project actions',
-                                constraints: const BoxConstraints.tightFor(width: 36, height: 32),
+                                constraints: BoxConstraints.tightFor(width: 36, height: moreHeight),
+                                // A shorter "···" keeps the footer to the design's line (the tablet grid).
+                                style: moreHeight < 32
+                                    ? const ButtonStyle(tapTargetSize: MaterialTapTargetSize.shrinkWrap)
+                                    : null,
                                 padding: EdgeInsets.zero,
                                 icon: Icon(Icons.more_horiz_rounded, color: p.muted, size: 20),
                                 onPressed: () => onMore!(anchor),
                               ),
                             )
                           else
-                            const SizedBox(height: 32),
+                            SizedBox(height: moreHeight),
                         ],
                       ),
                       Padding(
@@ -145,7 +167,8 @@ class _Frame extends StatelessWidget {
   final LibraryItem item;
   final double? renderProgress;
   final bool preview;
-  const _Frame({required this.item, required this.renderProgress, required this.preview});
+  final double nameSize;
+  const _Frame({required this.item, required this.renderProgress, required this.preview, required this.nameSize});
 
   @override
   Widget build(BuildContext context) {
@@ -169,10 +192,10 @@ class _Frame extends StatelessWidget {
         children: [
           Center(
             child: empty
-                ? CreditCard(header: 'Title card', names: const ['Untitled'], nameSize: 15)
+                ? CreditCard(header: 'Title card', names: const ['Untitled'], nameSize: nameSize)
                 : Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: CreditCard(header: s.preview.header, names: s.preview.names, nameSize: 15),
+                    child: CreditCard(header: s.preview.header, names: s.preview.names, nameSize: nameSize),
                   ),
           ),
           Positioned(

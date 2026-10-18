@@ -18,6 +18,7 @@ import '../../project/controllers/project_controller.dart';
 import 'background_sheet.dart';
 import 'look_sheet.dart';
 import 'timing_sheet.dart';
+import '../../home/tablet_layout.dart';
 
 enum TimingLookTab { timing, look }
 
@@ -45,6 +46,8 @@ class _TimingLookScreenState extends ConsumerState<TimingLookScreen> {
   @override
   Widget build(BuildContext context) {
     final desktop = context.layoutClass == LayoutClass.expanded;
+    final portrait = context.tabletLayout == TabletLayout.portrait;
+    void onTab(TimingLookTab t) => setState(() => _tab = t);
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: EcGround(
@@ -52,8 +55,18 @@ class _TimingLookScreenState extends ConsumerState<TimingLookScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              desktop ? const _DesktopBar() : _TabletBar(tab: _tab, onTab: (t) => setState(() => _tab = t)),
-              Expanded(child: desktop ? const _DesktopBody() : _TabletBody(tab: _tab)),
+              desktop
+                  ? const _DesktopBar()
+                  : portrait
+                  ? _PortraitBar(tab: _tab, onTab: onTab)
+                  : _TabletBar(tab: _tab, onTab: onTab),
+              Expanded(
+                child: desktop
+                    ? const _DesktopBody()
+                    : portrait
+                    ? _PortraitBody(tab: _tab)
+                    : _TabletBody(tab: _tab),
+              ),
             ],
           ),
         ),
@@ -93,6 +106,100 @@ class _TabletBar extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// P5.1: Editor, the Timing | Look switch in the middle, and Done.
+class _PortraitBar extends StatelessWidget {
+  final TimingLookTab tab;
+  final ValueChanged<TimingLookTab> onTab;
+  const _PortraitBar({required this.tab, required this.onTab});
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 84,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+        child: Row(
+          children: [
+            Expanded(
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: _EditorPill(onTap: () => Navigator.of(context).maybePop()),
+              ),
+            ),
+            SizedBox(
+              width: 258,
+              child: Semantics(
+                header: true,
+                label: tab == TimingLookTab.timing ? 'Timing' : 'Look',
+                child: EcSegmented(
+                  labels: const ['Timing', 'Look'],
+                  selectedIndex: tab.index,
+                  onChanged: (i) => onTab(TimingLookTab.values[i]),
+                ),
+              ),
+            ),
+            Expanded(
+              child: Align(
+                alignment: Alignment.centerRight,
+                child: EcButton(
+                  label: 'Done',
+                  variant: EcButtonVariant.ink,
+                  size: EcButtonSize.medium,
+                  height: 46,
+                  expand: false,
+                  onPressed: () => Navigator.of(context).maybePop(),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// P5.1 / P5.2: the monitor across the top, then Timing — the controls and
+/// the dwell chart at full width — or Look.
+class _PortraitBody extends StatelessWidget {
+  final TimingLookTab tab;
+  const _PortraitBody({required this.tab});
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.palette;
+    Widget card(Widget child) => Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: p.surface,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: p.line),
+      ),
+      child: child,
+    );
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const SizedBox(height: 300, child: _Monitor()),
+          const SizedBox(height: 14),
+          if (tab == TimingLookTab.timing) ...[
+            card(const TimingControls()),
+            const SizedBox(height: 14),
+            const SizedBox(height: 236, child: DwellChart()),
+          ] else
+            card(
+              const Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [LookControls(), SizedBox(height: 18), BackgroundControls(), SizedBox(height: 14), _GuidesNote()],
+              ),
+            ),
+        ],
       ),
     );
   }

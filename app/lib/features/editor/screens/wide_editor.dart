@@ -26,6 +26,8 @@ import '../../monitor/widgets/monitor_view.dart';
 import '../../paste/screens/paste_sheet.dart';
 import '../../project/controllers/project_controller.dart';
 import '../../settings/screens/settings_screen.dart';
+import '../../home/tablet_layout.dart';
+import '../../home/widgets/nav_icons.dart';
 import '../../timing/screens/timing_sheet.dart';
 import '../controllers/editor_ui_controller.dart';
 import '../widgets/block_list.dart';
@@ -63,7 +65,11 @@ class WideEditor extends ConsumerWidget {
               children: [
                 desktop ? const _DesktopBar() : const _TabletBar(),
                 Expanded(
-                  child: desktop ? const _DesktopPanes() : const _TabletPanes(),
+                  child: desktop
+                      ? const _DesktopPanes()
+                      : context.tabletLayout == TabletLayout.portrait
+                      ? const _TabletPortraitPanes()
+                      : const _TabletPanes(),
                 ),
               ],
             ),
@@ -153,7 +159,16 @@ class _TabletBar extends ConsumerWidget {
         padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
         child: Row(
           children: [
-            _BackPill(onTap: () => Navigator.of(context).maybePop()),
+            // P3.1 has the room only for the chevron.
+            if (context.tabletLayout == TabletLayout.portrait)
+              EcCircleButton.glass(
+                icon: Icons.chevron_left_rounded,
+                tooltip: 'Projects',
+                size: 48,
+                onPressed: () => Navigator.of(context).maybePop(),
+              )
+            else
+              _BackPill(onTap: () => Navigator.of(context).maybePop()),
             const SizedBox(width: 14),
             Expanded(
               child: Column(
@@ -361,7 +376,10 @@ class _BarActions extends ConsumerWidget {
             },
           ),
         ),
-        if (user != null) ...[
+        if (user != null && context.isTablet) ...[
+          const SizedBox(width: 8),
+          _SettingsButton(initials: user.initials),
+        ] else if (user != null) ...[
           const SizedBox(width: 8),
           EcAvatar(
             initials: user.initials,
@@ -372,6 +390,59 @@ class _BarActions extends ConsumerWidget {
           ),
         ],
       ],
+    );
+  }
+}
+
+/// T3.1: the avatar and a gear on one white pill — "Settings and
+/// account". It leaves the edit for the Settings tab, on Plan; the project
+/// stays open, so its card in Projects resumes where it was.
+class _SettingsButton extends StatelessWidget {
+  final String initials;
+  const _SettingsButton({required this.initials});
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.palette;
+    final t = context.type;
+    return Tooltip(
+      message: 'Settings and account',
+      child: Semantics(
+        button: true,
+        label: 'Settings and account',
+        excludeSemantics: true,
+        child: Material(
+          color: p.surface,
+          shape: StadiumBorder(side: BorderSide(color: p.line2)),
+          shadowColor: const Color(0x733C2814),
+          elevation: 3,
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
+            onTap: () => leaveEditorForSettings(context),
+            child: Container(
+              height: 48,
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 38,
+                    height: 38,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(gradient: p.primary, shape: BoxShape.circle),
+                    child: Text(
+                      initials,
+                      style: t.titleS.copyWith(fontSize: 12.5, fontWeight: FontWeight.w700, color: p.onInk),
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  SizedBox.square(dimension: 38, child: Center(child: NavIconView(NavIcon.settings, color: p.ink))),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
@@ -571,6 +642,43 @@ class _TabletPanes extends ConsumerWidget {
             child: _Panel(child: _ListPane(actionsOnTop: false)),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// P3.1 — the portrait tablet: the monitor across the top, the transport
+/// under it, then the block list, where the selected block opens in place.
+/// + Block and Paste sit at the foot.
+class _TabletPortraitPanes extends ConsumerWidget {
+  const _TabletPortraitPanes();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 4, 20, 20),
+      child: LayoutBuilder(
+        builder: (context, constraints) => Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            SizedBox(
+              height: (constraints.maxHeight * .31).clamp(220, 360),
+              child: const _MonitorCard(),
+            ),
+            const SizedBox(height: 12),
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 4),
+              child: ScrubBar(),
+            ),
+            const _TransportRow(),
+            const SizedBox(height: 8),
+            const ReadOnlyBanner(),
+            const ReadabilityBanner(),
+            const Expanded(
+              child: _Panel(child: _ListPane(actionsOnTop: false)),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -877,12 +985,46 @@ class _InspectorOrNotices extends ConsumerWidget {
         if (!previewOnDesktop) const ReadOnlyBanner(),
         const ReadabilityBanner(),
         Expanded(
-          child: BlockInspector(
-            fastEntry: context.layoutClass == LayoutClass.expanded,
-            castColumns: context.layoutClass == LayoutClass.medium ? 2 : 1,
-          ),
+          // T3.2: while selecting, the panel says what the selection is.
+          child: context.isTablet && ref.watch(editorUiControllerProvider.select((s) => s.selectMode))
+              ? const _SelectionSummary()
+              : BlockInspector(
+                  fastEntry: context.layoutClass == LayoutClass.expanded,
+                  castColumns: context.layoutClass == LayoutClass.medium ? 2 : 1,
+                ),
         ),
       ],
+    );
+  }
+}
+
+/// T3.2: the selection in words, and how much of the roll it is.
+class _SelectionSummary extends ConsumerWidget {
+  const _SelectionSummary();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final p = context.palette;
+    final t = context.type;
+    final project = ref.watch(projectControllerProvider);
+    final ids = ref.watch(editorUiControllerProvider.select((s) => s.selectedIds));
+    final selected = project.blocks.where((b) => ids.contains(b.id)).toList();
+    final names = [for (final b in selected) describeBlock(b).title];
+    final seconds = selected.fold<double>(0, (sum, b) => sum + (project.blockSeconds[b.id] ?? 0));
+    final text = names.isEmpty
+        ? 'Tap blocks in the list to select them.'
+        : '${names.length == 1 ? names.single : '${names.sublist(0, names.length - 1).join(', ')} and ${names.last}'}. '
+              '${formatClock(seconds)} of the roll’s ${formatClock(project.runtime.inMilliseconds / 1000)}.';
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(18, 18, 18, 18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('SELECTION', style: t.eyebrow.copyWith(fontSize: 10)),
+          const SizedBox(height: 8),
+          Text(text, style: t.body.copyWith(fontSize: 14, height: 1.5, color: p.ink2)),
+        ],
+      ),
     );
   }
 }
@@ -953,7 +1095,10 @@ class _ListPane extends ConsumerWidget {
         const SizedBox(height: 10),
         const Expanded(child: BlockList(bottomInset: 16)),
         if (selectMode)
-          const Padding(padding: EdgeInsets.all(10), child: BulkBar())
+          Padding(
+            padding: const EdgeInsets.all(10),
+            child: context.isTablet ? const TabletBulkBar() : const BulkBar(),
+          )
         else if (!preview)
           actions,
       ],

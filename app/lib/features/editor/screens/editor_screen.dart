@@ -8,6 +8,7 @@ import '../../../core/widgets/ec_scaffold.dart';
 import '../../monitor/widgets/monitor_view.dart';
 import '../../project/controllers/project_controller.dart';
 import '../controllers/editor_ui_controller.dart';
+import '../../export/screens/export_sheet.dart';
 import '../widgets/block_list.dart';
 import '../widgets/editor_dock.dart';
 import '../widgets/read_only_banner.dart';
@@ -38,6 +39,10 @@ class _EditorScreenState extends ConsumerState<EditorScreen> {
     super.initState();
     _project = ref.read(projectControllerProvider.notifier);
     EcOrientationPolicy.editor(true);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (ref.read(editorLaunchProvider.notifier).take() == EditorLaunchAction.export) ExportSheet.show(context);
+    });
 
     // A debounced autosave is a lost edit if the app is backgrounded mid
     // debounce, so a pause flushes whatever is pending immediately.

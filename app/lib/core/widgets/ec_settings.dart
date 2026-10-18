@@ -6,6 +6,18 @@ import '../theme/theme_context.dart';
 import '../theme/tokens.dart';
 import 'ec_sheet.dart';
 
+/// Draws the [EcGroup]s below it as the tablet's Settings cards (T7.1,
+/// P7.1): white, a hairline border, the label inside in mono, rows on
+/// full-width rules, and values in mono with a "›".
+class EcTabletSettings extends InheritedWidget {
+  const EcTabletSettings({super.key, required super.child});
+
+  static bool of(BuildContext context) => context.dependOnInheritedWidgetOfExactType<EcTabletSettings>() != null;
+
+  @override
+  bool updateShouldNotify(EcTabletSettings oldWidget) => false;
+}
+
 /// A labelled group of rows on one glass card, divided by hairlines —
 /// Settings (7.1), Privacy & data (7.4), Subscription (7.3).
 class EcGroup extends StatelessWidget {
@@ -24,6 +36,45 @@ class EcGroup extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final p = context.palette;
+    if (EcTabletSettings.of(context)) {
+      return Container(
+        clipBehavior: Clip.antiAlias,
+        padding: EdgeInsets.fromLTRB(0, label == null ? 6 : 18, 0, 6),
+        decoration: BoxDecoration(
+          color: p.surface,
+          border: Border.all(color: p.line),
+          borderRadius: BorderRadius.circular(24),
+        ),
+        child: Material(
+          type: MaterialType.transparency,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (label != null)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(22, 0, 22, 4),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          caps(label!),
+                          style: context.type.eyebrow.copyWith(fontSize: 10, letterSpacing: 1.4),
+                        ),
+                      ),
+                      ?_note(context),
+                    ],
+                  ),
+                ),
+              for (var i = 0; i < children.length; i++) ...[
+                if (i > 0) Divider(height: 1, color: p.line, indent: 22, endIndent: 22),
+                children[i],
+              ],
+            ],
+          ),
+        ),
+      );
+    }
     // Tablet and desktop (T7.1, D15) draw each group as a white card with
     // its label inside; the phone keeps the label above a glass card.
     if (context.layoutClass.isWide) {
@@ -126,6 +177,51 @@ class EcGroupRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final p = context.palette;
     final t = context.type;
+    if (EcTabletSettings.of(context)) {
+      final arrow = trailing == null && chevron && onTap != null;
+      return InkWell(
+        onTap: onTap,
+        child: ConstrainedBox(
+          constraints: BoxConstraints(minHeight: subtitle == null ? 48 : 56),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 22),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          title,
+                          style: t.row.copyWith(
+                            fontWeight: destructive ? FontWeight.w600 : FontWeight.w400,
+                            color: destructive ? p.warn : p.ink,
+                          ),
+                        ),
+                        if (subtitle != null) ...[
+                          const SizedBox(height: 1),
+                          Text(subtitle!, style: t.caption.copyWith(fontSize: 12)),
+                        ],
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                if (value != null || arrow)
+                  Text(
+                    [?value, if (arrow) '›'].join(' '),
+                    style: t.mono.copyWith(fontSize: 13.5, color: value == null ? p.faint : p.ink2),
+                  ),
+                ?trailing,
+              ],
+            ),
+          ),
+        ),
+      );
+    }
     return InkWell(
       onTap: onTap,
       child: ConstrainedBox(

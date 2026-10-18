@@ -32,11 +32,16 @@ class BlockInspector extends ConsumerWidget {
   /// How many columns a cast's rows run in — two under the tablet monitor.
   final int castColumns;
 
+  /// P3.1: open in place inside the block's row in the list, as tall as
+  /// its settings, rather than filling a panel and scrolling inside it.
+  final bool inline;
+
   const BlockInspector({
     super.key,
     this.padding = const EdgeInsets.fromLTRB(18, 16, 18, 16),
     this.fastEntry = true,
     this.castColumns = 1,
+    this.inline = false,
   });
 
   @override
@@ -100,7 +105,9 @@ class BlockInspector extends ConsumerWidget {
       );
     }
 
+    final body = Padding(padding: padding.resolve(TextDirection.ltr).copyWith(top: 14), child: editor);
     return Column(
+      mainAxisSize: inline ? MainAxisSize.min : MainAxisSize.max,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Padding(
@@ -114,7 +121,10 @@ class BlockInspector extends ConsumerWidget {
                   children: [
                     Text(caps(eyebrow), style: t.eyebrow.copyWith(fontSize: 10)),
                     const SizedBox(height: 4),
-                    Semantics(header: true, child: Text(title, style: t.displayM.copyWith(fontSize: 28, height: 1.05))),
+                    Semantics(
+                      header: true,
+                      child: Text(title, style: t.displayM.copyWith(fontSize: inline ? 24 : 28, height: 1.05)),
+                    ),
                     if (detail.isNotEmpty) ...[
                       const SizedBox(height: 4),
                       Text(
@@ -131,9 +141,7 @@ class BlockInspector extends ConsumerWidget {
             ],
           ),
         ),
-        Expanded(
-          child: SingleChildScrollView(padding: padding.resolve(TextDirection.ltr).copyWith(top: 14), child: editor),
-        ),
+        if (inline) body else Expanded(child: SingleChildScrollView(child: body)),
         if (fastEntry && block is PairListBlock && !readOnly)
           Padding(
             padding: padding.resolve(TextDirection.ltr).copyWith(top: 0),

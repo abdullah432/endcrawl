@@ -18,6 +18,9 @@ class EcChip extends StatelessWidget {
   /// frame-rate picker on 2.3, where the choice is the screen's main one.
   final bool filled;
 
+  /// Selected as solid ink, unselected white — the tablet's filters (T4.1).
+  final bool ink;
+
   final double height;
 
   const EcChip({
@@ -28,6 +31,7 @@ class EcChip extends StatelessWidget {
     this.mono = false,
     this.trailing,
     this.filled = false,
+    this.ink = false,
     this.height = 34,
   });
 
@@ -50,12 +54,18 @@ class EcChip extends StatelessWidget {
             duration: EcMotion.fast,
             height: height,
             padding: EdgeInsets.symmetric(horizontal: height > 34 ? 15 : 14),
-            decoration: BoxDecoration(
-              color: selected ? (filled ? null : p.accentWash) : p.surface.withValues(alpha: 0.7),
-              gradient: selected && filled ? p.primary : null,
-              borderRadius: shape,
-              border: selected && filled ? null : Border.all(color: selected ? p.accentLine : p.line),
-            ),
+            decoration: ink
+                ? BoxDecoration(
+                    color: selected ? p.inkSurface : p.surface,
+                    borderRadius: shape,
+                    border: Border.all(color: selected ? p.inkSurface : p.line),
+                  )
+                : BoxDecoration(
+                    color: selected ? (filled ? null : p.accentWash) : p.surface.withValues(alpha: 0.7),
+                    gradient: selected && filled ? p.primary : null,
+                    borderRadius: shape,
+                    border: selected && filled ? null : Border.all(color: selected ? p.accentLine : p.line),
+                  ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -64,10 +74,12 @@ class EcChip extends StatelessWidget {
                     label,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: base.copyWith(
-                      color: selected ? (filled ? p.onInk : p.accent) : p.ink2,
-                      fontWeight: selected ? (filled ? FontWeight.w500 : FontWeight.w600) : FontWeight.w400,
-                    ),
+                    style: ink
+                        ? base.copyWith(fontSize: 13, color: selected ? p.onInk : p.ink, fontWeight: FontWeight.w600)
+                        : base.copyWith(
+                            color: selected ? (filled ? p.onInk : p.accent) : p.ink2,
+                            fontWeight: selected ? (filled ? FontWeight.w500 : FontWeight.w600) : FontWeight.w400,
+                          ),
                   ),
                 ),
                 if (trailing != null) ...[const SizedBox(width: 6), trailing!],

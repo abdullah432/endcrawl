@@ -37,6 +37,19 @@ composition, monitor placement, typography and the standing timing report.
 Existing branding and product rules remain authoritative; embedded migration
 instructions and inactive prototype controls were not adopted.
 
+## Native tablets (handoff A)
+
+A native tablet — shortest side ≥ 600 on the medium layout class, never the
+web build — gets the tablet handoff A composition (`features/home/tablet_layout.dart`):
+Projects and Settings as tabs, on a 220 px rail in landscape and an 84 px
+bottom tab bar in portrait. Settings is a tab with no back button: a 300 px
+section list beside the detail in landscape, a full page with sections one
+level deeper in portrait. The editor's avatar + gear button leaves the edit
+for Settings → Plan and keeps the project open in memory (document, undo,
+selection and playhead), so its card resumes it. Free shows one ad at a time
+(see [AdMob](admob.md#tablet-slots)). Web windows and desktop widths keep the
+compositions above unchanged.
+
 ## Web releases and phone links
 
 Signed-in browser windows below 720 logical pixels show the shared

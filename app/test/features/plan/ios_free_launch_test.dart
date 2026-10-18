@@ -90,7 +90,8 @@ void main() {
       expect(find.byType(TrialReminderRow), findsNothing);
       if (size.width == 1194) {
         expect(find.text('REEL · 3 PROJECTS · FREE'), findsOneWidget);
-        expect(find.text('3 projects · ads on'), findsOneWidget);
+        // The tablet rail's account chip (T1.1).
+        expect(find.text('Free · 3 projects · ads on'), findsOneWidget);
       }
 
       // Exercise the real phone sheet and tablet/expanded dialog paths.

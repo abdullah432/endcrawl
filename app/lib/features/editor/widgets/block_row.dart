@@ -15,6 +15,8 @@ import '../../project/controllers/project_controller.dart';
 import '../controllers/editor_ui_controller.dart';
 import 'read_only_banner.dart';
 import '../editor_actions.dart';
+import '../../blocks/widgets/block_inspector.dart';
+import '../../home/tablet_layout.dart';
 
 /// One block in the editor's list (3.1): code tile, title, detail, its
 /// share of the runtime, and a drag handle.
@@ -140,6 +142,28 @@ class BlockRow extends ConsumerWidget {
           button: true,
           label: '${description.title}${description.detail.isEmpty ? '' : ', ${description.detail}'}',
           child: selecting || readOnly ? dense : ReorderableDragStartListener(index: index, child: dense),
+        ),
+      );
+    }
+
+    // P3.1 — a portrait tablet opens the selected block in place in the
+    // list, its settings under its name.
+    if (focused && context.tabletLayout == TabletLayout.portrait) {
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 8),
+        child: Container(
+          decoration: BoxDecoration(
+            color: p.surface,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: p.accentSolid, width: 1.5),
+            boxShadow: [BoxShadow(color: p.accentWash, spreadRadius: 4)],
+          ),
+          child: const BlockInspector(
+            inline: true,
+            fastEntry: false,
+            castColumns: 2,
+            padding: EdgeInsets.fromLTRB(14, 14, 14, 14),
+          ),
         ),
       );
     }

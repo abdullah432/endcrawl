@@ -7,7 +7,11 @@ import 'read_only_banner.dart';
 import '../../../core/theme/theme_context.dart';
 import '../../../core/utils/formatting.dart';
 import '../../../core/widgets/ec_option_sheet.dart';
+import '../../../core/widgets/ec_button.dart';
+import '../../../core/widgets/ec_dialog.dart';
 import '../../../core/widgets/ec_toast.dart';
+import '../../../domain/models/block_catalog.dart';
+import '../../../domain/models/project_settings.dart';
 import '../../../domain/models/credit_block.dart';
 import '../../blocks/screens/add_block_sheet.dart';
 import '../../export/screens/export_sheet.dart';
@@ -180,9 +184,11 @@ class BulkBar extends ConsumerWidget {
     );
   }
 
-  /// Offers the styles the selection actually has: leaders for cast and
-  /// crew lists, columns for name lists.
-  Future<void> _restyle(BuildContext context, ProjectController controller, List<CreditBlock> selected) async {
+}
+
+/// Offers the styles the selection actually has: leaders for cast and
+/// crew lists, columns for name lists.
+Future<void> _restyle(BuildContext context, ProjectController controller, List<CreditBlock> selected) async {
     final hasPairs = selected.any((b) => b is PairListBlock);
     final hasNames = selected.any((b) => b is NameListBlock);
     if (!hasPairs && !hasNames) {
@@ -208,5 +214,114 @@ class BulkBar extends ConsumerWidget {
     );
     if (choice == null) return;
     controller.restyle({for (final b in selected) b.id}, leader: choice.$1, columns: choice.$2);
+}
+
+/// T3.2 — select mode on a tablet: the batch actions as three pills at the
+/// foot of the list. Removing asks once, says what happens to the timing,
+/// and offers undo.
+class TabletBulkBar extends ConsumerWidget {
+  const TabletBulkBar({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final p = context.palette;
+    final t = context.type;
+    final ids = ref.watch(editorUiControllerProvider.select((s) => s.selectedIds));
+    final blocks = ref.watch(projectControllerProvider.select((s) => s.blocks));
+    final controller = ref.read(projectControllerProvider.notifier);
+    final selected = blocks.where((b) => ids.contains(b.id)).toList();
+    final allMuted = selected.isNotEmpty && selected.every((b) => b.muted);
+    final enabled = selected.isNotEmpty;
+
+    Widget pill(String label, VoidCallback onTap, {bool destructive = false}) => Expanded(
+      child: SizedBox(
+        height: 46,
+        child: OutlinedButton(
+          onPressed: enabled ? onTap : null,
+          style: OutlinedButton.styleFrom(
+            foregroundColor: destructive ? p.warn : p.ink,
+            backgroundColor: destructive ? p.warnWash : p.surface,
+            side: BorderSide(color: destructive ? p.warnLine : p.line2),
+            shape: const StadiumBorder(),
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            textStyle: t.buttonSmall.copyWith(fontSize: 14, fontWeight: FontWeight.w600),
+          ),
+          child: Text(label),
+        ),
+      ),
+    );
+
+    return Row(
+      children: [
+        pill('Restyle', () => _restyle(context, controller, selected)),
+        const SizedBox(width: 8),
+        pill(allMuted ? 'Unmute' : 'Mute', () => controller.bulkMute(ids)),
+        const SizedBox(width: 8),
+        pill('Remove', () => _remove(context, ref, selected), destructive: true),
+      ],
+    );
+  }
+
+  Future<void> _remove(BuildContext context, WidgetRef ref, List<CreditBlock> selected) async {
+    final controller = ref.read(projectControllerProvider.notifier);
+    final project = ref.read(projectControllerProvider);
+    final count = plural(selected.length, 'block');
+    final names = [for (final b in selected) describeBlock(b).title];
+    final listed = names.length == 1
+        ? names.single
+        : '${names.sublist(0, names.length - 1).join(', ')} and ${names.last}';
+    final runtime = formatRuntime(project.runtime);
+    final timing = project.settings.mode == TimingMode.duration
+        ? 'Runtime stays locked at $runtime, so the scroll slows to fill it.'
+        : 'The roll gets shorter; its speed stays the same.';
+    final confirmed = await showEcDialog<bool>(
+      context,
+      builder: (dialog) {
+        final t = dialog.type;
+        return EcDialog(
+          width: 460,
+          semanticLabel: 'Remove $count?',
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text('Remove $count?', style: t.displayM.copyWith(fontSize: 30)),
+              const SizedBox(height: 12),
+              Text(
+                '$listed ${selected.length == 1 ? 'leaves' : 'leave'} the roll. $timing You can undo right after.',
+                style: t.body.copyWith(fontSize: 14, height: 1.5, color: dialog.palette.ink2),
+              ),
+              const SizedBox(height: 22),
+              Row(
+                children: [
+                  Expanded(
+                    child: EcButton.secondary(
+                      label: 'Cancel',
+                      size: EcButtonSize.medium,
+                      height: 50,
+                      onPressed: () => Navigator.of(dialog).pop(false),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: EcButton(
+                      label: 'Remove $count',
+                      variant: EcButtonVariant.destructive,
+                      size: EcButtonSize.medium,
+                      height: 50,
+                      onPressed: () => Navigator.of(dialog).pop(true),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+    );
+    if (confirmed != true || !context.mounted) return;
+    controller.bulkDelete({for (final b in selected) b.id});
+    ref.read(editorUiControllerProvider.notifier).exitSelectMode();
+    showEcToast(context, 'Removed $count', actionLabel: 'Undo', onAction: controller.undo);
   }
 }

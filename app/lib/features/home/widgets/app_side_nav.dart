@@ -5,6 +5,7 @@ import '../../../bootstrap.dart';
 import '../../../core/config/app_links.dart';
 import '../../../core/layout/layout_class.dart';
 import '../../../core/theme/theme_context.dart';
+import '../../../core/utils/formatting.dart';
 import '../../../core/widgets/ec_dashed_border.dart';
 import '../../../core/widgets/ec_logo.dart';
 import '../../../core/widgets/ec_surfaces.dart';
@@ -13,6 +14,8 @@ import '../../access/controllers/web_access.dart';
 import '../../access/screens/web_access_screen.dart';
 import '../../library/controllers/library_controller.dart';
 import '../../plan/controllers/release_policy.dart';
+import '../tablet_layout.dart';
+import 'nav_icons.dart';
 
 enum HomeDestination { projects, settings }
 
@@ -31,6 +34,9 @@ class AppSideNav extends ConsumerWidget {
     final p = context.palette;
     final desktop = context.layoutClass == LayoutClass.expanded;
     final user = ref.watch(authStateProvider).value;
+    // The tablet rail (T1.1): icons beside the labels, and the account
+    // chip at its foot in place of the plan status.
+    final tablet = context.isTablet;
 
     return Container(
       width: desktop ? 248 : 220,
@@ -51,6 +57,7 @@ class AppSideNav extends ConsumerWidget {
           ),
           _NavItem(
             label: 'Projects',
+            icon: tablet ? NavIcon.projects : null,
             selected: selected == HomeDestination.projects,
             desktop: desktop,
             onTap: () => onSelect(HomeDestination.projects),
@@ -58,12 +65,13 @@ class AppSideNav extends ConsumerWidget {
           const SizedBox(height: 6),
           _NavItem(
             label: 'Settings',
+            icon: tablet ? NavIcon.settings : null,
             selected: selected == HomeDestination.settings,
             desktop: desktop,
             onTap: () => onSelect(HomeDestination.settings),
           ),
           const Spacer(),
-          _PlanStatus(desktop: desktop),
+          if (tablet) const AccountChip() else _PlanStatus(desktop: desktop),
           if (desktop && user != null)
             Padding(
               padding: const EdgeInsets.fromLTRB(8, 12, 8, 0),
@@ -102,11 +110,12 @@ class AppSideNav extends ConsumerWidget {
 
 class _NavItem extends StatelessWidget {
   final String label;
+  final NavIcon? icon;
   final bool selected;
   final bool desktop;
   final VoidCallback onTap;
 
-  const _NavItem({required this.label, required this.selected, required this.desktop, required this.onTap});
+  const _NavItem({required this.label, this.icon, required this.selected, required this.desktop, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -130,16 +139,25 @@ class _NavItem extends StatelessWidget {
               boxShadow: selected ? p.rowShadow : null,
             ),
             padding: const EdgeInsets.symmetric(horizontal: 14),
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: Text(
-                label,
-                style: t.row.copyWith(
-                  fontSize: desktop ? 14 : 14.5,
-                  fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
-                  color: selected ? p.ink : p.ink2,
+            child: Row(
+              children: [
+                if (icon != null) ...[
+                  NavIconView(icon!, size: 18, color: selected ? p.ink : p.ink2),
+                  const SizedBox(width: 10),
+                ],
+                Flexible(
+                  child: Text(
+                    label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: t.row.copyWith(
+                      fontSize: desktop ? 14 : 14.5,
+                      fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+                      color: selected ? p.ink : p.ink2,
+                    ),
+                  ),
                 ),
-              ),
+              ],
             ),
           ),
         ),
@@ -237,5 +255,77 @@ class _PlanStatus extends ConsumerWidget {
       ),
       child: content,
     );
+  }
+}
+
+/// The tablet rail's foot (T1.1): who is signed in and their plan, as
+/// information rather than a button — "Free · 2 of 2 · ads on" or "Pro".
+class AccountChip extends ConsumerWidget {
+  const AccountChip({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final p = context.palette;
+    final t = context.type;
+    final user = ref.watch(authStateProvider).value;
+    if (user == null) return const SizedBox.shrink();
+    final first = user.label.split(RegExp(r'\s+')).first;
+    return Semantics(
+      container: true,
+      label: '$first, ${planLine(ref)}',
+      excludeSemantics: true,
+      child: EcDashedBorder(
+        radius: 16,
+        color: p.line2,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          child: Row(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(gradient: p.primary, shape: BoxShape.circle),
+                child: Text(
+                  user.initials,
+                  style: t.titleS.copyWith(fontSize: 12, fontWeight: FontWeight.w700, color: p.onInk),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      first,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: t.titleS.copyWith(fontSize: 13, fontWeight: FontWeight.w700),
+                    ),
+                    Text(
+                      planLine(ref),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: t.caption.copyWith(fontSize: 11),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// "Pro", "Pro trial", or "Free · 2 of 2 · ads on" ("Free · 3 projects ·
+  /// ads on" while the free plan has no cap).
+  static String planLine(WidgetRef ref) {
+    final entitlement = ref.watch(entitlementProvider).value ?? const Entitlement.free();
+    if (entitlement.isTrial) return 'Pro trial';
+    if (entitlement.isPro) return 'Pro';
+    final count = ref.watch(projectSummariesProvider).value?.length ?? 0;
+    final limit = ref.watch(projectLimitProvider);
+    return limit == null ? 'Free · ${plural(count, 'project')} · ads on' : 'Free · $count of $limit · ads on';
   }
 }

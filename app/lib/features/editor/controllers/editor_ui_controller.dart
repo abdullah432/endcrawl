@@ -60,3 +60,23 @@ class EditorUiController extends Notifier<EditorUiState> {
 /// into the next project opened.
 final editorUiControllerProvider =
     NotifierProvider.autoDispose<EditorUiController, EditorUiState>(EditorUiController.new);
+
+/// What the editor does once it is on screen, asked for by whoever opened
+/// it — "Export…" in the tablet's project menu (T1.3) opens the export
+/// panel. Read once, then cleared.
+enum EditorLaunchAction { export }
+
+class EditorLaunch extends Notifier<EditorLaunchAction?> {
+  @override
+  EditorLaunchAction? build() => null;
+
+  void request(EditorLaunchAction? action) => state = action;
+
+  EditorLaunchAction? take() {
+    final action = state;
+    state = null;
+    return action;
+  }
+}
+
+final editorLaunchProvider = NotifierProvider<EditorLaunch, EditorLaunchAction?>(EditorLaunch.new);

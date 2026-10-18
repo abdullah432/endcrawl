@@ -7,7 +7,15 @@ import '../../../core/widgets/ec_credit_frame.dart';
 import '../../../core/widgets/ec_sheet.dart';
 import '../../../domain/models/project.dart';
 
-enum ProjectAction { open, duplicate, rename, delete }
+enum ProjectAction {
+  open,
+  duplicate,
+  rename,
+
+  /// Open in the editor with the export panel up (the tablet menu, T1.3).
+  export,
+  delete,
+}
 
 /// 1.3 — what you can do with a project.
 ///

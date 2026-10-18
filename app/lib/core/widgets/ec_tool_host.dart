@@ -25,9 +25,14 @@ class EcToolHost extends InheritedWidget {
 /// Only the mounted tool subtree sees this completion callback.
 class EcPanelPresentation extends InheritedWidget {
   final void Function(Object? result) complete;
+
+  /// The panel is a whole page (the tablet's export, T6.1): square, with
+  /// no shadow of its own.
+  final bool fullScreen;
   const EcPanelPresentation({
     super.key,
     required this.complete,
+    this.fullScreen = false,
     required super.child,
   });
   static EcPanelPresentation? maybeOf(BuildContext context) =>
@@ -35,7 +40,7 @@ class EcPanelPresentation extends InheritedWidget {
 
   @override
   bool updateShouldNotify(EcPanelPresentation oldWidget) =>
-      complete != oldWidget.complete;
+      complete != oldWidget.complete || fullScreen != oldWidget.fullScreen;
 }
 
 void closeEcSheet<T>(BuildContext context, [T? result]) {

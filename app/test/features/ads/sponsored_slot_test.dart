@@ -18,6 +18,7 @@ class _CountingAds extends FakeAdService {
   Widget nativeAd(
     AdPlacement placement, {
     required Widget Function(Widget creative) framed,
+    AdSlotStyle style = const AdSlotStyle(),
   }) {
     nativeRequests++;
     return const Text('Native inventory');

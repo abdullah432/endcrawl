@@ -161,11 +161,18 @@ class FakeAdService implements AdService {
   int appOpenShown = 0;
   int appOpenPreloaded = 0;
 
+  /// The slots asked for, in order, with how each is drawn.
+  final requested = <(AdPlacement, AdSlotStyle)>[];
+
   @override
   Widget nativeAd(
     AdPlacement placement, {
     required Widget Function(Widget creative) framed,
-  }) => const PlaceholderAdService().nativeAd(placement, framed: framed);
+    AdSlotStyle style = const AdSlotStyle(),
+  }) {
+    requested.add((placement, style));
+    return const PlaceholderAdService().nativeAd(placement, framed: framed, style: style);
+  }
 
   @override
   Future<void> showAppOpen() async => appOpenShown++;

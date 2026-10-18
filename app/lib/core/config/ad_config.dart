@@ -14,6 +14,10 @@ class AdUnits {
   final String renderingNative;
   final String exportReadyNative;
 
+  /// Under the tablet Settings list (T7.1). Shares the library's unit
+  /// until a unit of its own is created in AdMob.
+  String get settingsNative => libraryNative;
+
   /// "Watch ad · render once" (6.1a) — a rewarded interstitial.
   final String proRenderRewarded;
 

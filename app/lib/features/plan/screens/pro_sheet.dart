@@ -19,6 +19,7 @@ import '../../settings/screens/legal_document_screen.dart';
 import '../../settings/models/legal_document.dart';
 import '../controllers/plan_controller.dart';
 import '../controllers/release_policy.dart';
+import '../../home/tablet_layout.dart';
 
 /// 6.5 — LastReel Pro.
 ///
@@ -38,6 +39,11 @@ class ProSheet extends ConsumerWidget {
     if (ProviderScope.containerOf(context, listen: false).read(iosFreeLaunchProvider)) return;
     if (kIsWeb) {
       await MobileSubscriptionCard.show(context);
+    } else if (context.isTablet) {
+      // T6.3 / P6.3: the whole screen, the black panel beside or above.
+      await Navigator.of(context).push(
+        MaterialPageRoute<void>(fullscreenDialog: true, builder: (_) => ProSheet(source: source)),
+      );
     } else {
       await showEcSheet<void>(context, builder: (_) => ProSheet(source: source));
     }
@@ -64,6 +70,7 @@ class ProSheet extends ConsumerWidget {
     final trialEnds = selected != null && selected.hasTrial
         ? ref.read(clockProvider)().add(Duration(days: selected.trialDays!))
         : null;
+    if (context.isTablet) return _tablet(context, ref, trialEnds);
 
     return EcSheet(
       maxHeightFraction: 0.94,
@@ -213,6 +220,194 @@ class ProSheet extends ConsumerWidget {
   }
 }
 
+extension on ProSheet {
+  /// T6.3 / P6.3 — the black panel says what Pro is; the other side
+  /// compares the plans, then the plans, the button and the way back.
+  Widget _tablet(BuildContext context, WidgetRef ref, DateTime? trialEnds) {
+    final state = ref.watch(planControllerProvider);
+    final controller = ref.read(planControllerProvider.notifier);
+    final p = context.palette;
+    final t = context.type;
+    final selected = state.selected;
+    final portrait = context.tabletLayout == TabletLayout.portrait;
+    final white = Colors.white;
+
+    final hero = DecoratedBox(
+      decoration: const BoxDecoration(
+        gradient: RadialGradient(
+          center: Alignment(-1, -1),
+          radius: 1.2,
+          colors: [Color(0x6B0C8CE9), Color(0x000C8CE9)],
+          stops: [0, .5],
+        ),
+      ),
+      child: SafeArea(
+        right: portrait,
+        bottom: !portrait,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(44, 40, 44, 40),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Material(
+                color: white.withValues(alpha: .14),
+                shape: CircleBorder(side: BorderSide(color: white.withValues(alpha: .2))),
+                clipBehavior: Clip.antiAlias,
+                child: IconButton(
+                  tooltip: 'Close',
+                  onPressed: () => Navigator.of(context).maybePop(),
+                  icon: Icon(Icons.close_rounded, size: 18, color: white),
+                ),
+              ),
+              const Spacer(),
+              Text('LASTREEL PRO', style: t.mono.copyWith(fontSize: 10.5, letterSpacing: 1.6, color: white.withValues(alpha: .6))),
+              const SizedBox(height: 14),
+              Semantics(
+                header: true,
+                child: Text.rich(
+                  TextSpan(
+                    children: [
+                      const TextSpan(text: 'Unlimited projects. '),
+                      TextSpan(text: 'Pro formats', style: TextStyle(fontStyle: FontStyle.italic, color: white)),
+                      const TextSpan(text: '. No ads.'),
+                    ],
+                  ),
+                  style: t.displayXL.copyWith(fontSize: portrait ? 54 : 52, height: 1.05, color: white),
+                ),
+              ),
+              const SizedBox(height: 14),
+              Text(
+                'Pro also unlocks LastReel on the web, on the same account.',
+                style: t.body.copyWith(fontSize: 14, color: white.withValues(alpha: .75)),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    final details = SafeArea(
+      left: portrait,
+      top: !portrait,
+      child: Padding(
+        padding: portrait ? const EdgeInsets.fromLTRB(44, 32, 44, 28) : const EdgeInsets.fromLTRB(44, 40, 44, 28),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Expanded(
+              child: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    if (!portrait) ...[
+                      Text(
+                        'Free has every block, timing and look tool. Pro lifts the '
+                        '${numberWord(Entitlement.freeProjectLimit)}-project cap, unlocks ProRes, PNG and 4K on every '
+                        'render, and removes ads.',
+                        style: t.body.copyWith(fontSize: 15, height: 1.5, color: p.ink2),
+                      ),
+                      const SizedBox(height: 18),
+                    ],
+                    _ComparisonTable(rows: ProSheet._comparison, open: true),
+                    const SizedBox(height: 22),
+                    if (!state.loading && state.offers.isEmpty)
+                      EcButton(label: 'Retry loading plans', variant: EcButtonVariant.text, onPressed: controller.loadOffers),
+                    Row(
+                      children: [
+                        for (final (i, offer) in state.offers.indexed) ...[
+                          if (i > 0) const SizedBox(width: 10),
+                          Expanded(
+                            child: _OfferTile(offer: offer, selected: offer == selected, onTap: () => controller.select(offer)),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            if (state.message != null) ...[
+              EcNotice(tone: EcTone.neutral, title: state.message!, icon: Icons.info_outline_rounded),
+              const SizedBox(height: 10),
+            ],
+            EcButton(
+              label: state.loading
+                  ? 'Loading plans…'
+                  : selected == null
+                  ? 'Plans unavailable'
+                  : selected.ctaLabel,
+              height: 56,
+              busy: state.purchasing,
+              onPressed: state.busy || state.loading || selected == null
+                  ? null
+                  : () async {
+                      final ok = await controller.purchase(source: source);
+                      if (ok && context.mounted) Navigator.of(context).pop();
+                    },
+            ),
+            const SizedBox(height: 8),
+            Text(
+              selected != null && trialEnds != null
+                  ? 'Free until ${formatDayMonth(trialEnds)}, then ${selected.price}${selected.perPeriod}. '
+                        'Cancel before then and you pay nothing. Billing and cancellation happen in ${AppLinks.storeName}.'
+                  : 'Billing and cancellation happen in ${AppLinks.storeName}.',
+              textAlign: TextAlign.center,
+              style: t.caption,
+            ),
+            const SizedBox(height: 4),
+            Wrap(
+              alignment: WrapAlignment.center,
+              spacing: 8,
+              children: [
+                EcButton(
+                  label: 'Restore purchase',
+                  variant: EcButtonVariant.text,
+                  size: EcButtonSize.small,
+                  busy: state.restoring,
+                  onPressed: state.busy ? null : controller.restore,
+                ),
+                EcButton(
+                  label: 'Stay on Free',
+                  variant: EcButtonVariant.plain,
+                  size: EcButtonSize.small,
+                  onPressed: () => Navigator.of(context).maybePop(),
+                ),
+                EcButton(
+                  label: 'Terms',
+                  variant: EcButtonVariant.plain,
+                  size: EcButtonSize.small,
+                  onPressed: () => LegalDocumentScreen.open(context, termsOfService),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+
+    final panel = ColoredBox(color: Colors.black, child: hero);
+    return Scaffold(
+      backgroundColor: p.sheet,
+      body: portrait
+          ? Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                SizedBox(height: 400 + MediaQuery.paddingOf(context).top, child: panel),
+                Expanded(child: details),
+              ],
+            )
+          : Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                SizedBox(width: 440, child: panel),
+                Expanded(child: details),
+              ],
+            ),
+    );
+  }
+}
+
 class _OfferTile extends StatelessWidget {
   final PlanOffer offer;
   final bool selected;
@@ -282,7 +477,10 @@ class _OfferTile extends StatelessWidget {
 
 class _ComparisonTable extends StatelessWidget {
   final List<(String, String, String)> rows;
-  const _ComparisonTable({required this.rows});
+
+  /// T6.3: straight on the page, rules between rows, no card.
+  final bool open;
+  const _ComparisonTable({required this.rows, this.open = false});
 
   @override
   Widget build(BuildContext context) {
@@ -291,12 +489,12 @@ class _ComparisonTable extends StatelessWidget {
     Widget row(String a, String b, String c, {bool header = false}) {
       final base = header
           ? t.pill.copyWith(color: p.muted)
-          : t.bodyS.copyWith(fontSize: 12);
+          : t.bodyS.copyWith(fontSize: open ? 14 : 12);
       return Container(
-        color: header ? p.tint : null,
+        color: header && !open ? p.tint : null,
         padding: EdgeInsets.symmetric(
-          horizontal: 14,
-          vertical: header ? 10 : 11,
+          horizontal: open ? 0 : 14,
+          vertical: header ? 10 : (open ? 11 : 11),
         ),
         child: Row(
           children: [
@@ -328,6 +526,17 @@ class _ComparisonTable extends StatelessWidget {
       );
     }
 
+    if (open) {
+      return Column(
+        children: [
+          row('Plan', 'Free', 'Pro', header: true),
+          for (final (a, b, c) in rows) ...[
+            Divider(height: 1, color: p.line),
+            row(a, b, c),
+          ],
+        ],
+      );
+    }
     return Container(
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(

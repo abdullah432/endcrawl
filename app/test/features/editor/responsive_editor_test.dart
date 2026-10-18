@@ -46,14 +46,18 @@ void main() {
       await tester.tap(find.text('The Long Way Down'));
       await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);
-      expect(
-        find.text(
-          size.width < 800 || size.height <= 600
-              ? 'Select a block to edit'
-              : 'Select a block to edit it here.',
-        ),
-        findsOneWidget,
-      );
+      // A portrait tablet (P3.1) opens the selected block in place in the
+      // list, so it has no empty panel to explain.
+      if (size != const Size(834, 1194)) {
+        expect(
+          find.text(
+            size.width < 800 || size.height <= 600
+                ? 'Select a block to edit'
+                : 'Select a block to edit it here.',
+          ),
+          findsOneWidget,
+        );
+      }
       await tester.ensureVisible(
         find.byWidgetPredicate((w) => w is BlockRow && w.block.id == 'cst'),
       );

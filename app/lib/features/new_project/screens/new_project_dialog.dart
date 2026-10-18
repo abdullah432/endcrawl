@@ -15,11 +15,13 @@ import '../../../core/widgets/ec_scaffold.dart';
 import '../../../core/widgets/ec_surfaces.dart';
 import '../../../data/repositories/template_repository.dart';
 import '../../../domain/models/canvas_format.dart';
+import '../../../domain/models/project.dart';
 import '../../../domain/models/user_profile.dart';
 import '../../project/controllers/project_controller.dart';
 import '../../project/project_navigation.dart';
 import '../controllers/new_project_controller.dart';
 import 'new_project_sheet.dart';
+import '../../home/tablet_layout.dart';
 
 /// T2.1 / D10 — the phone's three steps (2.1 → 2.2 → 2.3) as one dialog:
 /// template on the left, name, canvas and frame rate on the right, so the
@@ -33,8 +35,12 @@ class NewProjectDialog extends ConsumerStatefulWidget {
   final String slotLabel;
   const NewProjectDialog({super.key, required this.slotLabel});
 
-  static Future<void> show(BuildContext context, {required String slotLabel}) =>
-      showEcDialog<void>(context, builder: (_) => NewProjectDialog(slotLabel: slotLabel));
+  /// On a tablet the dialog fills the screen (T2.1, P2.1).
+  static Future<void> show(BuildContext context, {required String slotLabel}) => context.isTablet
+      ? Navigator.of(context).push(
+          MaterialPageRoute<void>(fullscreenDialog: true, builder: (_) => NewProjectDialog(slotLabel: slotLabel)),
+        )
+      : showEcDialog<void>(context, builder: (_) => NewProjectDialog(slotLabel: slotLabel));
 
   @override
   ConsumerState<NewProjectDialog> createState() => _NewProjectDialogState();
@@ -94,6 +100,114 @@ class _NewProjectDialogState extends ConsumerState<NewProjectDialog> {
     if (host.mounted) await enterEditor(host);
   }
 
+  /// T2.1 / P2.1 — full screen on the sheet colour. Landscape keeps the
+  /// templates beside the canvas settings; portrait puts the templates two
+  /// by two above them, and Create at the foot, under the thumb.
+  Widget _tablet(BuildContext context, TabletLayout layout, ProjectSummary? recovery) {
+    final t = context.type;
+    final portrait = layout == TabletLayout.portrait;
+    final settings = _CanvasPanel(
+      name: _name,
+      formatId: _formatId,
+      fps: _fps,
+      template: _template,
+      showBlocks: false,
+      onFormat: (id) => setState(() => _formatId = id),
+      onFps: (fps) => setState(() => _fps = fps),
+      onCreate: portrait || _creating ? null : _create,
+      creating: !portrait && _creating,
+      bare: portrait,
+    );
+    final templates = _TemplateGrid(selected: _template, onPick: _pick);
+    return Scaffold(
+      backgroundColor: context.palette.sheet,
+      body: SafeArea(
+        child: Semantics(
+          scopesRoute: true,
+          namesRoute: true,
+          explicitChildNodes: true,
+          label: 'New project',
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(32, 32, 32, 16),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            caps('New project · ${widget.slotLabel}'),
+                            style: t.eyebrow.copyWith(fontSize: 10.5, letterSpacing: 10.5 * .14),
+                          ),
+                          const SizedBox(height: 8),
+                          Semantics(
+                            header: true,
+                            child: Text('Pick a starting point.', style: t.displayL.copyWith(fontSize: portrait ? 44 : 42)),
+                          ),
+                        ],
+                      ),
+                    ),
+                    EcCircleButton.surface(
+                      icon: Icons.close_rounded,
+                      tooltip: 'Close',
+                      size: 48,
+                      onPressed: () => Navigator.of(context).pop(),
+                    ),
+                  ],
+                ),
+              ),
+              if (recovery != null)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(32, 0, 32, 16),
+                  child: RecoveryCard(summary: recovery),
+                ),
+              Expanded(
+                child: portrait
+                    ? SingleChildScrollView(
+                        padding: const EdgeInsets.fromLTRB(32, 0, 32, 24),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [templates, const SizedBox(height: 24), settings],
+                        ),
+                      )
+                    : Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 32),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(
+                              child: SingleChildScrollView(padding: const EdgeInsets.only(bottom: 24), child: templates),
+                            ),
+                            const SizedBox(width: 20),
+                            SizedBox(
+                              width: 380,
+                              child: SingleChildScrollView(padding: const EdgeInsets.only(bottom: 24), child: settings),
+                            ),
+                          ],
+                        ),
+                      ),
+              ),
+              if (portrait)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(32, 8, 32, 28),
+                  child: EcButton(
+                    label: 'Create project',
+                    height: 58,
+                    busy: _creating,
+                    onPressed: _creating ? null : _create,
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final t = context.type;
@@ -113,6 +227,9 @@ class _NewProjectDialogState extends ConsumerState<NewProjectDialog> {
       onCreate: desktop || _creating ? null : _create,
       creating: _creating,
     );
+
+    final tablet = context.tabletLayout;
+    if (tablet != null) return _tablet(context, tablet, recovery);
 
     return EcDialog(
       width: desktop ? 1060 : screen.width - 40,
@@ -365,6 +482,10 @@ class _CanvasPanel extends ConsumerWidget {
   final VoidCallback? onCreate;
   final bool creating;
 
+  /// P2.1: straight on the sheet, with aspect ratio and frame rate side by
+  /// side, as segmented controls.
+  final bool bare;
+
   const _CanvasPanel({
     required this.name,
     required this.formatId,
@@ -375,6 +496,7 @@ class _CanvasPanel extends ConsumerWidget {
     required this.onFps,
     required this.onCreate,
     required this.creating,
+    this.bare = false,
   });
 
   @override
@@ -384,6 +506,75 @@ class _CanvasPanel extends ConsumerWidget {
     final format = CanvasFormat.byId(formatId);
     final kinds = template == null ? const [] : ref.read(newProjectControllerProvider).blockKindsOf(template!);
     final label = t.label.copyWith(color: p.ink);
+
+    final nameField = TextField(
+      controller: name,
+      autofocus: !bare,
+      textCapitalization: TextCapitalization.words,
+      style: t.bodyL,
+      decoration: InputDecoration(
+        isDense: true,
+        contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: bare ? 16 : 14),
+        filled: true,
+        fillColor: p.surface,
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide(color: p.line2),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide(color: p.accentSolid, width: 1.5),
+        ),
+      ),
+    );
+    if (bare) {
+      final rateIndex = _frameRates.indexWhere((r) => (r - fps).abs() < .001);
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text('Project name', style: label),
+          const SizedBox(height: 8),
+          nameField,
+          const SizedBox(height: 18),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text('Aspect ratio', style: label),
+                    const SizedBox(height: 8),
+                    EcSegmented(
+                      labels: [for (final id in _formats) CanvasFormat.byId(id).aspect],
+                      selectedIndex: _formats.indexOf(formatId).clamp(0, _formats.length - 1),
+                      onChanged: (i) => onFormat(_formats[i]),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text('Frame rate', style: label),
+                    const SizedBox(height: 8),
+                    EcSegmented(
+                      labels: [for (final rate in _frameRates) formatFpsShort(rate)],
+                      selectedIndex: rateIndex < 0 ? 1 : rateIndex,
+                      onChanged: (i) => onFps(_frameRates[i]),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Text('Canvas ${format.w} × ${format.h}', style: t.mono.copyWith(fontSize: 10.5)),
+        ],
+      );
+    }
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -397,26 +588,7 @@ class _CanvasPanel extends ConsumerWidget {
         children: [
           Text('Project name', style: label),
           const SizedBox(height: 7),
-          TextField(
-            controller: name,
-            autofocus: true,
-            textCapitalization: TextCapitalization.words,
-            style: t.bodyL,
-            decoration: InputDecoration(
-              isDense: true,
-              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-              filled: true,
-              fillColor: p.surface,
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(14),
-                borderSide: BorderSide(color: p.line2),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(14),
-                borderSide: BorderSide(color: p.accentSolid, width: 1.5),
-              ),
-            ),
-          ),
+          nameField,
           const SizedBox(height: 16),
           Text('Aspect ratio', style: label),
           const SizedBox(height: 7),
