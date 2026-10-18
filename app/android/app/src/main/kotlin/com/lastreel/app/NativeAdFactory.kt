@@ -181,7 +181,19 @@ class LastReelNativeAdFactory(private val context: Context) : NativeAdFactory {
             if (compact) maxLines = 2
         }
         adView.headlineView = headline
-        adView.mediaView = media
+        // The compact card's still is too small for a MediaView (AdMob asks
+        // for 120 dp), so it shows the ad's icon asset instead.
+        val icon = ImageView(context).apply {
+            scaleType = ImageView.ScaleType.CENTER_CROP
+            background = GradientDrawable().apply {
+                setColor(tint)
+                cornerRadius = dp(10).toFloat()
+                setStroke(dp(1).coerceAtLeast(1), line2, dp(4).toFloat(), dp(3).toFloat())
+            }
+            clipToOutline = true
+            setImageDrawable(nativeAd.icon?.drawable)
+        }
+        if (compact) adView.iconView = icon else adView.mediaView = media
 
         val root: View
         if (compact) {
@@ -191,7 +203,7 @@ class LastReelNativeAdFactory(private val context: Context) : NativeAdFactory {
                 addView(LinearLayout(context).apply {
                     orientation = LinearLayout.HORIZONTAL
                     gravity = Gravity.CENTER_VERTICAL
-                    addView(media, LinearLayout.LayoutParams(mediaW, mediaH).apply { marginEnd = dp(10) })
+                    addView(icon, LinearLayout.LayoutParams(mediaW, mediaH).apply { marginEnd = dp(10) })
                     addView(headline, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
                 }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(8) })
             }

@@ -514,7 +514,7 @@ class _CanvasPanel extends ConsumerWidget {
       style: t.bodyL,
       decoration: InputDecoration(
         isDense: true,
-        contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: bare ? 16 : 14),
+        contentPadding: EdgeInsets.symmetric(horizontal: bare ? 16 : 14, vertical: bare ? 16 : 14),
         filled: true,
         fillColor: p.surface,
         enabledBorder: OutlineInputBorder(

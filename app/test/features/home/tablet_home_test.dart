@@ -11,6 +11,7 @@ import 'package:lastreel/features/editor/screens/editor_screen.dart';
 import 'package:lastreel/features/home/screens/tablet_home.dart';
 import 'package:lastreel/features/home/tablet_layout.dart';
 import 'package:lastreel/features/home/widgets/tablet_tab_bar.dart';
+import 'package:lastreel/features/library/controllers/library_controller.dart';
 import 'package:lastreel/features/monitor/controllers/playback_controller.dart';
 import 'package:lastreel/features/project/controllers/project_controller.dart';
 import 'package:lastreel/main.dart';
@@ -198,6 +199,51 @@ void main() {
       expect(c.read(editorUiControllerProvider).focusedId, 'cst');
       expect(c.read(playbackControllerProvider).frame, frame);
       expect(c.read(projectControllerProvider.notifier).canUndo, isTrue);
+    });
+  });
+
+  group('parking the edit', () {
+    Future<ProviderContainer> park(WidgetTester tester, AppHarness app) async {
+      await app.pump(tester, size: landscape);
+      await tester.tap(find.text('The Long Way Down').first);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Cast · two column').first);
+      await tester.pumpAndSettle();
+      final c = container(tester);
+      c.read(playbackControllerProvider.notifier).play();
+      await tester.tap(find.byTooltip('Settings and account'));
+      await tester.pumpAndSettle();
+      return c;
+    }
+
+    testWidgets('leaving for Settings pauses the roll', (tester) async {
+      final c = await park(tester, pro());
+      expect(c.read(playbackControllerProvider).playing, isFalse);
+    });
+
+    testWidgets('a rename from the library is kept, not written over', (tester) async {
+      final app = pro();
+      final c = await park(tester, app);
+      await tester.tap(find.text('Projects').first);
+      await tester.pumpAndSettle();
+      final id = c.read(projectControllerProvider).project.id;
+      await c.read(libraryControllerProvider).rename(id, 'Renamed meanwhile');
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Renamed meanwhile').first);
+      await tester.pumpAndSettle();
+      expect(c.read(projectControllerProvider).project.title, 'Renamed meanwhile');
+      // A fresh open: the parked selection doesn't carry over.
+      expect(c.read(editorUiControllerProvider).focusedId, isNull);
+    });
+
+    testWidgets('Export… applies only to the editor it opened', (tester) async {
+      await pro().pump(tester, size: landscape);
+      final c = container(tester);
+      await tester.tap(find.byTooltip('Project actions').first);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Export…'));
+      await tester.pumpAndSettle();
+      expect(c.read(editorLaunchProvider), isNull);
     });
   });
 

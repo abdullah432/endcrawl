@@ -120,8 +120,7 @@ class _TabletLibraryState extends ConsumerState<TabletLibrary> {
                 // Pinned to the foot; collapses with no gap if nothing fills it.
                 // Only while this tab shows, so a hidden tab requests no ad.
                 if (value != null && ref.watch(homeTabProvider) == HomeDestination.projects) ...[
-                  const _FootGap(),
-                  TabletAdSlot(AdPlacement.library, layout: AdLayout.strip, portrait: portrait),
+                  TabletAdSlot(AdPlacement.library, layout: AdLayout.strip, portrait: portrait, gap: 20),
                 ],
               ],
             ),
@@ -129,17 +128,6 @@ class _TabletLibraryState extends ConsumerState<TabletLibrary> {
         ),
       ],
     );
-  }
-}
-
-/// The 20 px between the grid and the ad strip, only while there is one.
-class _FootGap extends ConsumerWidget {
-  const _FootGap();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final showsAds = ref.watch(entitlementProvider).value?.showsAds ?? false;
-    return SizedBox(height: showsAds ? 20 : 0);
   }
 }
 

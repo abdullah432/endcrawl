@@ -307,16 +307,15 @@ class LibraryActions {
 
   LibraryController get _library => ref.read(libraryControllerProvider);
 
-  void open(LibraryItem item) {
+  void open(LibraryItem item, {EditorLaunchAction? launch}) {
     ref.read(libraryUiProvider.notifier).highlight(null);
-    openStoredProject(context, item.summary.id);
+    openStoredProject(context, item.summary.id, launch: launch);
   }
 
   /// "Export…" (T1.3): the editor, with the export panel up.
   void export(LibraryItem item) {
     if (lockedOnWeb(context, LockedAction.export)) return;
-    ref.read(editorLaunchProvider.notifier).request(EditorLaunchAction.export);
-    open(item);
+    open(item, launch: EditorLaunchAction.export);
   }
 
   Future<void> more(LibraryItem item) async {

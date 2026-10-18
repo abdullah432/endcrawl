@@ -267,8 +267,10 @@ class _Settings extends ConsumerWidget {
                 ),
               ],
         onEdit: () {
-          closeEcSheet(context);
-          TimingSheet.show(context);
+          // Off the export page first, then Timing from the editor under it.
+          final navigator = Navigator.of(context);
+          navigator.pop();
+          TimingSheet.show(navigator.context);
         },
       );
     }

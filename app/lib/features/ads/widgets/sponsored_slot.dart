@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -31,7 +32,9 @@ class SponsoredSlot extends ConsumerWidget {
     final tablet = context.isTablet;
     final analytics = ref.read(analyticsProvider);
     void log(String event) => analytics.logEvent(event, {'slot': TabletAdSlot.slotName(placement)});
-    return ref.read(adServiceProvider).nativeAd(
+    return ref
+        .read(adServiceProvider)
+        .nativeAd(
           placement,
           style: tablet
               ? AdSlotStyle(
@@ -67,7 +70,10 @@ class TabletAdSlot extends ConsumerWidget {
   final AdLayout layout;
   final bool portrait;
 
-  const TabletAdSlot(this.placement, {super.key, required this.layout, this.portrait = false});
+  /// Space above the slot, kept only while the slot is.
+  final double gap;
+
+  const TabletAdSlot(this.placement, {super.key, required this.layout, this.portrait = false, this.gap = 0});
 
   /// The slot's analytics name.
   static String slotName(AdPlacement placement) => switch (placement) {
@@ -81,30 +87,42 @@ class TabletAdSlot extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final showsAds = ref.watch(entitlementProvider).value?.showsAds ?? false;
     if (!showsAds) return const SizedBox.shrink();
+    // Only Android's native factory draws the tablet shapes; elsewhere (an
+    // iPad, until it ships) the slot is the phone's row.
+    if (defaultTargetPlatform != TargetPlatform.android) {
+      return SponsoredSlot(placement, hideLabel: 'Remove ads', gap: gap);
+    }
     final freeLaunch = ref.watch(iosFreeLaunchProvider);
     final analytics = ref.read(analyticsProvider);
     void log(String event) => analytics.logEvent(event, {'slot': slotName(placement)});
-    return ref.read(adServiceProvider).nativeAd(
-      placement,
-      style: AdSlotStyle(
-        layout: layout,
-        portrait: portrait,
-        reserve: TabletAdMetrics.height(layout, portrait: portrait),
-        onShown: () => log('ad_slot_shown'),
-        onEmpty: () => log('ad_slot_empty'),
-        onTapped: () => log('ad_tapped'),
-      ),
-      framed: (creative) => TabletAdCard(
-        layout: layout,
-        portrait: portrait,
-        creative: creative,
-        onRemoveAds: freeLaunch
-            ? null
-            : () {
-                log('remove_ads_tapped');
-                ProSheet.show(context);
-              },
-      ),
-    );
+    final height = TabletAdMetrics.height(layout, portrait: portrait, text: MediaQuery.textScalerOf(context));
+    return ref
+        .read(adServiceProvider)
+        .nativeAd(
+          placement,
+          style: AdSlotStyle(
+            layout: layout,
+            portrait: portrait,
+            reserve: height + gap,
+            onShown: () => log('ad_slot_shown'),
+            onEmpty: () => log('ad_slot_empty'),
+            onTapped: () => log('ad_tapped'),
+          ),
+          framed: (creative) => Padding(
+            padding: EdgeInsets.only(top: gap),
+            child: TabletAdCard(
+              layout: layout,
+              portrait: portrait,
+              height: height,
+              creative: creative,
+              onRemoveAds: freeLaunch
+                  ? null
+                  : () {
+                      log('remove_ads_tapped');
+                      ProSheet.show(context);
+                    },
+            ),
+          ),
+        );
   }
 }

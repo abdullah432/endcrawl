@@ -28,6 +28,28 @@ class _TabletHomeState extends ConsumerState<TabletHome> {
   final _projects = GlobalKey();
   final _settings = GlobalKey();
   TabletLayout? _reported;
+  late final ProviderContainer _container;
+
+  @override
+  void initState() {
+    super.initState();
+    _container = ProviderScope.containerOf(context, listen: false);
+  }
+
+  @override
+  void dispose() {
+    // Signed out, or no longer a tablet: nothing is parked any more. A
+    // microtask later, since providers can't change while widgets dispose.
+    final container = _container;
+    Future.microtask(() {
+      try {
+        clearParked(container, resumed: false);
+      } on StateError {
+        // The whole app is gone (a test's teardown): nothing to clear.
+      }
+    });
+    super.dispose();
+  }
 
   void _select(HomeDestination tab) => selectHomeTab(ProviderScope.containerOf(context, listen: false), tab);
 

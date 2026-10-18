@@ -238,7 +238,8 @@ class _PortraitSettings extends ConsumerWidget {
     final root = section == SettingsSection.plan;
     return PopScope(
       // Back from a section returns to the Settings page, not out of it.
-      canPop: root,
+      // Only while Settings is the tab showing; hidden, it keeps out of Back.
+      canPop: root || ref.watch(homeTabProvider) != HomeDestination.settings,
       onPopInvokedWithResult: (didPop, _) {
         if (!didPop) ref.read(settingsSectionProvider.notifier).select(SettingsSection.plan);
       },
@@ -338,8 +339,7 @@ class _PortraitRoot extends ConsumerWidget {
                   row(title: 'Delete account', destructive: true, onTap: () => DeleteAccountScreen.open(context)),
                 ]),
                 const Spacer(),
-                const _AdGap(),
-                const _SettingsAd(),
+                const _SettingsAd(gap: 14),
               ],
             ),
           ),
@@ -352,21 +352,13 @@ class _PortraitRoot extends ConsumerWidget {
 /// `settings_list`, only while the Settings tab shows, so a hidden tab
 /// requests no ad.
 class _SettingsAd extends ConsumerWidget {
-  const _SettingsAd();
+  final double gap;
+  const _SettingsAd({this.gap = 0});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) => ref.watch(homeTabProvider) == HomeDestination.settings
-      ? const TabletAdSlot(AdPlacement.settings, layout: AdLayout.compact)
+      ? TabletAdSlot(AdPlacement.settings, layout: AdLayout.compact, gap: gap)
       : const SizedBox.shrink();
-}
-
-/// The space above the portrait page's ad, only while there is one.
-class _AdGap extends ConsumerWidget {
-  const _AdGap();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) =>
-      SizedBox(height: (ref.watch(entitlementProvider).value?.showsAds ?? false) ? 14 : 0);
 }
 
 /// P7.2: one level in from the Settings page. The tab bar stays; no ad.

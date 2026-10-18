@@ -15,11 +15,13 @@ import '../data/ad_service.dart';
 abstract final class TabletAdMetrics {
   /// The whole card, so a slot can reserve it before the ad loads: the
   /// still, the padding and the hairline border.
-  static double height(AdLayout layout, {bool portrait = false}) => switch (layout) {
-    AdLayout.strip => portrait ? 126 : 134,
-    AdLayout.compact => 104,
-    AdLayout.row => 76,
-  };
+  /// The compact card's "Ad" row grows with the text size ([text]).
+  static double height(AdLayout layout, {bool portrait = false, TextScaler text = TextScaler.noScaling}) =>
+      switch (layout) {
+        AdLayout.strip => portrait ? 126 : 134,
+        AdLayout.compact => 104 + (text.scale(16) - 16).clamp(0, 40),
+        AdLayout.row => 76,
+      };
 
   static EdgeInsets padding(AdLayout layout, {bool portrait = false}) => switch (layout) {
     AdLayout.strip => EdgeInsets.fromLTRB(14, 14, portrait ? 16 : 18, 14),
@@ -74,12 +76,16 @@ class TabletAdCard extends StatelessWidget {
   final Widget creative;
   final VoidCallback? onRemoveAds;
 
+  /// The card's height; [TabletAdMetrics.height] by default.
+  final double? height;
+
   const TabletAdCard({
     super.key,
     required this.layout,
     this.portrait = false,
     required this.creative,
     this.onRemoveAds,
+    this.height,
   });
 
   @override
@@ -92,7 +98,7 @@ class TabletAdCard extends StatelessWidget {
       container: true,
       label: 'Advertisement',
       child: Container(
-        height: TabletAdMetrics.height(layout, portrait: portrait),
+        height: height ?? TabletAdMetrics.height(layout, portrait: portrait),
         decoration: BoxDecoration(
           color: p.surface.withValues(alpha: .55),
           border: Border.all(color: p.line),

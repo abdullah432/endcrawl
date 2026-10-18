@@ -21,7 +21,9 @@ bool _opening = false;
 /// Opens a stored project in the editor — from a library card, the action
 /// sheet, or the crash-recovery card. One path, so every entry point marks
 /// the project open (what makes a kill recoverable) the same way.
-Future<void> openStoredProject(BuildContext context, String id) async {
+///
+/// [launch] is what the editor does once it is up — "Export…" (T1.3).
+Future<void> openStoredProject(BuildContext context, String id, {EditorLaunchAction? launch}) async {
   if (_opening) return;
   _opening = true;
   try {
@@ -29,16 +31,15 @@ Future<void> openStoredProject(BuildContext context, String id) async {
     // Back from the tablet's Settings tab: the edit was left open, so pick
     // it up where it was instead of reloading the stored document.
     if (resumesParked(container, id)) {
-      await enterEditor(context, resume: true, onShown: () => _opening = false);
+      await enterEditor(context, resume: true, launch: launch, onShown: () => _opening = false);
       return;
     }
     final result = await container.read(projectControllerProvider.notifier).openProject(id);
     if (!context.mounted) return;
     switch (result) {
       case Ok():
-        await enterEditor(context, onShown: () => _opening = false);
+        await enterEditor(context, launch: launch, onShown: () => _opening = false);
       case Err(:final failure):
-        container.read(editorLaunchProvider.notifier).take();
         showEcToast(context, failure.message);
     }
   } finally {
@@ -52,7 +53,13 @@ Future<void> openStoredProject(BuildContext context, String id) async {
 /// screens underneath, so Back from the editor returns to the library.
 /// [onShown] runs once the editor route is pushed, before it closes.
 /// [resume] keeps the playhead of an edit parked for Settings.
-Future<void> enterEditor(BuildContext context, {bool replaceFlow = false, bool resume = false, VoidCallback? onShown}) async {
+Future<void> enterEditor(
+  BuildContext context, {
+  bool replaceFlow = false,
+  bool resume = false,
+  EditorLaunchAction? launch,
+  VoidCallback? onShown,
+}) async {
   final container = ProviderScope.containerOf(context, listen: false);
   if (!resume) {
     clearParked(container, resumed: false);
@@ -63,6 +70,8 @@ Future<void> enterEditor(BuildContext context, {bool replaceFlow = false, bool r
   // first save, which is what makes it appear in the library.
   await container.read(projectControllerProvider.notifier).markOpened();
   if (!context.mounted) return;
+  // Set as the route is pushed, so only this editor can read it.
+  container.read(editorLaunchProvider.notifier).request(launch);
   final route = MaterialPageRoute<void>(builder: (_) => const EditorScreen());
   final navigator = Navigator.of(context);
   final closed = replaceFlow ? navigator.pushAndRemoveUntil(route, (r) => r.isFirst) : navigator.push(route);

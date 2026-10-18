@@ -5,6 +5,8 @@ import '../../bootstrap.dart';
 import '../../core/layout/layout_class.dart';
 import '../access/controllers/web_access.dart';
 import '../editor/controllers/editor_ui_controller.dart';
+import '../library/controllers/library_controller.dart';
+import '../monitor/controllers/playback_controller.dart';
 import '../project/controllers/project_controller.dart';
 import 'widgets/app_side_nav.dart';
 
@@ -89,6 +91,8 @@ ProviderSubscription<Object?>? _parkedUi;
 /// card resumes it.
 void leaveEditorForSettings(BuildContext context) {
   final container = ProviderScope.containerOf(context, listen: false);
+  // The playhead stays where it was, not running on behind Settings.
+  container.read(playbackControllerProvider.notifier).pause();
   _parkedUi?.close();
   _parkedUi = container.listen(editorUiControllerProvider, (_, _) {});
   container.read(parkedProjectProvider.notifier).park(container.read(projectControllerProvider).project.id);
@@ -98,9 +102,16 @@ void leaveEditorForSettings(BuildContext context) {
 }
 
 /// Whether opening [id] resumes the edit [leaveEditorForSettings] parked,
-/// rather than loading the stored document afresh.
-bool resumesParked(ProviderContainer container, String id) =>
-    container.read(parkedProjectProvider) == id && container.read(projectControllerProvider).project.id == id;
+/// rather than loading the stored document afresh. Not if the stored
+/// document has changed since — renamed from the library, or edited on
+/// another device — so that change is never written over.
+bool resumesParked(ProviderContainer container, String id) {
+  if (container.read(parkedProjectProvider) != id) return false;
+  final open = container.read(projectControllerProvider).project;
+  if (open.id != id) return false;
+  final stored = container.read(projectSummariesProvider).value?.where((s) => s.id == id).firstOrNull;
+  return stored != null && stored.updatedAt.isAtSameMomentAs(open.updatedAt);
+}
 
 /// Called as the editor comes back on screen: the parked state is no
 /// longer anyone's to keep. [resumed] is false when another project is
