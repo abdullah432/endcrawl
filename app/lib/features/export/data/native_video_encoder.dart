@@ -1,111 +1,93 @@
 import 'dart:ui' as ui;
-
-import 'package:flutter/services.dart';
-
+import 'package:cookoo_video_export/cookoo_video_export.dart' as shared;
 import '../models/export_models.dart';
 import 'video_encoder.dart';
 
-/// Video through the platform's own encoders, over one method channel:
-/// AVAssetWriter on iOS (H.264, HEVC, ProRes) and MediaCodec + MediaMuxer
-/// on Android (H.264, HEVC). No third-party encoder is bundled.
-///
-/// Frames cross as premultiplied RGBA; the platform swizzles them into its
-/// pixel format and stamps each with its own time, so a paused render
-/// resumes without a gap or a duplicate.
 class NativeVideoEncoder implements VideoEncoder {
-  static const channel = MethodChannel('lastreel/encoder');
-
+  static const channel = shared.VideoEncoder.channel;
   const NativeVideoEncoder();
-
   @override
   Future<EncoderCapabilities> capabilities() async {
     try {
-      final raw = await channel.invokeMapMethod<String, Object?>('capabilities');
-      final codecs = (raw?['codecs'] as Map?) ?? const {};
-      final codecs60 = raw?['codecs60'] as Map?;
+      final caps = await const shared.VideoEncoder().capabilities();
       return EncoderCapabilities(
         {
-          for (final c in Codec.values)
-            if (codecs[c.name] case final int maxEdge) c: maxEdge,
+          for (final entry in caps.maxEdge.entries)
+            Codec.values.byName(entry.key.name): entry.value,
         },
-        freeBytes: raw?['freeBytes'] as int?,
-        maxEdgeAt60: codecs60 == null ? null : {
-          for (final c in Codec.values)
-            if (codecs60[c.name] case final int maxEdge) c: maxEdge,
-        },
+        freeBytes: caps.freeBytes,
+        maxEdgeAt60: caps.maxEdgeAt60 == null
+            ? null
+            : {
+                for (final entry in caps.maxEdgeAt60!.entries)
+                  Codec.values.byName(entry.key.name): entry.value,
+              },
       );
-    } on MissingPluginException {
-      // A platform without the encoder (tests, desktop): no video codecs.
-      return const EncoderCapabilities({});
-    } on PlatformException catch (e) {
+    } on shared.VideoExportException catch (e) {
       throw _failure(e);
     }
   }
 
   @override
   Future<EncodeSession> start(EncodeSpec spec) async {
-    final (num, den) = spec.rate;
     try {
-      final id = await channel.invokeMethod<int>('start', {
-        'codec': spec.codec.name,
-        'width': spec.width,
-        'height': spec.height,
-        'fpsNum': num,
-        'fpsDen': den,
-        'bitrate': spec.bitsPerSecond,
-        'path': spec.outputPath,
-      });
-      return _NativeSession(id!);
-    } on PlatformException catch (e) {
+      final (num, den) = spec.rate;
+      return _Session(
+        await const shared.VideoEncoder().start(
+          shared.VideoSpec(
+            codec: shared.VideoCodec.values.byName(spec.codec.name),
+            width: spec.width,
+            height: spec.height,
+            fpsNumerator: num,
+            fpsDenominator: den,
+            bitrate: spec.bitsPerSecond,
+            outputPath: spec.outputPath,
+          ),
+        ),
+      );
+    } on shared.VideoExportException catch (e) {
       throw _failure(e);
     }
   }
 }
 
-class _NativeSession implements EncodeSession {
-  final int _id;
-  _NativeSession(this._id);
-
+class _Session implements EncodeSession {
+  _Session(this.session);
+  final shared.VideoSession session;
   @override
-  Future<void> append(ui.Image frame, int index) async {
-    final data = await frame.toByteData(format: ui.ImageByteFormat.rawRgba);
-    if (data == null) throw const EncoderException(EncoderFailureKind.failed, 'A frame couldn’t be read back.');
-    await _call('append', {
-      'id': _id,
-      'frame': index,
-      'width': frame.width,
-      'height': frame.height,
-      'rgba': data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes),
-    });
+  Future<void> append(ui.Image image, int index) async {
+    try {
+      await session.append(image, index);
+    } on shared.VideoExportException catch (e) {
+      throw _failure(e);
+    }
   }
 
   @override
   Future<EncodedFile> finish() async {
-    final out = (await _call('finish', {'id': _id}))! as Map;
-    return EncodedFile(out['path'] as String, out['bytes'] as int);
+    try {
+      final file = await session.finish();
+      return EncodedFile(file.path, file.bytes);
+    } on shared.VideoExportException catch (e) {
+      throw _failure(e);
+    }
   }
 
   @override
   Future<void> cancel() async {
     try {
-      await NativeVideoEncoder.channel.invokeMethod<void>('cancel', {'id': _id});
-    } on PlatformException {
-      // Already gone.
-    }
-  }
-
-  Future<Object?> _call(String method, Map<String, Object?> args) async {
-    try {
-      return await NativeVideoEncoder.channel.invokeMethod<Object?>(method, args);
-    } on PlatformException catch (e) {
-      throw _failure(e);
+      await session.cancel();
+    } on shared.VideoExportException {
+      // Preserve the adapter's best-effort cleanup contract.
     }
   }
 }
 
-/// The platform side reports `out_of_space`, `unsupported` or `failed`.
-EncoderException _failure(PlatformException e) => switch (e.code) {
-      'out_of_space' => const EncoderException.outOfSpace(),
-      'unsupported' => EncoderException(EncoderFailureKind.unsupported, e.message ?? 'This device can’t encode that.'),
-      _ => EncoderException(EncoderFailureKind.failed, e.message ?? 'The encoder stopped.'),
-    };
+EncoderException _failure(shared.VideoExportException e) => EncoderException(
+  e.code == 'out_of_space'
+      ? EncoderFailureKind.outOfSpace
+      : e.code == 'unsupported'
+      ? EncoderFailureKind.unsupported
+      : EncoderFailureKind.failed,
+  e.message,
+);

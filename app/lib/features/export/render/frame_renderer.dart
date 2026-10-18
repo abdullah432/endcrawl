@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../../core/theme/app_theme.dart';
 import '../../../domain/engine/roll_engine.dart';
 import '../../../domain/models/credit_block.dart';
 import '../../../domain/models/project_settings.dart';
@@ -70,6 +71,17 @@ class FrameRenderer implements FrameSource {
     required int outputWidth,
     required int outputHeight,
   }) async {
+    // Load every weight used by the credit widgets before attaching paragraphs.
+    // Font loading schedules layout callbacks on attached render objects; tearing
+    // that tree down before those callbacks run corrupts the detached tree.
+    try {
+      await GoogleFonts.pendingFonts([
+        for (final weight in [FontWeight.w400, FontWeight.w500, FontWeight.w600])
+          geometry.face.textStyle(size: geometry.base, weight: weight),
+      ]);
+    } catch (_) {
+      // Offline with nothing cached: use the platform fallback consistently.
+    }
     final view = ui.PlatformDispatcher.instance.implicitView ?? ui.PlatformDispatcher.instance.views.first;
     // Drawn at a whole multiple of the canvas — the smallest that's at least
     // the output — so a whole-pixel speed stays whole. [render] then fits it
@@ -101,11 +113,9 @@ class FrameRenderer implements FrameSource {
     );
 
     RenderObjectToWidgetElement<RenderBox>? root;
-    // Bumped to lay the roll out again from fresh render objects.
-    var generation = 0;
     void mount() {
       final widget = KeyedSubtree(
-        key: ValueKey(generation),
+        key: const ValueKey('export-frame'),
         child: MediaQuery(
           data: const MediaQueryData(textScaler: TextScaler.noScaling),
           child: Directionality(
@@ -147,20 +157,6 @@ class FrameRenderer implements FrameSource {
 
     mount();
     flush();
-    // The first layout asks for any typeface not yet loaded; lay out again
-    // once they're in, or the text is measured in a fallback font. A loaded
-    // font only relays out existing text on the app's next frame, which this
-    // offscreen tree never waits for, so the roll is rebuilt from fresh
-    // render objects and measured as it will be drawn.
-    try {
-      await GoogleFonts.pendingFonts();
-    } catch (_) {
-      // Offline with nothing cached: the platform fallback is all there is.
-    }
-    generation++;
-    mount();
-    flush();
-
     final measured = measurer.measure() ?? const RollMeasurements();
     engine = computeEngine(project: settings, activeBlocks: blocks, measurements: measured, geometry: geometry);
     // A flat roll needs only one rasterization per output frame: sample

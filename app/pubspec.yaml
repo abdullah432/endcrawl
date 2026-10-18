@@ -10,6 +10,8 @@ environment:
   sdk: ">=3.12.0 <4.0.0"
 
 dependencies:
+  cookoo_video_export:
+    path: ../../shared_packages/cookoo_video_export
   archive: ^4.3.0
   clarity_flutter: ^1.10.0
   cloud_firestore: ^6.10.0
@@ -36,6 +38,8 @@ dependencies:
   url_launcher: ^6.3.2
 
 dev_dependencies:
+  integration_test:
+    sdk: flutter
   flutter_test:
     sdk: flutter
   flutter_lints: ^6.0.0

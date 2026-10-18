@@ -7,7 +7,6 @@ import io.flutter.plugins.googlemobileads.GoogleMobileAdsPlugin
 class MainActivity : FlutterActivity() {
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
-        flutterEngine.plugins.add(VideoEncoderPlugin())
         GoogleMobileAdsPlugin.registerNativeAdFactory(
             flutterEngine,
             LastReelNativeAdFactory.ID,

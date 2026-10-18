@@ -13,9 +13,6 @@ import google_mobile_ads
 
   func didInitializeImplicitFlutterEngine(_ engineBridge: FlutterImplicitEngineBridge) {
     GeneratedPluginRegistrant.register(with: engineBridge.pluginRegistry)
-    if let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "VideoEncoderPlugin") {
-      VideoEncoderPlugin.register(with: registrar)
-    }
     FLTGoogleMobileAdsPlugin.registerNativeAdFactory(
       engineBridge.pluginRegistry,
       factoryId: LastReelNativeAdFactory.id,
