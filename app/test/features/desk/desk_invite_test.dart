@@ -30,6 +30,7 @@ void main() {
         desk: desk ?? InMemoryDeskInviteStore(),
         web: web,
         testerAllowed: testerAllowed,
+        iosFreeLaunch: false,
       );
 
   Future<void> tapText(WidgetTester tester, String text) async {
@@ -246,7 +247,7 @@ void main() {
     });
   });
 
-  group('tester on iOS', () {
+  group('tester on iOS with subscriptions restored', () {
     final iOS = TargetPlatformVariant.only(TargetPlatform.iOS);
 
     Future<void> visitAnotherScreen(WidgetTester tester) async {

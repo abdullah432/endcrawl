@@ -7,6 +7,7 @@ import '../../core/theme/tokens.dart';
 import '../../core/widgets/ec_button.dart';
 import '../../core/widgets/ec_surfaces.dart';
 import 'desk_invite.dart';
+import '../plan/controllers/release_policy.dart';
 
 /// Settings' permanent way to discover the desk, independent of the
 /// occasional library invite. Reuses its Free upgrade/preview and Pro link sheets.
@@ -15,6 +16,7 @@ class DesktopWebCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    if (ref.watch(iosFreeLaunchProvider)) return const SizedBox.shrink();
     final p = context.palette;
     final t = context.type;
     final pro = ref.watch(entitlementProvider).value?.isPro ?? false;

@@ -21,6 +21,7 @@ import '../../cookoo/controllers/cookoo_promo_controller.dart';
 import '../../cookoo/widgets/cookoo_swiper.dart';
 import '../../library/controllers/library_controller.dart';
 import '../../plan/controllers/plan_controller.dart';
+import '../../plan/controllers/release_policy.dart';
 import '../../plan/screens/pro_sheet.dart';
 import '../../plan/widgets/plan_meter.dart';
 import '../controllers/settings_controller.dart';
@@ -77,10 +78,12 @@ class SettingsScreen extends ConsumerWidget {
             _Gutter(children: [
               Padding(padding: const EdgeInsets.fromLTRB(4, 0, 4, 18), child: Text('Settings', style: t.displayL.copyWith(fontSize: 48))),
               if (user != null) _ProfileCard(user: user),
-              const SizedBox(height: 22),
-              groups.plan(),
-              const SizedBox(height: 22),
-              groups.desktopWeb(),
+              if (!groups.freeLaunch) ...[
+                const SizedBox(height: 22),
+                groups.plan(),
+                const SizedBox(height: 22),
+                groups.desktopWeb(),
+              ],
               if (groups.testerAllowed) ...[const SizedBox(height: 22), groups.tester()],
               const SizedBox(height: 22),
               groups.defaults(),
@@ -121,6 +124,7 @@ class _SettingsGroups {
   SettingsController get _settings => ref.read(settingsControllerProvider);
   Preferences get _prefs => (ref.watch(userProfileProvider).value ?? const UserProfile()).preferences;
   String? get _version => ref.watch(appVersionProvider).value;
+  bool get freeLaunch => ref.watch(iosFreeLaunchProvider);
 
   void _update(Preferences Function(Preferences) change) async {
     final result = await _settings.updatePreferences(change);
@@ -148,7 +152,8 @@ class _SettingsGroups {
           ),
           // The two prompts keep their 30-day schedules for testers too;
           // these show them on demand without moving those schedules.
-          EcGroupRow(title: 'Show desk invite now', onTap: () => DeskInvite.showNow(context)),
+          if (!freeLaunch)
+            EcGroupRow(title: 'Show desk invite now', onTap: () => DeskInvite.showNow(context)),
           EcGroupRow(title: 'Show rating prompt now', onTap: () => ReviewPrompt.askNow(context)),
         ],
       );
@@ -321,7 +326,13 @@ extension on _Section {
               groups.defaults(),
             ],
           ),
-        _Section.defaults => groups.defaults(),
+        _Section.defaults => Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (groups.freeLaunch && groups.testerAllowed) ...[groups.tester(), const SizedBox(height: 18)],
+              groups.defaults(),
+            ],
+          ),
         _Section.app => groups.app(),
         _Section.support => Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -357,6 +368,8 @@ class _SplitSettingsState extends State<_SplitSettings> {
     final p = context.palette;
     final t = context.type;
     final user = widget.user;
+    final sections = _Section.values.where((section) => !widget.groups.freeLaunch || section != _Section.plan).toList();
+    final selected = sections.contains(_selected) ? _selected : _Section.defaults;
     Widget item(String title, {bool selected = false, bool destructive = false, required VoidCallback onTap}) => Padding(
           padding: const EdgeInsets.only(bottom: 4),
           child: Material(
@@ -432,8 +445,8 @@ class _SplitSettingsState extends State<_SplitSettings> {
                     Expanded(
                       child: ListView(
                         children: [
-                          for (final section in _Section.values)
-                            item(section.title, selected: section == _selected, onTap: () => setState(() => _selected = section)),
+                          for (final section in sections)
+                            item(section.title, selected: section == selected, onTap: () => setState(() => _selected = section)),
                           const SizedBox(height: 8),
                           item('Sign out', onTap: widget.groups.signOut),
                           item('Delete account', destructive: true, onTap: () => DeleteAccountScreen.open(context)),
@@ -447,7 +460,7 @@ class _SplitSettingsState extends State<_SplitSettings> {
               Expanded(
                 child: SingleChildScrollView(
                   padding: const EdgeInsets.fromLTRB(22, 22, 22, 32),
-                  child: KeyedSubtree(key: ValueKey(_selected), child: _selected.body(widget.groups)),
+                  child: KeyedSubtree(key: ValueKey(selected), child: selected.body(widget.groups)),
                 ),
               ),
             ],
@@ -497,10 +510,7 @@ class _DesktopSettings extends StatelessWidget {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
-                                groups.plan(),
-                                gap,
-                                groups.desktopWeb(),
-                                gap,
+                                if (!groups.freeLaunch) ...[groups.plan(), gap, groups.desktopWeb(), gap],
                                 if (groups.testerAllowed) ...[groups.tester(), gap],
                                 if (user != null) ...[_ProfileCard(user: user), gap],
                                 groups.support(),

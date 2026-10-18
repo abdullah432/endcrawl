@@ -7,14 +7,14 @@ import '../theme/tokens.dart';
 /// Where an ad goes on the free plan: "Sponsored · Hide ads" above the ad
 /// itself — a native ad from the ad service, or [EcAdPlaceholder].
 class EcAdSlot extends StatelessWidget {
-  final VoidCallback onHideAds;
+  final VoidCallback? onHideAds;
   final String label;
   final String hideLabel;
   final Widget creative;
 
   const EcAdSlot({
     super.key,
-    required this.onHideAds,
+    this.onHideAds,
     required this.creative,
     this.label = 'Sponsored',
     this.hideLabel = 'Hide ads',
@@ -32,7 +32,7 @@ class EcAdSlot extends StatelessWidget {
           child: Row(
             children: [
               Expanded(child: Text(caps(label), style: t.section.copyWith(letterSpacing: 1.5))),
-              InkWell(
+              if (onHideAds != null) InkWell(
                 onTap: onHideAds,
                 borderRadius: BorderRadius.circular(6),
                 child: Padding(

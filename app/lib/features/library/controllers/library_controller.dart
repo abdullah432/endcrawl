@@ -7,6 +7,7 @@ import '../../../data/sources/session_store.dart';
 import '../../../domain/models/entitlement.dart';
 import '../../../domain/models/project.dart';
 import '../../plan/controllers/editable_projects.dart';
+import '../../plan/controllers/release_policy.dart';
 import '../../access/controllers/web_access.dart';
 
 /// Every stored project, newest first, kept live: a create, rename or
@@ -46,12 +47,13 @@ class LibraryView {
   /// Whole days left in a Pro trial, or null off a trial.
   final int? trialDaysLeft;
 
-  const LibraryView({required this.items, required this.entitlement, this.trialDaysLeft});
+  const LibraryView({required this.items, required this.entitlement, required this.limit, this.trialDaysLeft});
 
   int get count => items.length;
-  int? get limit => entitlement.projectLimit;
-  bool get isFull => !entitlement.canAddProject(count);
-  int? get slotsLeft => entitlement.slotsLeft(count);
+  final int? limit;
+  bool canAddProject(int existing) => limit == null || existing < limit!;
+  bool get isFull => !canAddProject(count);
+  int? get slotsLeft => limit == null ? null : (limit! - count).clamp(0, limit!);
 
   /// The reel number the next project will take.
   int get nextReel => count + 1;
@@ -65,7 +67,7 @@ class LibraryView {
       return countOnTrial ? 'Reel · Pro trial · ${plural(count, 'project')}' : 'Reel · Pro trial · ${plural(days, 'day')} left';
     }
     return switch (limit) {
-      null => 'Reel · $count · Pro',
+      null => 'Reel · $count · ${entitlement.isPro ? 'Pro' : 'Free'}',
       final limit when count > limit => 'Reel · $count · Free',
       final limit => 'Reel · $count of $limit · Free',
     };
@@ -81,7 +83,8 @@ final libraryViewProvider = FutureProvider<LibraryView>((ref) async {
   return LibraryView(
     items: [for (final s in summaries) LibraryItem(s, reels[s.id]!)],
     entitlement: entitlement,
-    trialDaysLeft: entitlement.trialDaysLeft(ref.read(clockProvider)()),
+    limit: ref.watch(projectLimitProvider),
+    trialDaysLeft: ref.watch(iosFreeLaunchProvider) ? null : entitlement.trialDaysLeft(ref.read(clockProvider)()),
   );
 });
 
@@ -187,8 +190,8 @@ class LibraryController {
   /// Whether one more project fits the plan right now.
   Future<bool> canAddProject() async {
     final summaries = await _ref.read(projectSummariesProvider.future);
-    final entitlement = _ref.read(entitlementProvider).value ?? const Entitlement.free();
-    return entitlement.canAddProject(summaries.length);
+    final limit = _ref.read(projectLimitProvider);
+    return limit == null || summaries.length < limit;
   }
 
   void _refresh() {

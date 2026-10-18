@@ -340,7 +340,7 @@ class LibraryActions {
     if (!context.mounted) return;
     switch (result) {
       case Ok(value: final copy):
-        final nowFull = !view.entitlement.canAddProject(view.count + 1);
+        final nowFull = !view.canAddProject(view.count + 1);
         showEcToast(
           context,
           nowFull ? 'Duplicated · slots now full' : 'Duplicated',

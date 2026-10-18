@@ -1,4 +1,5 @@
 import 'package:lastreel/bootstrap.dart';
+import 'package:lastreel/core/config/release_config.dart';
 import 'package:lastreel/data/sources/session_store.dart';
 import 'package:lastreel/features/ads/ads_providers.dart';
 import 'package:lastreel/features/cookoo/controllers/cookoo_contact_controller.dart';
@@ -62,6 +63,9 @@ class AppHarness {
   /// Runs the app as the web build would (the Pro workspace rules).
   bool web;
 
+  /// Null exercises the build's default; false tests restored subscriptions.
+  bool? iosFreeLaunch;
+
   AppHarness({
     FakeAuthRepository? auth,
     FakeProjectRepository? projects,
@@ -76,6 +80,7 @@ class AppHarness {
     InMemoryDeskInviteStore? desk,
     DateTime? now,
     this.web = false,
+    this.iosFreeLaunch,
     this.testerAllowed = false,
     this.deskChance = true,
   }) : auth = auth ?? FakeAuthRepository(initialUser: testUser),
@@ -136,6 +141,8 @@ class AppHarness {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          if (iosFreeLaunch case final enabled?)
+            iosFreeLaunchFlagProvider.overrideWithValue(enabled),
           webAccessRequiredProvider.overrideWithValue(web),
           authRepositoryProvider.overrideWithValue(auth),
           projectRepositoryProvider.overrideWithValue(projects),

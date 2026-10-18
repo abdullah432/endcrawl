@@ -17,6 +17,7 @@ class FakeEntitlementRepository implements EntitlementRepository {
   Entitlement? purchaseGrants;
 
   int purchases = 0;
+  int offerRequests = 0;
   PlanOffer? lastPurchased;
 
   FakeEntitlementRepository([this._entitlement = const Entitlement.free(), this.trialEligible = true]);
@@ -29,24 +30,27 @@ class FakeEntitlementRepository implements EntitlementRepository {
   }
 
   @override
-  Future<Result<List<PlanOffer>>> offers() async => Ok([
-    PlanOffer(
-      period: BillingPeriod.monthly,
-      price: r'$4.99',
-      detail: 'Billed monthly',
-      packageId: r'$rc_monthly',
-      trialDays: trialEligible ? 7 : null,
-      pricePerMonth: r'$4.99',
-    ),
-    PlanOffer(
-      period: BillingPeriod.yearly,
-      price: r'$29.99',
-      detail: 'Billed yearly',
-      packageId: r'$rc_annual',
-      trialDays: trialEligible ? 14 : null,
-      pricePerMonth: r'$2.50',
-    ),
-  ]);
+  Future<Result<List<PlanOffer>>> offers() async {
+    offerRequests++;
+    return Ok([
+      PlanOffer(
+        period: BillingPeriod.monthly,
+        price: r'$4.99',
+        detail: 'Billed monthly',
+        packageId: r'$rc_monthly',
+        trialDays: trialEligible ? 7 : null,
+        pricePerMonth: r'$4.99',
+      ),
+      PlanOffer(
+        period: BillingPeriod.yearly,
+        price: r'$29.99',
+        detail: 'Billed yearly',
+        packageId: r'$rc_annual',
+        trialDays: trialEligible ? 14 : null,
+        pricePerMonth: r'$2.50',
+      ),
+    ]);
+  }
 
   @override
   Stream<Entitlement> watch() => Stream.multi((controller) {

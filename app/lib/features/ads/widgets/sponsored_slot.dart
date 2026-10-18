@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../bootstrap.dart';
 import '../../../core/widgets/ec_ad_slot.dart';
 import '../../plan/screens/pro_sheet.dart';
+import '../../plan/controllers/release_policy.dart';
 import '../ads_providers.dart';
 import '../data/ad_service.dart';
 
@@ -23,6 +24,7 @@ class SponsoredSlot extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final showsAds = ref.watch(entitlementProvider).value?.showsAds ?? false;
     if (!showsAds) return const SizedBox.shrink();
+    final freeLaunch = ref.watch(iosFreeLaunchProvider);
     return ref.read(adServiceProvider).nativeAd(
           placement,
           framed: (creative) => Padding(
@@ -30,7 +32,7 @@ class SponsoredSlot extends ConsumerWidget {
             child: EcAdSlot(
               label: label,
               hideLabel: hideLabel,
-              onHideAds: () => ProSheet.show(context),
+              onHideAds: freeLaunch ? null : () => ProSheet.show(context),
               creative: creative,
             ),
           ),

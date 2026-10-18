@@ -166,7 +166,7 @@ class _Header extends ConsumerWidget {
         ? '${view.count} ${view.count == 1 ? 'project' : 'projects'} · ${view.entitlement.isPro ? 'Pro' : 'Free'}'
         // T1.1 names the unit where the phone's narrower header can't.
         : view.limit == null && view.trialDaysLeft == null
-        ? 'Reel · ${plural(view.count, 'project')} · Pro'
+        ? 'Reel · ${plural(view.count, 'project')} · ${view.entitlement.isPro ? 'Pro' : 'Free'}'
         : view.reelLabel();
 
     final searchField = Container(

@@ -1,8 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../bootstrap.dart';
-import '../../../domain/models/entitlement.dart';
 import '../../library/controllers/library_controller.dart';
+import 'release_policy.dart';
 
 /// The projects the free plan can't edit right now.
 ///
@@ -17,7 +16,7 @@ import '../../library/controllers/library_controller.dart';
 /// refused, and opening it or recording a render saves without changing
 /// `updatedAt`. Empty on Pro and whenever the projects fit the plan.
 final readOnlyProjectIdsProvider = Provider<Set<String>>((ref) {
-  final limit = (ref.watch(entitlementProvider).value ?? const Entitlement.free()).projectLimit;
+  final limit = ref.watch(projectLimitProvider);
   final summaries = ref.watch(projectSummariesProvider).value;
   if (limit == null || summaries == null || summaries.length <= limit) return const {};
   final newestFirst = [...summaries]..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));

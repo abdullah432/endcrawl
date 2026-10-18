@@ -1,5 +1,27 @@
 # LastReel subscriptions
 
+## Temporary free iOS launch
+
+Native iOS builds default to `IOS_FREE_LAUNCH=true`. On iPhone and iPad this
+hides subscription prompts, the Settings plan card, and Desktop promotion,
+and allows unlimited project creation, duplication, and editing. Android and
+web keep their existing access rules, including browsers reporting iOS.
+
+This is a release policy, not a Pro entitlement: regular ads and rewarded
+export unlocks stay in place. Existing Pro entitlements retain their benefits.
+No projects, account data, or Desktop invite preferences are migrated or reset.
+
+To restore subscriptions in a future iOS build, build from `app/` with:
+
+```sh
+flutter build ipa --release --dart-define=IOS_FREE_LAUNCH=false
+```
+
+Keep the usual RevenueCat iOS key and other release arguments when restoring
+billing. Setting the flag back to `true` restores free-launch mode. When the
+flag is `false`, the original two-project Free limit returns; all projects
+remain saved, with older projects opening read-only under the existing policy.
+
 ## Configuration
 
 Android package: `com.lastreel.app`. RevenueCat project: `796ef2dd`.

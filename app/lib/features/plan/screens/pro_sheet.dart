@@ -18,6 +18,7 @@ import '../../../domain/models/entitlement.dart';
 import '../../settings/screens/legal_document_screen.dart';
 import '../../settings/models/legal_document.dart';
 import '../controllers/plan_controller.dart';
+import '../controllers/release_policy.dart';
 
 /// 6.5 — LastReel Pro.
 ///
@@ -33,9 +34,14 @@ class ProSheet extends ConsumerWidget {
   static Future<void> show(
     BuildContext context, {
     PlanSource source = PlanSource.paywall,
-  }) => kIsWeb
-      ? MobileSubscriptionCard.show(context)
-      : showEcSheet<void>(context, builder: (_) => ProSheet(source: source));
+  }) async {
+    if (ProviderScope.containerOf(context, listen: false).read(iosFreeLaunchProvider)) return;
+    if (kIsWeb) {
+      await MobileSubscriptionCard.show(context);
+    } else {
+      await showEcSheet<void>(context, builder: (_) => ProSheet(source: source));
+    }
+  }
 
   static const _comparison = <(String, String, String)>[
     ('Projects', '${Entitlement.freeProjectLimit}', 'Unlimited'),

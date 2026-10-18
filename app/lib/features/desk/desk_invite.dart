@@ -18,6 +18,7 @@ import '../../core/widgets/ec_toast.dart';
 import '../access/controllers/web_access.dart';
 import '../library/controllers/library_controller.dart';
 import '../plan/controllers/plan_controller.dart';
+import '../plan/controllers/release_policy.dart';
 import '../plan/screens/pro_sheet.dart';
 import '../review/review_prompt.dart';
 import '../tester/tester_mode.dart';
@@ -111,6 +112,7 @@ abstract final class DeskInvite {
   /// — and without moving it, so real users' 30-day rhythm is what ships.
   static Future<void> showNow(BuildContext context) async {
     final container = ProviderScope.containerOf(context, listen: false);
+    if (container.read(iosFreeLaunchProvider)) return;
     if (container.read(deskInviteOpenProvider)) return;
     final pro = container.read(entitlementProvider).value?.isPro ?? false;
     container.read(deskInviteOpenProvider.notifier).set(true);
@@ -124,6 +126,7 @@ abstract final class DeskInvite {
 
   static Future<void> maybeShow(BuildContext context) async {
     final container = ProviderScope.containerOf(context, listen: false);
+    if (container.read(iosFreeLaunchProvider)) return;
     final store = container.read(deskInviteStoreProvider);
     // The plan reads as Free until the store (and, for a tester, Firestore)
     // answers, and changes under a library still showing the old one: wait

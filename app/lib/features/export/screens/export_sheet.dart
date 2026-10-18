@@ -24,6 +24,7 @@ import '../../../core/widgets/ec_toast.dart';
 import '../../../domain/engine/roll_engine.dart';
 import '../../../domain/models/project_settings.dart';
 import '../../plan/screens/pro_sheet.dart';
+import '../../plan/controllers/release_policy.dart';
 import '../../project/controllers/project_controller.dart';
 import '../../review/data/feedback_repository.dart';
 import '../../review/review_prompt.dart';
@@ -203,11 +204,13 @@ class _Settings extends ConsumerWidget {
                         _proLabel(codec, resolution),
                       ),
               ),
-              const SizedBox(height: 8),
-              EcButton.secondary(
-                label: 'Go Pro · every render, no ads',
-                onPressed: () => ProSheet.show(context),
-              ),
+              if (!ref.watch(iosFreeLaunchProvider)) ...[
+                const SizedBox(height: 8),
+                EcButton.secondary(
+                  label: 'Go Pro · every render, no ads',
+                  onPressed: () => ProSheet.show(context),
+                ),
+              ],
             ] else ...[
               if (prefer60) ...[
                 Text(

@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../bootstrap.dart';
 import '../../../core/result.dart';
 import '../../../domain/models/entitlement.dart';
+import 'release_policy.dart';
 
 /// Where a plan purchase started, for the trial funnel's analytics.
 enum PlanSource {
@@ -57,12 +58,13 @@ class PlanController extends Notifier<PlanState> {
   @override
   PlanState build() {
     ref.watch(currentUidProvider);
+    if (ref.watch(iosFreeLaunchProvider)) return const PlanState(loading: false);
     unawaited(Future.microtask(loadOffers));
     return const PlanState();
   }
 
   Future<void> loadOffers() async {
-    if (!ref.mounted) return;
+    if (!ref.mounted || ref.read(iosFreeLaunchProvider)) return;
     final uid = ref.read(currentUidProvider);
     state = state.copyWith(loading: true, clearMessage: true);
     final result = await ref.read(entitlementRepositoryProvider).offers();
@@ -88,6 +90,7 @@ class PlanController extends Notifier<PlanState> {
   /// Buys — or, where the store offers one, starts the free trial of — the
   /// selected plan. [source] is where the user started, for analytics.
   Future<bool> purchase({PlanSource source = PlanSource.paywall}) async {
+    if (ref.read(iosFreeLaunchProvider)) return false;
     final offer = state.selected;
     if (state.busy || state.loading || offer == null) return false;
     final uid = ref.read(currentUidProvider);

@@ -12,6 +12,7 @@ import '../../../domain/models/entitlement.dart';
 import '../../access/controllers/web_access.dart';
 import '../../access/screens/web_access_screen.dart';
 import '../../library/controllers/library_controller.dart';
+import '../../plan/controllers/release_policy.dart';
 
 enum HomeDestination { projects, settings }
 
@@ -193,9 +194,10 @@ class _PlanStatus extends ConsumerWidget {
     }
 
     final store = web ? 'Google Play' : AppLinks.storeName;
+    final limit = ref.watch(projectLimitProvider);
     final (title, detail) = entitlement.isPro
         ? (desktop ? 'Pro · active' : 'Pro', desktop ? 'Billed through $store' : 'via $store')
-        : ('Free', '$count of ${Entitlement.freeProjectLimit} projects · ads on');
+        : ('Free', limit == null ? '$count projects · ads on' : '$count of $limit projects · ads on');
     final content = Row(
       children: [
         if (entitlement.isPro) ...[
