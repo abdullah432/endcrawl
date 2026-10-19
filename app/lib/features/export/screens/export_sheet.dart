@@ -34,47 +34,62 @@ import '../controllers/export_controller.dart';
 import '../models/export_models.dart';
 import '../../home/tablet_layout.dart';
 
+final _exportPresentationProvider = Provider((ref) => _ExportPresentation());
+
+class _ExportPresentation {
+  bool open = false;
+}
+
 /// Export: settings (6.1), rendering (6.2), failed (6.3), ready (6.4).
 ///
 /// Free and Pro render exactly the same file — every codec and resolution,
-/// no watermark, no end card. The only difference is the one ad while a
-/// free render encodes.
+/// no watermark, no end card. Free accounts can see the entry interstitial
+/// and the existing native placements; Pro remains ad-free.
 class ExportSheet extends ConsumerWidget {
   const ExportSheet({super.key});
 
   static Future<void> show(BuildContext context) async {
     final container = ProviderScope.containerOf(context, listen: false);
-    if (context.isTablet) {
-      // T6.1 / P6.1: the whole screen, every phase drawn on the page.
-      final controller = container.read(exportControllerProvider.notifier);
-      controller.exportPageShown(open: true);
-      await Navigator.of(context).push<void>(
-        MaterialPageRoute(
-          fullscreenDialog: true,
-          builder: (page) => Scaffold(
-            backgroundColor: page.palette.sheet,
-            body: SafeArea(
-              child: EcPanelPresentation(
-                fullScreen: true,
-                complete: (_) => Navigator.of(page).maybePop(),
-                child: const ExportSheet(),
+    final presentation = container.read(_exportPresentationProvider);
+    if (presentation.open) return;
+    presentation.open = true;
+    try {
+      await container
+          .read(exportControllerProvider.notifier)
+          .showExportEntryAd();
+      if (!context.mounted) return;
+      if (context.isTablet) {
+        // T6.1 / P6.1: the whole screen, every phase drawn on the page.
+        await Navigator.of(context).push<void>(
+          MaterialPageRoute(
+            fullscreenDialog: true,
+            builder: (page) => Scaffold(
+              backgroundColor: page.palette.sheet,
+              body: SafeArea(
+                child: EcPanelPresentation(
+                  fullScreen: true,
+                  complete: (_) => Navigator.of(page).maybePop(),
+                  child: const ExportSheet(),
+                ),
               ),
             ),
           ),
-        ),
-      );
-      controller.exportPageShown(open: false);
-    } else {
-      await showEcSheet<void>(
-        context,
-        panel: true,
-        builder: (_) => const ExportSheet(),
-      );
-    }
-    // A delivered file is done with; a failure stays, to be resumed.
-    if (container.read(exportControllerProvider).run?.phase ==
-        ExportPhase.done) {
-      container.read(exportControllerProvider.notifier).dismiss();
+        );
+      } else {
+        await showEcSheet<void>(
+          context,
+          panel: true,
+          builder: (_) => const ExportSheet(),
+        );
+      }
+      // A delivered file is done with; a failure stays, to be resumed.
+      if (context.mounted &&
+          container.read(exportControllerProvider).run?.phase ==
+              ExportPhase.done) {
+        container.read(exportControllerProvider.notifier).dismiss();
+      }
+    } finally {
+      presentation.open = false;
     }
   }
 

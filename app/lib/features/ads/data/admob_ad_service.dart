@@ -367,7 +367,7 @@ class AdMobAdService implements AdService {
       return;
     }
     final ad = _exportInterstitial;
-    if (ad == null) return; // No late popup when a pending request completes.
+    if (ad == null) return; // Never open a late ad after the Export tap.
     _exportInterstitial = null;
     final loadedAt = _exportInterstitialLoadedAt;
     _exportInterstitialLoadedAt = null;

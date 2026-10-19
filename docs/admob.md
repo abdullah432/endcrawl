@@ -13,7 +13,7 @@ App ID: `ca-app-pub-6644211975790806~5643195524`.
 | Export ready | Native advanced | `ca-app-pub-6644211975790806/4888602772` |
 | Pro export reward | Rewarded interstitial | `ca-app-pub-6644211975790806/1799405002` |
 | Resume | App open | `ca-app-pub-6644211975790806/6421176298` |
-| Successful export | Interstitial | `ca-app-pub-6644211975790806/4830936025` |
+| Export button | Interstitial | `ca-app-pub-6644211975790806/4830936025` |
 
 ## iOS
 
@@ -27,7 +27,7 @@ App ID supplied for LastReel iOS: `ca-app-pub-6644211975790806~3747523873`.
 | Export ready | Native advanced | `ca-app-pub-6644211975790806/2333072682` |
 | Pro export reward | Rewarded interstitial | `ca-app-pub-6644211975790806/9584876749` |
 | Resume | App open | `ca-app-pub-6644211975790806/2740441803` |
-| Successful export | Interstitial | `ca-app-pub-6644211975790806/7459691102` |
+| Export button | Interstitial | `ca-app-pub-6644211975790806/7459691102` |
 
 `AdUnits.current` selects each platform's production units only in release
 mode. Debug/profile Android and iOS builds use Google's sample units and app
@@ -55,10 +55,9 @@ iOS keeps the phone row until iPad ships. Each slot reserves its height while
 loading and closes up if nothing fills it. Only the visible tab requests its
 ad, and the tablet shows no native ad once a render is ready.
 
-The successful-export interstitial on a tablet shows only over the export
-page: a render sent to the background with "Keep working" ends without one,
-since the editor is ad-free. On every platform a render the rewarded ad
-unlocked gets no interstitial — one ad per render.
+The export interstitial follows the phone: shown on the Export action, before
+the export page opens — including "Export…" from the tablet's project menu,
+which opens the editor and then Export.
 
 ## When an ad is visible
 
@@ -70,12 +69,14 @@ unlocked gets no interstitial — one ad per render.
   flow. Tablet detection uses the display's shortest side (600 logical pixels)
   so an iPad keeps the placement in a narrow split-view window. Phones,
   desktop apps and web do not request it; no fill leaves no blank frame.
-- On Android and iOS Free, an interstitial is preloaded when a render starts
-  and shown once after encoding finishes successfully and the output is available. The
-  appropriate platform's unit is used. Failed/cancelled renders and web do not
-  show this placement. Saving/sharing or reopening the ready screen does not
-  trigger another impression.
-- An unavailable, loading, expired or failed interstitial leaves the ready
+- On Android and iOS Free, the interstitial is preloaded when the editor opens
+  and shown on the editor's Export action, before the export settings appear.
+  Each platform uses its supplied `export_success_interstitial` unit. The
+  timing follows the updated request on 2026-10-19: completion, failure,
+  cancellation, retry and saving/sharing never trigger another interstitial.
+  Opening Export while a render is already running skips the ad. Web and Pro
+  do not request it. Repeated taps while Export is open share one presentation.
+- An unavailable, loading, expired or failed interstitial leaves the Export
   screen usable. Requests that finish later never open an ad unexpectedly.
   Ads are skipped while backgrounded or while another full-screen ad is open;
   returning from the app's own ad does not stack an app-open ad.

@@ -295,7 +295,7 @@ void main() {
       },
     );
 
-    testWidgets('a request completing after success does not open a late ad', (
+    testWidgets('a request completing after Export does not open a late ad', (
       tester,
     ) async {
       final ads = service();

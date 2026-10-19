@@ -6,6 +6,7 @@ import '../../../core/layout/layout_class.dart';
 import '../../../core/theme/theme_context.dart';
 import '../../../core/widgets/ec_scaffold.dart';
 import '../../monitor/widgets/monitor_view.dart';
+import '../../export/controllers/export_controller.dart';
 import '../../project/controllers/project_controller.dart';
 import '../controllers/editor_ui_controller.dart';
 import '../../export/screens/export_sheet.dart';
@@ -38,6 +39,7 @@ class _EditorScreenState extends ConsumerState<EditorScreen> {
   void initState() {
     super.initState();
     _project = ref.read(projectControllerProvider.notifier);
+    ref.read(exportControllerProvider.notifier).prepareExportAd();
     EcOrientationPolicy.editor(true);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
