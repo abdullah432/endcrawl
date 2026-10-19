@@ -11,13 +11,13 @@ import '../../../core/widgets/ec_fields.dart';
 import '../../../core/widgets/ec_headline.dart';
 import '../../../core/widgets/ec_scaffold.dart';
 import '../../../core/widgets/ec_surfaces.dart';
-import '../../../core/widgets/ec_toast.dart';
 import '../../../core/theme/ec_type.dart';
 import '../../../data/repositories/auth_repository.dart';
 import '../../../domain/models/app_user.dart';
 import '../../../domain/models/render_summary.dart';
 import '../../library/controllers/library_controller.dart';
 import '../controllers/account_controller.dart';
+import 'verify_identity_screen.dart';
 
 /// 7.6 — what goes, the warning that an App Store subscription keeps
 /// billing, and a typed DELETE. The safe button is named by its outcome.
@@ -48,26 +48,25 @@ class _DeleteAccountScreenState extends ConsumerState<DeleteAccountScreen> {
     super.dispose();
   }
 
-  Future<void> _delete(bool needsPassword) async {
+  Future<void> _delete(SignInMethod? method) async {
+    // Google and Apple re-authenticate in a sheet of their own: 7.6b says
+    // why first, then verifies and deletes in one go.
+    if (method == SignInMethod.google || method == SignInMethod.apple) {
+      final kept = await VerifyIdentityScreen.open(context, method!);
+      if (kept && mounted) Navigator.of(context).maybePop();
+      return;
+    }
     setState(() {
       _busy = true;
       _error = null;
     });
-    // The toast sits in the root overlay, so it outlives this screen when
-    // the gate swaps the whole tree back to the welcome screen.
-    final overlay = Overlay.of(context, rootOverlay: true);
-    final result = await ref
-        .read(accountControllerProvider)
-        .deleteAccount(password: needsPassword ? _password.text : null);
-    switch (result) {
-      case Ok():
-        if (overlay.mounted) showEcToastOn(overlay, 'Account deleted');
-      case Err(:final failure):
-        if (!mounted) return;
-        setState(() {
-          _busy = false;
-          _error = isCancellation(failure) ? null : failure.message;
-        });
+    // On success the gate swaps the whole tree for 7.6c.
+    final result = await ref.read(accountControllerProvider).deleteAccount(password: _password.text);
+    if (result case Err(:final failure) when mounted) {
+      setState(() {
+        _busy = false;
+        _error = isCancellation(failure) ? null : failure.message;
+      });
     }
   }
 
@@ -80,7 +79,8 @@ class _DeleteAccountScreenState extends ConsumerState<DeleteAccountScreen> {
     final renders = summaries
         .where((s) => s.lastRender?.outcome == RenderOutcome.rendered)
         .length;
-    final needsPassword = user?.primaryMethod == SignInMethod.password;
+    final method = user?.primaryMethod;
+    final needsPassword = method == SignInMethod.password;
     final typed = _confirm.text.trim() == DeleteAccountScreen.confirmWord;
     final ready =
         typed && (!needsPassword || _password.text.isNotEmpty) && !_busy;
@@ -155,7 +155,7 @@ class _DeleteAccountScreenState extends ConsumerState<DeleteAccountScreen> {
             label: 'Delete account permanently',
             variant: EcButtonVariant.destructive,
             busy: _busy,
-            onPressed: ready ? () => _delete(needsPassword) : null,
+            onPressed: ready ? () => _delete(method) : null,
           ),
           const SizedBox(height: 6),
           EcButton.secondary(

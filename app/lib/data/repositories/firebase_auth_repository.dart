@@ -315,11 +315,13 @@ class FirebaseAuthRepository implements AuthRepository {
       'user-disabled' => (FailureKind.permission, 'This account has been disabled.'),
       // Firebase deliberately returns one code for wrong-password and
       // no-such-user so an attacker can't enumerate accounts; the message
-      // has to stay equally vague.
+      // has to stay equally vague. It also names Google: an unverified
+      // password account loses its password when the same Gmail signs in
+      // with Google, and a reset puts one back.
       'invalid-credential' ||
       'wrong-password' ||
       'user-not-found' =>
-        (FailureKind.permission, 'That password doesn’t match this email. Try again or reset it.'),
+        (FailureKind.permission, 'That password doesn’t match this email. Used Google before? Continue with Google, or reset your password.'),
       'email-already-in-use' => (FailureKind.unknown, 'An account already exists for that email.'),
       'weak-password' => (FailureKind.unknown, 'Pick a longer password: at least 8 characters with a number.'),
       'requires-recent-login' => (FailureKind.permission, 'For your security, sign in again to do that.'),

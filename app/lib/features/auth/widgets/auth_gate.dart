@@ -13,6 +13,8 @@ import '../../access/screens/web_access_screen.dart';
 import '../../desk/bigger_screens_page.dart';
 import '../../library/screens/library_screen.dart';
 import '../../onboarding/screens/welcome_screen.dart';
+import '../../settings/controllers/account_controller.dart';
+import '../../settings/screens/account_deleted_screen.dart';
 import '../controllers/auth_controller.dart';
 import '../screens/verify_email_screen.dart';
 
@@ -43,6 +45,7 @@ class AuthGate extends ConsumerWidget {
       AsyncLoading() => const _Splash(),
       AsyncError(:final error) => _Splash(message: 'Could not reach sign-in.\n$error'),
       AsyncValue(:final value) => switch (value) {
+          null when ref.watch(accountDeletedProvider) => const AccountDeletedScreen(),
           null => const _AuthFlow(),
           final user when Features.emailVerification && user.needsEmailVerification => VerifyEmailScreen(user: user),
           _ when ref.watch(runningOnWebProvider) => const _WebHome(),
