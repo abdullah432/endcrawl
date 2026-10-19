@@ -44,12 +44,12 @@ unit), `render_wait` and `rewarded_pro_render`.
 | Slot | Where | Unit | Layout (Android) |
 | --- | --- | --- | --- |
 | `library_foot` | Foot of the Projects tab, at 0, 1 and 2 of 2 | Library | `strip` / `stripPortrait` |
-| `settings_list` | Below the Settings content: under the detail in landscape, under the page or the section in portrait | Settings | `strip` / `stripPortrait` |
-| `render_wait` | Under the render progress | Rendering | phone row |
+| `settings_list` | Below the Settings content: under the detail in landscape, under the page or the section in portrait (Android only for now) | Settings | `strip` / `stripPortrait` |
+| `render_wait` | Under the progress card on the render page (T6.2, P6.2), only while the render runs | Rendering | `strip` / `stripPortrait` |
 
 `SettingsTabletAd` is the one Settings slot for every layout; outside the
-tablet's Settings tab (a split-view iPad, a desktop-width tablet) it is the
-phone row. The Android factory (`NativeAdFactory.kt`) draws the tablet shapes
+tablet's Settings tab (a split-view window, a desktop-width tablet) it is the
+phone row, and on iPad it is hidden for now. The Android factory (`NativeAdFactory.kt`) draws the tablet shapes
 from `customOptions["layout"]`, and the Dart card around them adds "Remove ads";
 iOS keeps the phone row until iPad ships. Each slot reserves its height while
 loading and closes up if nothing fills it. Only the visible tab requests its

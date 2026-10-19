@@ -33,6 +33,7 @@ import '../../timing/screens/timing_sheet.dart';
 import '../controllers/export_controller.dart';
 import '../models/export_models.dart';
 import '../../home/tablet_layout.dart';
+import 'tablet_render_page.dart';
 
 final _exportPresentationProvider = Provider((ref) => _ExportPresentation());
 
@@ -113,15 +114,10 @@ class ExportSheet extends ConsumerWidget {
         busyWith: run?.phase == ExportPhase.running ? run!.projectTitle : null,
       );
     }
-    // On the tablet's full-screen export the progress and the result read
-    // as one comfortable column.
+    // The tablet's full-screen export draws the render as one page: the
+    // monitor and progress, with the renders beside them (T6.2, P6.2).
     if (EcPanelPresentation.maybeOf(context)?.fullScreen ?? false) {
-      return Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 680),
-          child: phase,
-        ),
-      );
+      return TabletRenderPage(run: run!);
     }
     return phase;
   }
