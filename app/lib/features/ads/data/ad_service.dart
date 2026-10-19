@@ -3,17 +3,26 @@ import 'package:flutter/widgets.dart';
 import '../../../core/widgets/ec_ad_slot.dart';
 
 /// Where a native ad sits. The free plan has exactly these, plus the
-/// opt-in rewarded ad on 6.1a — never the editor, the monitor, the
-/// template picker, a failed render, or the exported file.
+/// opt-in rewarded ad on 6.1a and an interstitial after export succeeds — never
+/// the editor, the monitor, the template picker, a failed render, or the file.
 enum AdPlacement {
   /// The foot of the library (1.1, 1.2).
-  library('Filmsupply — 60% off first licence', 'Stock footage for indie cuts.'),
+  library(
+    'Filmsupply — 60% off first licence',
+    'Stock footage for indie cuts.',
+  ),
 
   /// While a render encodes (6.2).
-  rendering('Artlist — royalty-free score', 'Static, silent, gone when the render ends.'),
+  rendering(
+    'Artlist — royalty-free score',
+    'Static, silent, gone when the render ends.',
+  ),
 
   /// Below the destinations once the file has saved (6.4).
-  exportComplete('Soundstripe — score your next cut', 'Music licensing for filmmakers');
+  exportComplete(
+    'Soundstripe — score your next cut',
+    'Music licensing for filmmakers',
+  );
 
   /// House copy for where no ad network is wired in.
   final String houseHeadline;
@@ -41,7 +50,10 @@ abstract interface class AdService {
   /// A native ad for [placement], wrapped by [framed] (the "Sponsored"
   /// label and the way out to Pro). Nothing at all — frame included —
   /// while there's no ad, so a slot never shows an empty frame.
-  Widget nativeAd(AdPlacement placement, {required Widget Function(Widget creative) framed});
+  Widget nativeAd(
+    AdPlacement placement, {
+    required Widget Function(Widget creative) framed,
+  });
 
   /// Shows a rewarded ad full screen — only ever because the user asked
   /// for it. Completes when it's dismissed.
@@ -54,6 +66,12 @@ abstract interface class AdService {
   /// Loads an app-open ad ahead of time, so the first return from the
   /// background has one ready. Shows nothing.
   void preloadAppOpen();
+
+  /// Preloads a standard interstitial while an eligible export runs.
+  void preloadExportInterstitial();
+
+  /// Shows a ready ad after success. Never waits for inventory to load.
+  Future<void> showExportInterstitial();
 
   /// An ad covers the app right now. A render keeps going behind it, even
   /// though the app is briefly inactive.
@@ -70,8 +88,15 @@ class PlaceholderAdService implements AdService {
   const PlaceholderAdService();
 
   @override
-  Widget nativeAd(AdPlacement placement, {required Widget Function(Widget creative) framed}) =>
-      framed(EcAdPlaceholder(headline: placement.houseHeadline, body: placement.houseBody));
+  Widget nativeAd(
+    AdPlacement placement, {
+    required Widget Function(Widget creative) framed,
+  }) => framed(
+    EcAdPlaceholder(
+      headline: placement.houseHeadline,
+      body: placement.houseBody,
+    ),
+  );
 
   @override
   Future<RewardOutcome> showRewarded() async => RewardOutcome.unavailable;
@@ -81,6 +106,12 @@ class PlaceholderAdService implements AdService {
 
   @override
   void preloadAppOpen() {}
+
+  @override
+  void preloadExportInterstitial() {}
+
+  @override
+  Future<void> showExportInterstitial() async {}
 
   @override
   bool get showingFullScreen => false;

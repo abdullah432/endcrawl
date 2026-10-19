@@ -10,6 +10,7 @@ List<String> ids(AdUnits units) => [
   units.exportReadyNative,
   units.proRenderRewarded,
   units.appOpenResume,
+  ?units.exportSuccessInterstitial,
 ];
 
 void main() {
@@ -24,6 +25,7 @@ void main() {
       'ca-app-pub-6644211975790806/4888602772',
       'ca-app-pub-6644211975790806/1799405002',
       'ca-app-pub-6644211975790806/6421176298',
+      'ca-app-pub-6644211975790806/4830936025',
     ]);
   });
   test('non-release mobile builds use only Google test units', () {
@@ -40,7 +42,10 @@ void main() {
     );
   });
   test('iOS release uses the LastReel iOS production placements', () {
-    final units = AdUnits.forBuild(platform: TargetPlatform.iOS, releaseMode: true)!;
+    final units = AdUnits.forBuild(
+      platform: TargetPlatform.iOS,
+      releaseMode: true,
+    )!;
     expect(ids(units), [
       'ca-app-pub-6644211975790806/7231930165',
       'ca-app-pub-6644211975790806/8683033622',
@@ -48,11 +53,16 @@ void main() {
       'ca-app-pub-6644211975790806/9584876749',
       'ca-app-pub-6644211975790806/2740441803',
     ]);
+    expect(units.exportSuccessInterstitial, isNull);
   });
 
   test('each platform serves only its own production IDs, and others none', () {
-    final android = ids(AdUnits.forBuild(platform: TargetPlatform.android, releaseMode: true)!);
-    final ios = ids(AdUnits.forBuild(platform: TargetPlatform.iOS, releaseMode: true)!);
+    final android = ids(
+      AdUnits.forBuild(platform: TargetPlatform.android, releaseMode: true)!,
+    );
+    final ios = ids(
+      AdUnits.forBuild(platform: TargetPlatform.iOS, releaseMode: true)!,
+    );
     expect(android.toSet().intersection(ios.toSet()), isEmpty);
     for (final platform in [
       TargetPlatform.linux,
@@ -61,7 +71,10 @@ void main() {
       TargetPlatform.fuchsia,
     ]) {
       for (final releaseMode in [false, true]) {
-        expect(AdUnits.forBuild(platform: platform, releaseMode: releaseMode), isNull);
+        expect(
+          AdUnits.forBuild(platform: platform, releaseMode: releaseMode),
+          isNull,
+        );
       }
     }
   });
@@ -71,8 +84,14 @@ void main() {
     const realIos = 'ca-app-pub-6644211975790806~3747523873';
 
     test('iOS reads the app ID from the build configuration', () {
-      expect(File('ios/Runner/Info.plist').readAsStringSync(), contains('<string>\$(ADMOB_APP_ID)</string>'));
-      expect(File('ios/Flutter/Debug.xcconfig').readAsStringSync(), contains('ADMOB_APP_ID = $testIos'));
+      expect(
+        File('ios/Runner/Info.plist').readAsStringSync(),
+        contains('<string>\$(ADMOB_APP_ID)</string>'),
+      );
+      expect(
+        File('ios/Flutter/Debug.xcconfig').readAsStringSync(),
+        contains('ADMOB_APP_ID = $testIos'),
+      );
       final release = File('ios/Flutter/Release.xcconfig').readAsStringSync();
       expect(release, contains('ADMOB_APP_ID = $realIos'));
       // Profile shares Release.xcconfig but serves test units.
@@ -81,8 +100,18 @@ void main() {
 
     test('Android uses the test app ID except in release', () {
       final gradle = File('android/app/build.gradle.kts').readAsStringSync();
-      expect(gradle, contains('manifestPlaceholders["admobAppId"] = "ca-app-pub-3940256099942544~3347511713"'));
-      expect(gradle, contains('manifestPlaceholders["admobAppId"] = "ca-app-pub-6644211975790806~5643195524"'));
+      expect(
+        gradle,
+        contains(
+          'manifestPlaceholders["admobAppId"] = "ca-app-pub-3940256099942544~3347511713"',
+        ),
+      );
+      expect(
+        gradle,
+        contains(
+          'manifestPlaceholders["admobAppId"] = "ca-app-pub-6644211975790806~5643195524"',
+        ),
+      );
     });
   });
 }

@@ -1,7 +1,8 @@
 import 'dart:async';
 
 import 'package:flutter/widgets.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart'
+    show kIsWeb, defaultTargetPlatform, TargetPlatform;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path/path.dart' as p;
 
@@ -10,6 +11,7 @@ import '../../../core/result.dart';
 import '../../../domain/models/project_settings.dart';
 import '../../../domain/models/render_summary.dart';
 import '../../ads/ads_providers.dart';
+import '../../access/controllers/web_access.dart' show runningOnWebProvider;
 import '../../library/controllers/library_controller.dart';
 import '../../project/controllers/project_controller.dart';
 import '../../plan/controllers/web_access.dart';
@@ -263,6 +265,9 @@ class ExportController extends Notifier<ExportState> {
     final job = _job = _Job();
     state = state.withRun(run);
     _watchLifecycle();
+    if (_exportAdsAllowed) {
+      ref.read(adServiceProvider).preloadExportInterstitial();
+    }
     unawaited(_render(job, project, run));
     return true;
   }
@@ -471,6 +476,24 @@ class ExportController extends Notifier<ExportState> {
             .withRun(run);
     _stopWatchingLifecycle();
     unawaited(_record(run));
+    if (run.phase == ExportPhase.done && _exportAdsAllowed) {
+      // Export output is already published. Inventory or SDK failures cannot
+      // turn a successful render into a failure or delay file destinations.
+      unawaited(_showExportInterstitial());
+    }
+  }
+
+  bool get _exportAdsAllowed =>
+      defaultTargetPlatform == TargetPlatform.android &&
+      !ref.read(runningOnWebProvider) &&
+      (ref.read(entitlementProvider).value?.showsAds ?? false);
+
+  Future<void> _showExportInterstitial() async {
+    try {
+      await ref.read(adServiceProvider).showExportInterstitial();
+    } catch (error) {
+      debugPrint('AdMob: export interstitial unavailable — $error');
+    }
   }
 
   void _watchLifecycle() {

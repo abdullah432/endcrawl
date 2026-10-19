@@ -160,6 +160,9 @@ class FakeAdService implements AdService {
 
   int appOpenShown = 0;
   int appOpenPreloaded = 0;
+  int exportInterstitialPreloaded = 0;
+  int exportInterstitialShown = 0;
+  Object? exportInterstitialFailure;
 
   @override
   Widget nativeAd(
@@ -172,6 +175,15 @@ class FakeAdService implements AdService {
 
   @override
   void preloadAppOpen() => appOpenPreloaded++;
+
+  @override
+  void preloadExportInterstitial() => exportInterstitialPreloaded++;
+
+  @override
+  Future<void> showExportInterstitial() async {
+    exportInterstitialShown++;
+    if (exportInterstitialFailure case final error?) throw error;
+  }
 
   @override
   bool showingFullScreen = false;

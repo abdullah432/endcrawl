@@ -49,6 +49,7 @@ void main() {
   late _Consent consent;
   late ConsentInformation originalConsent;
   var initializationFails = false;
+  var showFails = false;
 
   List<MethodCall> named(String name) =>
       calls.where((c) => c.method == name).toList();
@@ -56,6 +57,7 @@ void main() {
   setUp(() {
     calls.clear();
     initializationFails = false;
+    showFails = false;
     originalConsent = ConsentInformation.instance;
     consent = _Consent();
     ConsentInformation.instance = consent;
@@ -63,6 +65,9 @@ void main() {
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(instanceManager.channel, (call) async {
           calls.add(call);
+          if (showFails && call.method == 'showAdWithoutView') {
+            throw PlatformException(code: 'show_failed');
+          }
           if (call.method == 'MobileAds#initialize') {
             if (initializationFails) throw PlatformException(code: 'offline');
             return InitializationStatus({});
@@ -105,12 +110,14 @@ void main() {
     int id,
     String name, {
     LoadAdError? error,
+    AdError? showError,
   }) async {
     final message = instanceManager.channel.codec.encodeMethodCall(
       MethodCall('onAdEvent', {
         'adId': id,
         'eventName': name,
         'loadAdError': ?error,
+        'error': ?showError,
       }),
     );
     await TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
@@ -209,4 +216,189 @@ void main() {
       expect(named('loadAppOpenAd'), isEmpty);
     },
   );
+
+  group('export interstitial', () {
+    AdMobAdService service({
+      bool Function()? enabled,
+      DateTime Function()? now,
+      TargetPlatform platform = TargetPlatform.android,
+    }) {
+      final result = AdMobAdService(
+        () => false,
+        units: AdUnits.forBuild(platform: platform, releaseMode: false),
+        enabled: enabled,
+        now: now,
+      );
+      addTearDown(result.dispose);
+      return result;
+    }
+
+    Future<int> load(WidgetTester tester, AdMobAdService ads) async {
+      ads.preloadExportInterstitial();
+      await tester.pump();
+      final id =
+          (named('loadInterstitialAd').last.arguments as Map)['adId'] as int;
+      await event(tester, id, 'onAdLoaded');
+      return id;
+    }
+
+    testWidgets(
+      'preloads once, shows cached inventory once, disposes and reloads after dismissal',
+      (tester) async {
+        final ads = service();
+        ads.preloadExportInterstitial();
+        ads.preloadExportInterstitial();
+        await tester.pump();
+        expect(named('loadInterstitialAd'), hasLength(1));
+        expect(
+          (named('loadInterstitialAd').single.arguments as Map)['adUnitId'],
+          'ca-app-pub-3940256099942544/1033173712',
+        );
+        expect(named('showAdWithoutView'), isEmpty);
+        final id =
+            (named('loadInterstitialAd').single.arguments as Map)['adId']
+                as int;
+        await event(tester, id, 'onAdLoaded');
+        await ads.showExportInterstitial();
+        await ads.showExportInterstitial();
+        await ads.showAppOpen();
+        expect(await ads.showRewarded(), RewardOutcome.unavailable);
+        expect(named('showAdWithoutView'), hasLength(1));
+        expect(ads.showingFullScreen, isTrue);
+        await event(tester, id, 'onAdDismissedFullScreenContent');
+        expect(ads.showingFullScreen, isFalse);
+        expect(named('disposeAd'), hasLength(1));
+        expect(named('loadInterstitialAd'), hasLength(2));
+      },
+    );
+
+    testWidgets('a request completing after success does not open a late ad', (
+      tester,
+    ) async {
+      final ads = service();
+      ads.preloadExportInterstitial();
+      await tester.pump();
+      await ads.showExportInterstitial();
+      final id =
+          (named('loadInterstitialAd').single.arguments as Map)['adId'] as int;
+      await event(tester, id, 'onAdLoaded');
+      expect(named('showAdWithoutView'), isEmpty);
+    });
+
+    testWidgets('no fill retries with a delay and stops on disposal', (
+      tester,
+    ) async {
+      final ads = service();
+      ads.preloadExportInterstitial();
+      await tester.pump();
+      final id =
+          (named('loadInterstitialAd').single.arguments as Map)['adId'] as int;
+      await event(
+        tester,
+        id,
+        'onAdFailedToLoad',
+        error: LoadAdError(3, 'admob', 'No fill', null),
+      );
+      await ads.showExportInterstitial();
+      expect(named('showAdWithoutView'), isEmpty);
+      await tester.pump(const Duration(seconds: 30));
+      expect(named('loadInterstitialAd'), hasLength(2));
+      ads.dispose();
+      await tester.pump(const Duration(minutes: 2));
+      expect(named('loadInterstitialAd'), hasLength(2));
+    });
+
+    testWidgets(
+      'consent and Pro gates prevent requests, including a late loaded ad',
+      (tester) async {
+        var enabled = false;
+        final ads = service(enabled: () => enabled);
+        ads.preloadExportInterstitial();
+        await tester.pump();
+        expect(named('loadInterstitialAd'), isEmpty);
+        enabled = true;
+        consent.allowed = false;
+        consent.failUpdate = true;
+        ads.preloadExportInterstitial();
+        await tester.pump();
+        expect(named('loadInterstitialAd'), isEmpty);
+        consent.allowed = true;
+        ads.preloadExportInterstitial();
+        await tester.pump();
+        final id =
+            (named('loadInterstitialAd').single.arguments as Map)['adId']
+                as int;
+        enabled = false;
+        await event(tester, id, 'onAdLoaded');
+        await ads.showExportInterstitial();
+        expect(named('showAdWithoutView'), isEmpty);
+        expect(named('disposeAd'), hasLength(1));
+      },
+    );
+
+    testWidgets('background completion never presents an ad', (tester) async {
+      final ads = service();
+      await load(tester, ads);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+      await ads.showExportInterstitial();
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+      await tester.pump();
+      expect(named('showAdWithoutView'), isEmpty);
+    });
+
+    testWidgets('expired inventory is replaced without showing it', (
+      tester,
+    ) async {
+      var now = DateTime.utc(2026, 10, 19);
+      final ads = service(now: () => now);
+      await load(tester, ads);
+      now = now.add(const Duration(hours: 1));
+      await ads.showExportInterstitial();
+      await tester.pump();
+      expect(named('showAdWithoutView'), isEmpty);
+      expect(named('disposeAd'), hasLength(1));
+      expect(named('loadInterstitialAd'), hasLength(2));
+    });
+
+    testWidgets('SDK show failures release the full-screen lock and reload', (
+      tester,
+    ) async {
+      final ads = service();
+      await load(tester, ads);
+      showFails = true;
+      await ads.showExportInterstitial();
+      await tester.pump();
+      expect(ads.showingFullScreen, isFalse);
+      expect(named('disposeAd'), hasLength(1));
+      expect(named('loadInterstitialAd'), hasLength(2));
+    });
+
+    testWidgets('native presentation failure disposes and releases the lock', (
+      tester,
+    ) async {
+      final ads = service();
+      final id = await load(tester, ads);
+      await ads.showExportInterstitial();
+      await event(
+        tester,
+        id,
+        'onFailedToShowFullScreenContent',
+        showError: AdError(0, 'test', 'Presentation failed'),
+      );
+      expect(ads.showingFullScreen, isFalse);
+      expect(named('disposeAd'), hasLength(1));
+      expect(named('loadInterstitialAd'), hasLength(2));
+    });
+
+    testWidgets('iOS has no Android export-interstitial requests', (
+      tester,
+    ) async {
+      final ads = service(platform: TargetPlatform.iOS);
+      ads.preloadExportInterstitial();
+      await tester.pump();
+      await ads.showExportInterstitial();
+      expect(named('MobileAds#initialize'), isEmpty);
+      expect(named('loadInterstitialAd'), isEmpty);
+    });
+  });
 }

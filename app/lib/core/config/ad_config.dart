@@ -20,12 +20,16 @@ class AdUnits {
   /// Shown when the app comes back from the background.
   final String appOpenResume;
 
+  /// Standard interstitial after a successful export; null if unconfigured.
+  final String? exportSuccessInterstitial;
+
   const AdUnits({
     required this.libraryNative,
     required this.renderingNative,
     required this.exportReadyNative,
     required this.proRenderRewarded,
     required this.appOpenResume,
+    this.exportSuccessInterstitial,
   });
 
   /// The units for this build and platform, or null where there are none
@@ -51,6 +55,7 @@ class AdUnits {
     exportReadyNative: 'ca-app-pub-6644211975790806/4888602772',
     proRenderRewarded: 'ca-app-pub-6644211975790806/1799405002',
     appOpenResume: 'ca-app-pub-6644211975790806/6421176298',
+    exportSuccessInterstitial: 'ca-app-pub-6644211975790806/4830936025',
   );
 
   /// LastReel iOS app ca-app-pub-6644211975790806~3747523873 (its app ID is
@@ -78,6 +83,7 @@ class AdUnits {
     exportReadyNative: 'ca-app-pub-3940256099942544/2247696110',
     proRenderRewarded: 'ca-app-pub-3940256099942544/5354046379',
     appOpenResume: 'ca-app-pub-3940256099942544/9257395921',
+    exportSuccessInterstitial: 'ca-app-pub-3940256099942544/1033173712',
   );
 }
 

@@ -28,7 +28,9 @@ class _ResumeAdsState extends ConsumerState<ResumeAds> {
     _lifecycle = AppLifecycleListener(onHide: _onHide, onShow: _onShow);
     ref.listenManual(entitlementProvider, (previous, next) {
       final free = next.value?.showsAds ?? false;
-      if (free && !(previous?.value?.showsAds ?? false)) ref.read(adServiceProvider).preloadAppOpen();
+      if (free && !(previous?.value?.showsAds ?? false)) {
+        ref.read(adServiceProvider).preloadAppOpen();
+      }
     }, fireImmediately: true);
   }
 
@@ -38,7 +40,7 @@ class _ResumeAdsState extends ConsumerState<ResumeAds> {
     super.dispose();
   }
 
-  void _onHide() => _wasHidden = true;
+  void _onHide() => _wasHidden = !ref.read(adServiceProvider).showingFullScreen;
 
   void _onShow() {
     if (!_wasHidden) return;

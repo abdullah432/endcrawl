@@ -12,6 +12,7 @@ App ID: `ca-app-pub-6644211975790806~5643195524`.
 | Export ready | Native advanced | `ca-app-pub-6644211975790806/4888602772` |
 | Pro export reward | Rewarded interstitial | `ca-app-pub-6644211975790806/1799405002` |
 | Resume | App open | `ca-app-pub-6644211975790806/6421176298` |
+| Successful export | Interstitial | `ca-app-pub-6644211975790806/4830936025` |
 
 ## iOS
 
@@ -36,6 +37,15 @@ builds have no AdMob units. These identifiers are public, not secrets.
 - Free accounts show native ads in the library, rendering and ready views.
   A full Free library intentionally replaces its ad with the upgrade card.
 - Pro, trials and the native tester Pro override show no ads.
+- On Android Free, an interstitial is preloaded when a render starts and shown
+  once after encoding finishes successfully and the output is available. The
+  supplied unit is Android-only. Failed/cancelled renders, iOS and web do not
+  show this placement. Saving/sharing or reopening the ready screen does not
+  trigger another impression.
+- An unavailable, loading, expired or failed interstitial leaves the ready
+  screen usable. Requests that finish later never open an ad unexpectedly.
+  Ads are skipped while backgrounded or while another full-screen ad is open;
+  returning from the app's own ad does not stack an app-open ad.
 - The rating question temporarily replaces the rendering/ready native slot.
 - App-open ads are preloaded on Free, and displayed only on a return from
   the background with an ad ready. They never appear on cold launch.
