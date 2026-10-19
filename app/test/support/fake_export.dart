@@ -163,6 +163,7 @@ class FakeAdService implements AdService {
   int exportInterstitialPreloaded = 0;
   int exportInterstitialShown = 0;
   Object? exportInterstitialFailure;
+  Future<void>? exportInterstitialCompletion;
 
   /// The slots asked for, in order, with how each is drawn.
   final requested = <(AdPlacement, AdSlotStyle)>[];
@@ -174,7 +175,11 @@ class FakeAdService implements AdService {
     AdSlotStyle style = const AdSlotStyle(),
   }) {
     requested.add((placement, style));
-    return const PlaceholderAdService().nativeAd(placement, framed: framed, style: style);
+    return const PlaceholderAdService().nativeAd(
+      placement,
+      framed: framed,
+      style: style,
+    );
   }
 
   @override
@@ -189,6 +194,7 @@ class FakeAdService implements AdService {
   @override
   Future<void> showExportInterstitial() async {
     exportInterstitialShown++;
+    await exportInterstitialCompletion;
     if (exportInterstitialFailure case final error?) throw error;
   }
 

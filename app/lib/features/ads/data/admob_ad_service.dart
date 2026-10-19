@@ -1,6 +1,7 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart' show TargetPlatform, defaultTargetPlatform;
+import 'package:flutter/foundation.dart'
+    show TargetPlatform, defaultTargetPlatform;
 import 'package:flutter/material.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 
@@ -33,6 +34,8 @@ class AdMobAdService implements AdService {
   InterstitialAd? _exportInterstitial;
   DateTime? _exportInterstitialLoadedAt;
   bool _exportInterstitialLoading = false;
+  Completer<void>? _exportInterstitialPending;
+  bool _exportEntryPending = false;
   Timer? _exportInterstitialRetry;
   int _exportInterstitialAttempts = 0;
   final DateTime Function() _now;
@@ -301,19 +304,27 @@ class AdMobAdService implements AdService {
     }
     _exportInterstitialRetry?.cancel();
     _exportInterstitialLoading = true;
+    _exportInterstitialPending = Completer<void>();
     unawaited(_loadExportInterstitial());
+  }
+
+  void _exportLoadFinished() {
+    _exportInterstitialLoading = false;
+    final pending = _exportInterstitialPending;
+    _exportInterstitialPending = null;
+    if (pending != null && !pending.isCompleted) pending.complete();
   }
 
   Future<void> _loadExportInterstitial() async {
     _exportInterstitialAttempts++;
     try {
       if (!await _ensureReady()) {
-        _exportInterstitialLoading = false;
+        _exportLoadFinished();
         _retryExportInterstitial();
         return;
       }
       if (_disposed || !_enabled()) {
-        _exportInterstitialLoading = false;
+        _exportLoadFinished();
         return;
       }
       await InterstitialAd.load(
@@ -321,24 +332,26 @@ class AdMobAdService implements AdService {
         request: _request,
         adLoadCallback: InterstitialAdLoadCallback(
           onAdLoaded: (ad) {
-            _exportInterstitialLoading = false;
             if (_disposed || !_enabled()) {
               ad.dispose();
+              _exportLoadFinished();
               return;
             }
             _exportInterstitial = ad;
             _exportInterstitialLoadedAt = _now();
             _exportInterstitialAttempts = 0;
+            debugPrint('AdMob: export interstitial loaded');
+            _exportLoadFinished();
           },
           onAdFailedToLoad: (error) {
-            _exportInterstitialLoading = false;
+            _exportLoadFinished();
             _logFailure('export interstitial', error);
             _retryExportInterstitial();
           },
         ),
       );
     } catch (error) {
-      _exportInterstitialLoading = false;
+      _exportLoadFinished();
       debugPrint('AdMob: export interstitial load failed — $error');
       _retryExportInterstitial();
     }
@@ -359,15 +372,43 @@ class AdMobAdService implements AdService {
 
   @override
   Future<void> showExportInterstitial() async {
-    final lifecycle = WidgetsBinding.instance.lifecycleState;
-    if (_disposed ||
-        !_enabled() ||
-        _fullScreen ||
-        (lifecycle != null && lifecycle != AppLifecycleState.resumed)) {
-      return;
+    if (_exportEntryPending || !_canPresentExportAd) return;
+    _exportEntryPending = true;
+    try {
+      // A fast tap can beat the editor's preload. Wait only while this
+      // entry action is pending; callbacks never present an ad themselves.
+      if (_exportInterstitial == null) {
+        if (!(_exportInterstitialRetry?.isActive ?? false)) {
+          preloadExportInterstitial();
+        }
+        final pending = _exportInterstitialPending;
+        if (pending != null) {
+          try {
+            await pending.future.timeout(const Duration(seconds: 4));
+          } on TimeoutException {
+            debugPrint('AdMob: export continues without an ad (load pending)');
+            return;
+          }
+        }
+      }
+      if (!_canPresentExportAd) return;
+      await _presentExportInterstitial();
+    } finally {
+      _exportEntryPending = false;
     }
+  }
+
+  bool get _canPresentExportAd {
+    final lifecycle = WidgetsBinding.instance.lifecycleState;
+    return !_disposed &&
+        _enabled() &&
+        !_fullScreen &&
+        (lifecycle == null || lifecycle == AppLifecycleState.resumed);
+  }
+
+  Future<void> _presentExportInterstitial() async {
     final ad = _exportInterstitial;
-    if (ad == null) return; // Never open a late ad after the Export tap.
+    if (ad == null) return;
     _exportInterstitial = null;
     final loadedAt = _exportInterstitialLoadedAt;
     _exportInterstitialLoadedAt = null;
@@ -377,16 +418,18 @@ class AdMobAdService implements AdService {
       preloadExportInterstitial();
       return;
     }
-    var finished = false;
+    final dismissed = Completer<void>();
     void ended() {
-      if (finished) return;
-      finished = true;
+      if (dismissed.isCompleted) return;
       ad.dispose();
       _fullScreen = false;
       preloadExportInterstitial();
+      dismissed.complete();
     }
 
     ad.fullScreenContentCallback = FullScreenContentCallback(
+      onAdShowedFullScreenContent: (_) =>
+          debugPrint('AdMob: export interstitial displayed'),
       onAdDismissedFullScreenContent: (_) => ended(),
       onAdFailedToShowFullScreenContent: (_, error) {
         debugPrint('AdMob: export interstitial show failed — $error');
@@ -400,12 +443,15 @@ class AdMobAdService implements AdService {
       debugPrint('AdMob: export interstitial show failed — $error');
       ended();
     }
+    // The export route must not race the native ad's presentation.
+    await dismissed.future;
   }
 
   void dispose() {
     _disposed = true;
     _appOpenRetry?.cancel();
     _exportInterstitialRetry?.cancel();
+    _exportLoadFinished();
     _exportInterstitial?.dispose();
     _exportInterstitial = null;
     _appOpen?.dispose();
@@ -457,9 +503,12 @@ Map<String, Object> nativeCardColours(EcPalette p) {
 /// is the factory's default. Only Android draws the tablet shapes; iOS
 /// keeps its row until iPad ships (§1).
 Map<String, Object> nativeCardLayout(AdSlotStyle style, EcPalette p) {
-  if (style.layout == AdLayout.row || defaultTargetPlatform != TargetPlatform.android) return const {};
+  if (style.layout == AdLayout.row ||
+      defaultTargetPlatform != TargetPlatform.android)
+    return const {};
   // "#AARRGGBB": the "Ad" tag's ink and the still's translucent strong line.
-  String argb(Color c) => '#${c.toARGB32().toRadixString(16).padLeft(8, '0').toUpperCase()}';
+  String argb(Color c) =>
+      '#${c.toARGB32().toRadixString(16).padLeft(8, '0').toUpperCase()}';
   return {
     'layout': switch (style.layout) {
       AdLayout.compact => 'compact',
@@ -482,7 +531,12 @@ class _NativeAdView extends StatefulWidget {
   final Widget Function(Widget creative) framed;
   final AdSlotStyle style;
 
-  const _NativeAdView({super.key, required this.load, required this.framed, required this.style});
+  const _NativeAdView({
+    super.key,
+    required this.load,
+    required this.framed,
+    required this.style,
+  });
 
   @override
   State<_NativeAdView> createState() => _NativeAdViewState();
@@ -527,7 +581,10 @@ class _NativeAdViewState extends State<_NativeAdView> {
     var failed = false;
     try {
       final ad = await widget.load(
-        {...nativeCardColours(context.palette), ...nativeCardLayout(widget.style, context.palette)},
+        {
+          ...nativeCardColours(context.palette),
+          ...nativeCardLayout(widget.style, context.palette),
+        },
         NativeAdListener(
           onAdLoaded: (ad) {
             if (!mounted) return;
@@ -594,11 +651,15 @@ class _NativeAdViewState extends State<_NativeAdView> {
     final ad = _ad;
     if (!_loaded || ad == null) {
       final reserve = widget.style.reserve;
-      return reserve == null || _failed ? const SizedBox.shrink() : SizedBox(height: reserve);
+      return reserve == null || _failed
+          ? const SizedBox.shrink()
+          : SizedBox(height: reserve);
     }
     // The tablet shapes fill the card the slot draws around them; the
     // phone row draws its own rounded corners natively.
-    final creative = widget.style.layout == AdLayout.row || defaultTargetPlatform != TargetPlatform.android
+    final creative =
+        widget.style.layout == AdLayout.row ||
+            defaultTargetPlatform != TargetPlatform.android
         ? SizedBox(height: 76, child: AdWidget(ad: ad))
         : AdWidget(ad: ad);
     return widget.framed(creative);

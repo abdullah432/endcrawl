@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -167,6 +169,29 @@ void main() {
     await Future.wait([first, second]);
   }, variant: mobile);
 
+  testWidgets(
+    'pending entry shows feedback, blocks repeated taps and opens settings after dismissal',
+    (tester) async {
+      final dismissed = Completer<void>();
+      app.ads.exportInterstitialCompletion = dismissed.future;
+      await open(tester, openExport: false);
+      await tester.tap(find.text('Export').last);
+      await tester.pump(const Duration(milliseconds: 250));
+      await tester.pump();
+      expect(find.text('Opening export…'), findsOneWidget);
+      expect(find.byType(ExportSheet), findsNothing);
+      final context = tester.element(find.byType(EditorScreen));
+      await ExportSheet.show(context);
+      expect(app.ads.exportInterstitialShown, 1);
+      dismissed.complete();
+      await tester.pumpAndSettle();
+      expect(find.text('Opening export…'), findsNothing);
+      expect(find.byType(ExportSheet), findsOneWidget);
+      expect(app.encoder.started, isEmpty);
+    },
+    variant: mobile,
+  );
+
   testWidgets('opening progress during a render does not show another ad', (
     tester,
   ) async {
@@ -198,20 +223,22 @@ void main() {
   group('tablet', () {
     const tablet = Size(1194, 834);
 
-    testWidgets('the Export action shows the entry ad, then the export page', (
-      tester,
-    ) async {
-      await app.pump(tester, size: tablet);
-      await tap(tester, 'The Long Way Down');
-      expect(app.ads.exportInterstitialPreloaded, greaterThan(0));
-      await tap(tester, 'Export');
-      expect(app.ads.exportInterstitialShown, 1);
-      expect(find.text('Render the roll.'), findsOneWidget);
-      await tap(tester, 'Render');
-      await finish(tester);
-      // Completion adds none.
-      expect(app.ads.exportInterstitialShown, 1);
-    }, variant: mobile);
+    testWidgets(
+      'the Export action shows the entry ad, then the export page',
+      (tester) async {
+        await app.pump(tester, size: tablet);
+        await tap(tester, 'The Long Way Down');
+        expect(app.ads.exportInterstitialPreloaded, greaterThan(0));
+        await tap(tester, 'Export');
+        expect(app.ads.exportInterstitialShown, 1);
+        expect(find.text('Render the roll.'), findsOneWidget);
+        await tap(tester, 'Render');
+        await finish(tester);
+        // Completion adds none.
+        expect(app.ads.exportInterstitialShown, 1);
+      },
+      variant: mobile,
+    );
 
     testWidgets('Export… from the project menu goes through the same ad', (
       tester,

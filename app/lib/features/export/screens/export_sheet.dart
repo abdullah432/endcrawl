@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import '../models/export_artifact.dart';
@@ -54,9 +56,39 @@ class ExportSheet extends ConsumerWidget {
     if (presentation.open) return;
     presentation.open = true;
     try {
-      await container
-          .read(exportControllerProvider.notifier)
-          .showExportEntryAd();
+      final navigator = Navigator.of(context);
+      DialogRoute<void>? waiting;
+      final loading = Timer(const Duration(milliseconds: 200), () {
+        if (!context.mounted) return;
+        waiting = DialogRoute<void>(
+          context: context,
+          barrierDismissible: false,
+          builder: (_) => const PopScope(
+            canPop: false,
+            child: AlertDialog(
+              content: Row(
+                children: [
+                  CircularProgressIndicator(semanticsLabel: 'Opening export'),
+                  SizedBox(width: 20),
+                  Flexible(child: Text('Opening export…')),
+                ],
+              ),
+            ),
+          ),
+        );
+        unawaited(navigator.push(waiting!));
+      });
+      try {
+        await container
+            .read(exportControllerProvider.notifier)
+            .showExportEntryAd();
+      } finally {
+        loading.cancel();
+        final route = waiting;
+        if (navigator.mounted && route != null && route.isActive) {
+          navigator.removeRoute(route);
+        }
+      }
       if (!context.mounted) return;
       if (context.isTablet) {
         // T6.1 / P6.1: the whole screen, every phase drawn on the page.

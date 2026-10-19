@@ -74,10 +74,14 @@ which opens the editor and then Export.
   Each platform uses its supplied `export_success_interstitial` unit. The
   timing follows the updated request on 2026-10-19: completion, failure,
   cancellation, retry and saving/sharing never trigger another interstitial.
+  Tester Pro also suppresses ads: turn off Settings → LastReel Pro (tester)
+  to verify Free ads on a simulator.
   Opening Export while a render is already running skips the ad. Web and Pro
   do not request it. Repeated taps while Export is open share one presentation.
-- An unavailable, loading, expired or failed interstitial leaves the Export
-  screen usable. Requests that finish later never open an ad unexpectedly.
+- Export waits up to four seconds for an in-flight interstitial, with an
+  accessible loading indicator. Export settings open after the ad is dismissed.
+  No fill, timeout or SDK failure continues to settings; requests that finish
+  after the entry timeout never open an ad unexpectedly.
   Ads are skipped while backgrounded or while another full-screen ad is open;
   returning from the app's own ad does not stack an app-open ad.
 - The rating question temporarily replaces the rendering/ready native slot.

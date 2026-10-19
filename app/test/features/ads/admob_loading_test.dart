@@ -282,31 +282,94 @@ void main() {
             (named('loadInterstitialAd').single.arguments as Map)['adId']
                 as int;
         await event(tester, id, 'onAdLoaded');
-        await ads.showExportInterstitial();
+        final showing = ads.showExportInterstitial();
+        await tester.pump();
         await ads.showExportInterstitial();
         await ads.showAppOpen();
         expect(await ads.showRewarded(), RewardOutcome.unavailable);
         expect(named('showAdWithoutView'), hasLength(1));
         expect(ads.showingFullScreen, isTrue);
         await event(tester, id, 'onAdDismissedFullScreenContent');
+        await showing;
         expect(ads.showingFullScreen, isFalse);
         expect(named('disposeAd'), hasLength(1));
         expect(named('loadInterstitialAd'), hasLength(2));
       },
     );
 
-    testWidgets('a request completing after Export does not open a late ad', (
-      tester,
-    ) async {
-      final ads = service();
-      ads.preloadExportInterstitial();
-      await tester.pump();
-      await ads.showExportInterstitial();
-      final id =
-          (named('loadInterstitialAd').single.arguments as Map)['adId'] as int;
-      await event(tester, id, 'onAdLoaded');
-      expect(named('showAdWithoutView'), isEmpty);
-    });
+    testWidgets(
+      'a request completing after the entry timeout does not open a late ad',
+      (tester) async {
+        final ads = service();
+        ads.preloadExportInterstitial();
+        await tester.pump();
+        final showing = ads.showExportInterstitial();
+        await tester.pump(const Duration(seconds: 4));
+        await showing;
+        final id =
+            (named('loadInterstitialAd').single.arguments as Map)['adId']
+                as int;
+        await event(tester, id, 'onAdLoaded');
+        expect(named('showAdWithoutView'), isEmpty);
+      },
+    );
+
+    for (final platform in [TargetPlatform.iOS, TargetPlatform.android]) {
+      testWidgets(
+        'Export waits for an in-flight ad, then for dismissal on $platform',
+        (tester) async {
+          final ads = service(platform: platform);
+          final showing = ads.showExportInterstitial();
+          var completed = false;
+          showing.then((_) => completed = true);
+          await tester.pump();
+          final id =
+              (named('loadInterstitialAd').single.arguments as Map)['adId']
+                  as int;
+          await tester.pump(const Duration(seconds: 1));
+          expect(named('showAdWithoutView'), isEmpty);
+          await event(tester, id, 'onAdLoaded');
+          expect(named('showAdWithoutView'), hasLength(1));
+          expect(completed, isFalse);
+          await event(
+            tester,
+            id,
+            platform == TargetPlatform.iOS
+                ? 'adDidDismissFullScreenContent'
+                : 'onAdDismissedFullScreenContent',
+          );
+          await showing;
+          expect(completed, isTrue);
+        },
+        variant: TargetPlatformVariant.only(platform),
+      );
+    }
+
+    for (final change in ['upgrade', 'background', 'dispose']) {
+      testWidgets('a $change while waiting prevents presentation', (
+        tester,
+      ) async {
+        var enabled = true;
+        final ads = service(enabled: () => enabled);
+        final showing = ads.showExportInterstitial();
+        await tester.pump();
+        final id =
+            (named('loadInterstitialAd').single.arguments as Map)['adId']
+                as int;
+        if (change == 'upgrade') enabled = false;
+        if (change == 'background')
+          tester.binding.handleAppLifecycleStateChanged(
+            AppLifecycleState.paused,
+          );
+        if (change == 'dispose') ads.dispose();
+        await event(tester, id, 'onAdLoaded');
+        await showing;
+        expect(named('showAdWithoutView'), isEmpty);
+        tester.binding.handleAppLifecycleStateChanged(
+          AppLifecycleState.resumed,
+        );
+      });
+    }
 
     testWidgets('no fill retries with a delay and stops on disposal', (
       tester,
@@ -401,13 +464,15 @@ void main() {
     ) async {
       final ads = service();
       final id = await load(tester, ads);
-      await ads.showExportInterstitial();
+      final showing = ads.showExportInterstitial();
+      await tester.pump();
       await event(
         tester,
         id,
         'onFailedToShowFullScreenContent',
         showError: AdError(0, 'test', 'Presentation failed'),
       );
+      await showing;
       expect(ads.showingFullScreen, isFalse);
       expect(named('disposeAd'), hasLength(1));
       expect(named('loadInterstitialAd'), hasLength(2));
@@ -423,7 +488,8 @@ void main() {
             (named('loadInterstitialAd').single.arguments as Map)['adUnitId'],
             'ca-app-pub-3940256099942544/4411468910',
           );
-          await ads.showExportInterstitial();
+          final showing = ads.showExportInterstitial();
+          await tester.pump();
           await ads.showExportInterstitial();
           expect(named('showAdWithoutView'), hasLength(1));
           expect(ads.showingFullScreen, isTrue);
@@ -437,6 +503,7 @@ void main() {
                 ? AdError(0, 'test', 'Presentation failed')
                 : null,
           );
+          await showing;
           expect(ads.showingFullScreen, isFalse);
           expect(named('disposeAd'), hasLength(1));
           expect(named('loadInterstitialAd'), hasLength(2));
