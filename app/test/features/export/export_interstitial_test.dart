@@ -51,15 +51,15 @@ void main() {
   }
 
   testWidgets(
-    'preloads while editing and shows on Export, never again at render completion',
+    'preloads while editing and shows once a render succeeds, not on Export',
     (tester) async {
       await open(tester, openExport: false);
       expect(app.ads.exportInterstitialPreloaded, greaterThanOrEqualTo(1));
-      expect(app.ads.exportInterstitialShown, 0);
       await tap(tester, 'Export');
-      expect(app.ads.exportInterstitialShown, 1);
-      expect(app.encoder.started, isEmpty);
+      expect(app.ads.exportInterstitialShown, 0);
+      expect(find.byType(ExportSheet), findsOneWidget);
       await tap(tester, 'Render H.264');
+      expect(app.ads.exportInterstitialShown, 0);
       await finish(tester);
       expect(app.ads.exportInterstitialShown, 1);
       await tap(tester, 'Save to Files');
@@ -69,7 +69,7 @@ void main() {
       await tester.tapAt(const Offset(10, 10));
       await tester.pumpAndSettle();
       await tap(tester, 'Export');
-      expect(app.ads.exportInterstitialShown, 2);
+      expect(app.ads.exportInterstitialShown, 1);
       await tap(tester, 'Render H.264');
       await finish(tester);
       expect(app.ads.exportInterstitialShown, 2);
@@ -77,40 +77,36 @@ void main() {
     variant: mobile,
   );
 
-  testWidgets(
-    'failure and retry do not add an interstitial after the entry ad',
-    (tester) async {
-      app.encoder.failWith = const EncoderException(
-        EncoderFailureKind.failed,
-        'Encoder failed',
-      );
-      final container = await open(tester);
-      await tap(tester, 'Render H.264');
-      await finish(tester);
-      expect(
-        container.read(exportControllerProvider).run?.phase,
-        ExportPhase.failed,
-      );
-      expect(app.ads.exportInterstitialShown, 1);
-      container.read(exportControllerProvider.notifier).retry();
-      await finish(tester);
-      expect(
-        container.read(exportControllerProvider).run?.phase,
-        ExportPhase.done,
-      );
-      expect(app.ads.exportInterstitialShown, 1);
-    },
-    variant: mobile,
-  );
-
-  testWidgets('cancellation adds no interstitial after the entry ad', (
+  testWidgets('a failure shows none; its successful retry shows one', (
     tester,
   ) async {
+    app.encoder.failWith = const EncoderException(
+      EncoderFailureKind.failed,
+      'Encoder failed',
+    );
+    final container = await open(tester);
+    await tap(tester, 'Render H.264');
+    await finish(tester);
+    expect(
+      container.read(exportControllerProvider).run?.phase,
+      ExportPhase.failed,
+    );
+    expect(app.ads.exportInterstitialShown, 0);
+    container.read(exportControllerProvider.notifier).retry();
+    await finish(tester);
+    expect(
+      container.read(exportControllerProvider).run?.phase,
+      ExportPhase.done,
+    );
+    expect(app.ads.exportInterstitialShown, 1);
+  }, variant: mobile);
+
+  testWidgets('cancellation shows no interstitial', (tester) async {
     final container = await open(tester);
     await tap(tester, 'Render H.264');
     container.read(exportControllerProvider.notifier).cancel();
     await finish(tester);
-    expect(app.ads.exportInterstitialShown, 1);
+    expect(app.ads.exportInterstitialShown, 0);
   }, variant: mobile);
 
   testWidgets(
@@ -120,6 +116,7 @@ void main() {
       final container = await open(tester);
       await tap(tester, 'Render H.264');
       await finish(tester);
+      expect(app.ads.exportInterstitialShown, 1);
       expect(
         container.read(exportControllerProvider).run?.phase,
         ExportPhase.done,
@@ -129,6 +126,21 @@ void main() {
     },
     variant: mobile,
   );
+
+  testWidgets('the ready screen stays usable while the ad is up', (
+    tester,
+  ) async {
+    final dismissed = Completer<void>();
+    app.ads.exportInterstitialCompletion = dismissed.future;
+    await open(tester);
+    await tap(tester, 'Render H.264');
+    await finish(tester);
+    expect(app.ads.exportInterstitialShown, 1);
+    expect(find.text('Save to Files'), findsOneWidget);
+    dismissed.complete();
+    await tester.pumpAndSettle();
+    expect(find.text('Save to Files'), findsOneWidget);
+  }, variant: mobile);
 
   testWidgets('Pro exports never preload or show the interstitial', (
     tester,
@@ -141,20 +153,19 @@ void main() {
     expect(app.ads.exportInterstitialShown, 0);
   }, variant: mobile);
 
-  testWidgets('upgrading before Export suppresses the entry ad', (
+  testWidgets('upgrading before the render ends suppresses the ad', (
     tester,
   ) async {
-    await open(tester, openExport: false);
+    await open(tester);
     app.plan.entitlement = const Entitlement.pro();
     await tester.pumpAndSettle();
-    await tap(tester, 'Export');
     await tap(tester, 'Render H.264');
     await finish(tester);
     expect(app.ads.exportInterstitialPreloaded, greaterThanOrEqualTo(1));
     expect(app.ads.exportInterstitialShown, 0);
   }, variant: mobile);
 
-  testWidgets('repeated Export actions share one panel and one ad', (
+  testWidgets('repeated Export actions share one panel and show no ad', (
     tester,
   ) async {
     await open(tester, openExport: false);
@@ -163,48 +174,30 @@ void main() {
     final second = ExportSheet.show(context);
     await tester.pumpAndSettle();
     expect(find.byType(ExportSheet), findsOneWidget);
-    expect(app.ads.exportInterstitialShown, 1);
+    expect(app.ads.exportInterstitialShown, 0);
     await tester.tapAt(const Offset(10, 10));
     await tester.pumpAndSettle();
     await Future.wait([first, second]);
   }, variant: mobile);
 
-  testWidgets(
-    'pending entry shows feedback, blocks repeated taps and opens settings after dismissal',
-    (tester) async {
-      final dismissed = Completer<void>();
-      app.ads.exportInterstitialCompletion = dismissed.future;
-      await open(tester, openExport: false);
-      await tester.tap(find.text('Export').last);
-      await tester.pump(const Duration(milliseconds: 250));
-      await tester.pump();
-      expect(find.text('Opening export…'), findsOneWidget);
-      expect(find.byType(ExportSheet), findsNothing);
-      final context = tester.element(find.byType(EditorScreen));
-      await ExportSheet.show(context);
-      expect(app.ads.exportInterstitialShown, 1);
-      dismissed.complete();
-      await tester.pumpAndSettle();
-      expect(find.text('Opening export…'), findsNothing);
-      expect(find.byType(ExportSheet), findsOneWidget);
-      expect(app.encoder.started, isEmpty);
-    },
-    variant: mobile,
-  );
-
-  testWidgets('opening progress during a render does not show another ad', (
+  testWidgets('a render finishing in the background of the editor shows it', (
     tester,
   ) async {
-    app.encoder.frameTime = const Duration(seconds: 1);
+    app.encoder.frameTime = const Duration(milliseconds: 50);
     final container = await open(tester);
     await tap(tester, 'Render H.264');
     expect(container.read(exportControllerProvider).rendering, isTrue);
     await tap(tester, 'Keep working · renders in background');
-    await tap(tester, 'Export');
-    expect(app.ads.exportInterstitialShown, 1);
-    container.read(exportControllerProvider.notifier).cancel();
+    expect(find.byType(ExportSheet), findsNothing);
+    expect(app.ads.exportInterstitialShown, 0);
+    await finish(tester);
     await tester.pump(const Duration(seconds: 2));
     await tester.pumpAndSettle();
+    expect(
+      container.read(exportControllerProvider).run?.phase,
+      ExportPhase.done,
+    );
+    expect(app.ads.exportInterstitialShown, 1);
   }, variant: mobile);
 
   testWidgets('a Free entitlement arriving while editing warms the ad', (
@@ -217,37 +210,37 @@ void main() {
     await tester.pumpAndSettle();
     expect(app.ads.exportInterstitialPreloaded, 1);
     await tap(tester, 'Export');
+    expect(app.ads.exportInterstitialShown, 0);
+    await tap(tester, 'Render H.264');
+    await finish(tester);
     expect(app.ads.exportInterstitialShown, 1);
   }, variant: mobile);
 
   group('tablet', () {
     const tablet = Size(1194, 834);
 
-    testWidgets(
-      'the Export action shows the entry ad, then the export page',
-      (tester) async {
-        await app.pump(tester, size: tablet);
-        await tap(tester, 'The Long Way Down');
-        expect(app.ads.exportInterstitialPreloaded, greaterThan(0));
-        await tap(tester, 'Export');
-        expect(app.ads.exportInterstitialShown, 1);
-        expect(find.text('Render the roll.'), findsOneWidget);
-        await tap(tester, 'Render');
-        await finish(tester);
-        // Completion adds none.
-        expect(app.ads.exportInterstitialShown, 1);
-      },
-      variant: mobile,
-    );
+    testWidgets('Export opens the page with no ad; a finished render shows one', (
+      tester,
+    ) async {
+      await app.pump(tester, size: tablet);
+      await tap(tester, 'The Long Way Down');
+      expect(app.ads.exportInterstitialPreloaded, greaterThan(0));
+      await tap(tester, 'Export');
+      expect(app.ads.exportInterstitialShown, 0);
+      expect(find.text('Render the roll.'), findsOneWidget);
+      await tap(tester, 'Render');
+      await finish(tester);
+      expect(app.ads.exportInterstitialShown, 1);
+    }, variant: mobile);
 
-    testWidgets('Export… from the project menu goes through the same ad', (
+    testWidgets('Export… from the project menu opens straight on the page', (
       tester,
     ) async {
       await app.pump(tester, size: tablet);
       await tester.tap(find.byTooltip('Project actions').first);
       await tester.pumpAndSettle();
       await tap(tester, 'Export…');
-      expect(app.ads.exportInterstitialShown, 1);
+      expect(app.ads.exportInterstitialShown, 0);
       expect(find.text('Render the roll.'), findsOneWidget);
     }, variant: mobile);
   });

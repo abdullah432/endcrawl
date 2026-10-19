@@ -13,7 +13,7 @@ App ID: `ca-app-pub-6644211975790806~5643195524`.
 | Export ready | Native advanced | `ca-app-pub-6644211975790806/4888602772` |
 | Pro export reward | Rewarded interstitial | `ca-app-pub-6644211975790806/1799405002` |
 | Resume | App open | `ca-app-pub-6644211975790806/6421176298` |
-| Export button | Interstitial | `ca-app-pub-6644211975790806/4830936025` |
+| Successful export | Interstitial | `ca-app-pub-6644211975790806/4830936025` |
 
 ## iOS
 
@@ -22,12 +22,12 @@ App ID supplied for LastReel iOS: `ca-app-pub-6644211975790806~3747523873`.
 | Placement | Format | Production ad unit |
 | --- | --- | --- |
 | Library | Native advanced | `ca-app-pub-6644211975790806/7231930165` |
-| iPad Settings | Native advanced | `ca-app-pub-6644211975790806/9235632198` |
+| iPad Settings (hidden for now) | Native advanced | `ca-app-pub-6644211975790806/9235632198` |
 | Rendering | Native advanced | `ca-app-pub-6644211975790806/8683033622` |
 | Export ready | Native advanced | `ca-app-pub-6644211975790806/2333072682` |
 | Pro export reward | Rewarded interstitial | `ca-app-pub-6644211975790806/9584876749` |
 | Resume | App open | `ca-app-pub-6644211975790806/2740441803` |
-| Export button | Interstitial | `ca-app-pub-6644211975790806/7459691102` |
+| Successful export | Interstitial | `ca-app-pub-6644211975790806/7459691102` |
 
 `AdUnits.current` selects each platform's production units only in release
 mode. Debug/profile Android and iOS builds use Google's sample units and app
@@ -55,33 +55,33 @@ iOS keeps the phone row until iPad ships. Each slot reserves its height while
 loading and closes up if nothing fills it. Only the visible tab requests its
 ad, and the tablet shows no native ad once a render is ready.
 
-The export interstitial follows the phone: shown on the Export action, before
-the export page opens — including "Export…" from the tablet's project menu,
-which opens the editor and then Export.
+The export interstitial follows the phone: shown once a render succeeds, never
+on the Export action — "Export…" from the tablet's project menu opens the
+export page directly too.
 
 ## When an ad is visible
 
 - Free accounts show native ads in the library, rendering and ready views.
   A full Free library intentionally replaces its ad with the upgrade card.
 - Pro, trials and the native tester Pro override show no ads.
-- Settings has a native placement on Free iPads and Android tablets only,
-  below the detail content, using the existing native factory and consent
-  flow. Tablet detection uses the display's shortest side (600 logical pixels)
-  so an iPad keeps the placement in a narrow split-view window. Phones,
-  desktop apps and web do not request it; no fill leaves no blank frame.
+- Settings has a native placement on Free Android tablets only, below the
+  detail content, using the existing native factory and consent flow. It is
+  hidden on iPad for now (the iOS unit stays configured for when it returns).
+  Tablet detection uses the display's shortest side (600 logical pixels) so a
+  tablet keeps the placement in a narrow split-view window. Phones, desktop
+  apps and web do not request it; no fill leaves no blank frame.
 - On Android and iOS Free, the interstitial is preloaded when the editor opens
-  and shown on the editor's Export action, before the export settings appear.
-  Each platform uses its supplied `export_success_interstitial` unit. The
-  timing follows the updated request on 2026-10-19: completion, failure,
-  cancellation, retry and saving/sharing never trigger another interstitial.
-  Tester Pro also suppresses ads: turn off Settings → LastReel Pro (tester)
-  to verify Free ads on a simulator.
-  Opening Export while a render is already running skips the ad. Web and Pro
-  do not request it. Repeated taps while Export is open share one presentation.
-- Export waits up to four seconds for an in-flight interstitial, with an
-  accessible loading indicator. Export settings open after the ad is dismissed.
-  No fill, timeout or SDK failure continues to settings; requests that finish
-  after the entry timeout never open an ad unexpectedly.
+  (and again when a render starts) and shown once a render finishes
+  successfully, with its file already on the ready screen — whether the
+  export page is open or the user chose "Keep working". Each platform uses its
+  supplied `export_success_interstitial` unit. Tapping Export, failure,
+  cancellation and saving/sharing never show it; a retry that succeeds does.
+  A render unlocked by the rewarded ad shows no second ad. Web and Pro do not
+  request it. Tester Pro also suppresses ads: turn off Settings → LastReel Pro
+  (tester) to verify Free ads on a simulator.
+- Only a loaded ad is shown; the ready screen never waits for inventory. A
+  request that finishes later is kept for the next render and never opens an
+  ad over the current one. The rating question waits for the ad to close.
   Ads are skipped while backgrounded or while another full-screen ad is open;
   returning from the app's own ad does not stack an app-open ad.
 - The rating question temporarily replaces the rendering/ready native slot.

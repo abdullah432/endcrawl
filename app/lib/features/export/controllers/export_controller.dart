@@ -270,6 +270,7 @@ class ExportController extends Notifier<ExportState> {
     );
     final job = _job = _Job();
     state = state.withRun(run);
+    if (!run.onPass) prepareExportAd();
     _watchLifecycle();
     unawaited(_render(job, project, run));
     return true;
@@ -479,9 +480,14 @@ class ExportController extends Notifier<ExportState> {
             .withRun(run);
     _stopWatchingLifecycle();
     unawaited(_record(run));
+    // The interstitial follows a finished render, once, with its file
+    // already in hand. A render a rewarded ad paid for gets no second ad.
+    if (run.phase == ExportPhase.done && !run.onPass) {
+      unawaited(_showExportAd());
+    }
   }
 
-  /// Warm inventory while editing, before the user presses Export.
+  /// Warm inventory while editing, so a render's end has an ad ready.
   void prepareExportAd() {
     if (!_exportAdsAllowed) return;
     try {
@@ -497,9 +503,10 @@ class ExportController extends Notifier<ExportState> {
       !ref.read(runningOnWebProvider) &&
       (ref.read(entitlementProvider).value?.showsAds ?? false);
 
-  /// The Export entry action. No inventory or SDK error may block the sheet.
-  Future<void> showExportEntryAd() async {
-    if (!_exportAdsAllowed || state.rendering) return;
+  /// After a successful render. No inventory or SDK error may turn it into
+  /// a failure or hold up the file's destinations.
+  Future<void> _showExportAd() async {
+    if (!_exportAdsAllowed) return;
     try {
       await ref.read(adServiceProvider).showExportInterstitial();
     } catch (error) {

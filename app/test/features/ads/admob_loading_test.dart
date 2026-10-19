@@ -298,14 +298,13 @@ void main() {
     );
 
     testWidgets(
-      'a request completing after the entry timeout does not open a late ad',
+      'with nothing loaded it returns at once and a later load opens nothing',
       (tester) async {
         final ads = service();
         ads.preloadExportInterstitial();
         await tester.pump();
-        final showing = ads.showExportInterstitial();
-        await tester.pump(const Duration(seconds: 4));
-        await showing;
+        await ads.showExportInterstitial();
+        expect(named('loadInterstitialAd'), hasLength(1));
         final id =
             (named('loadInterstitialAd').single.arguments as Map)['adId']
                 as int;
@@ -314,21 +313,27 @@ void main() {
       },
     );
 
+    testWidgets('with nothing requested it starts a load for next time', (
+      tester,
+    ) async {
+      final ads = service();
+      await ads.showExportInterstitial();
+      await tester.pump();
+      expect(named('loadInterstitialAd'), hasLength(1));
+      expect(named('showAdWithoutView'), isEmpty);
+    });
+
     for (final platform in [TargetPlatform.iOS, TargetPlatform.android]) {
       testWidgets(
-        'Export waits for an in-flight ad, then for dismissal on $platform',
+        'a ready ad completes only once dismissed on $platform',
         (tester) async {
           final ads = service(platform: platform);
-          final showing = ads.showExportInterstitial();
+          final id = await load(tester, ads);
           var completed = false;
-          showing.then((_) => completed = true);
+          final showing = ads.showExportInterstitial().then(
+            (_) => completed = true,
+          );
           await tester.pump();
-          final id =
-              (named('loadInterstitialAd').single.arguments as Map)['adId']
-                  as int;
-          await tester.pump(const Duration(seconds: 1));
-          expect(named('showAdWithoutView'), isEmpty);
-          await event(tester, id, 'onAdLoaded');
           expect(named('showAdWithoutView'), hasLength(1));
           expect(completed, isFalse);
           await event(
@@ -346,24 +351,20 @@ void main() {
     }
 
     for (final change in ['upgrade', 'background', 'dispose']) {
-      testWidgets('a $change while waiting prevents presentation', (
+      testWidgets('after a $change a ready ad is not presented', (
         tester,
       ) async {
         var enabled = true;
         final ads = service(enabled: () => enabled);
-        final showing = ads.showExportInterstitial();
-        await tester.pump();
-        final id =
-            (named('loadInterstitialAd').single.arguments as Map)['adId']
-                as int;
+        await load(tester, ads);
         if (change == 'upgrade') enabled = false;
-        if (change == 'background')
+        if (change == 'background') {
           tester.binding.handleAppLifecycleStateChanged(
             AppLifecycleState.paused,
           );
+        }
         if (change == 'dispose') ads.dispose();
-        await event(tester, id, 'onAdLoaded');
-        await showing;
+        await ads.showExportInterstitial();
         expect(named('showAdWithoutView'), isEmpty);
         tester.binding.handleAppLifecycleStateChanged(
           AppLifecycleState.resumed,

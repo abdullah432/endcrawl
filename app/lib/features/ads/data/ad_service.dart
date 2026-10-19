@@ -4,7 +4,7 @@ import '../../../core/widgets/ec_ad_slot.dart';
 import '../widgets/tablet_ad.dart';
 
 /// Where a native ad sits. The free plan has exactly these, plus the
-/// opt-in rewarded ad on 6.1a and an interstitial when Export is opened — never
+/// opt-in rewarded ad on 6.1a and an interstitial once a render succeeds — never
 /// the editor, the monitor, the template picker, a failed render, or the file.
 enum AdPlacement {
   /// The foot of the library (1.1, 1.2).
@@ -114,7 +114,7 @@ abstract interface class AdService {
   /// background has one ready. Shows nothing.
   void preloadAppOpen();
 
-  /// Preloads a standard interstitial ahead of the Export entry action.
+  /// Preloads a standard interstitial ahead of a render finishing.
   void preloadExportInterstitial();
 
   /// Shows a ready ad after success. Never waits for inventory to load.

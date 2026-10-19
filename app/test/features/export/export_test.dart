@@ -302,6 +302,8 @@ void main() {
 
         expect(app.ads.rewardedShown, 1);
         expect(app.encoder.started.single.codec, Codec.prores422);
+        // The render the rewarded ad paid for adds no interstitial.
+        expect(app.ads.exportInterstitialShown, 0);
         expect(find.text('Save to Files'), findsOneWidget);
 
         await tester.tapAt(const Offset(10, 10)); // close the sheet

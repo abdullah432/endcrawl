@@ -9,13 +9,13 @@ import '../../ads/widgets/sponsored_slot.dart';
 import '../../home/tablet_layout.dart';
 import '../../home/widgets/app_side_nav.dart';
 
-/// The Settings placement, below the Settings content, for native tablets
-/// only — including an iPad in a narrow split-view window. Phones and web
-/// never request it.
+/// The Settings placement, below the Settings content, for Android tablets
+/// only — including one in a narrow split-view window. Phones and web never
+/// request it, and it is hidden on iPad for now.
 ///
 /// In the tablet's Settings tab it is drawn as the tablet ad strip, and
 /// only while that tab shows, so the hidden tab requests no ad. Elsewhere
-/// (a split-view iPad, a desktop-width tablet) it is the phone's row.
+/// (a split-view window, a desktop-width tablet) it is the phone's row.
 class SettingsTabletAd extends ConsumerWidget {
   const SettingsTabletAd({super.key});
 
@@ -24,7 +24,7 @@ class SettingsTabletAd extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     if (ref.watch(runningOnWebProvider) ||
-        (defaultTargetPlatform != TargetPlatform.iOS && defaultTargetPlatform != TargetPlatform.android) ||
+        defaultTargetPlatform != TargetPlatform.android ||
         isNativePhone(context)) {
       return const SizedBox.shrink();
     }

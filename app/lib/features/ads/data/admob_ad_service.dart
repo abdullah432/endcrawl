@@ -34,8 +34,7 @@ class AdMobAdService implements AdService {
   InterstitialAd? _exportInterstitial;
   DateTime? _exportInterstitialLoadedAt;
   bool _exportInterstitialLoading = false;
-  Completer<void>? _exportInterstitialPending;
-  bool _exportEntryPending = false;
+  bool _exportInterstitialShowing = false;
   Timer? _exportInterstitialRetry;
   int _exportInterstitialAttempts = 0;
   final DateTime Function() _now;
@@ -304,16 +303,10 @@ class AdMobAdService implements AdService {
     }
     _exportInterstitialRetry?.cancel();
     _exportInterstitialLoading = true;
-    _exportInterstitialPending = Completer<void>();
     unawaited(_loadExportInterstitial());
   }
 
-  void _exportLoadFinished() {
-    _exportInterstitialLoading = false;
-    final pending = _exportInterstitialPending;
-    _exportInterstitialPending = null;
-    if (pending != null && !pending.isCompleted) pending.complete();
-  }
+  void _exportLoadFinished() => _exportInterstitialLoading = false;
 
   Future<void> _loadExportInterstitial() async {
     _exportInterstitialAttempts++;
@@ -372,29 +365,20 @@ class AdMobAdService implements AdService {
 
   @override
   Future<void> showExportInterstitial() async {
-    if (_exportEntryPending || !_canPresentExportAd) return;
-    _exportEntryPending = true;
-    try {
-      // A fast tap can beat the editor's preload. Wait only while this
-      // entry action is pending; callbacks never present an ad themselves.
-      if (_exportInterstitial == null) {
-        if (!(_exportInterstitialRetry?.isActive ?? false)) {
-          preloadExportInterstitial();
-        }
-        final pending = _exportInterstitialPending;
-        if (pending != null) {
-          try {
-            await pending.future.timeout(const Duration(seconds: 4));
-          } on TimeoutException {
-            debugPrint('AdMob: export continues without an ad (load pending)');
-            return;
-          }
-        }
+    if (_exportInterstitialShowing || !_canPresentExportAd) return;
+    if (_exportInterstitial == null) {
+      // Never wait: the render is done and its file is on screen. A request
+      // that lands later is kept for the next render, not shown over this.
+      if (!(_exportInterstitialRetry?.isActive ?? false)) {
+        preloadExportInterstitial();
       }
-      if (!_canPresentExportAd) return;
+      return;
+    }
+    _exportInterstitialShowing = true;
+    try {
       await _presentExportInterstitial();
     } finally {
-      _exportEntryPending = false;
+      _exportInterstitialShowing = false;
     }
   }
 
@@ -443,7 +427,6 @@ class AdMobAdService implements AdService {
       debugPrint('AdMob: export interstitial show failed — $error');
       ended();
     }
-    // The export route must not race the native ad's presentation.
     await dismissed.future;
   }
 
@@ -504,8 +487,9 @@ Map<String, Object> nativeCardColours(EcPalette p) {
 /// keeps its row until iPad ships (§1).
 Map<String, Object> nativeCardLayout(AdSlotStyle style, EcPalette p) {
   if (style.layout == AdLayout.row ||
-      defaultTargetPlatform != TargetPlatform.android)
+      defaultTargetPlatform != TargetPlatform.android) {
     return const {};
+  }
   // "#AARRGGBB": the "Ad" tag's ink and the still's translucent strong line.
   String argb(Color c) =>
       '#${c.toARGB32().toRadixString(16).padLeft(8, '0').toUpperCase()}';

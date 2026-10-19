@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -54,7 +55,7 @@ void main() {
       final app = AppHarness()..ads = ads;
       await app.pump(tester, size: size);
       if (size.width == 500) {
-        // The window is narrow, but the iPad display has not changed.
+        // The window is narrow, but the tablet's display has not changed.
         tester.view.display.size = tablet;
         await tester.pumpAndSettle();
         await tester.tap(find.bySemanticsLabel('Account').first);
@@ -62,9 +63,15 @@ void main() {
         await tester.tap(find.text('Settings').first);
       }
       await tester.pumpAndSettle();
+      if (defaultTargetPlatform == TargetPlatform.iOS) {
+        // Hidden on iPad for now: no request, no frame.
+        expect(ads.placements, isNot(contains(AdPlacement.settings)));
+        expect(adSlot, findsNothing);
+        return;
+      }
       expect(ads.placements, contains(AdPlacement.settings));
       // The tablet's Settings tab draws it as the tablet ad card; a
-      // split-view iPad's Settings screen as the phone's row.
+      // split-view window's Settings screen as the phone's row.
       expect(
         find.descendant(of: find.byType(SettingsTabletAd), matching: adSlot),
         findsOneWidget,
@@ -132,5 +139,11 @@ void main() {
     expect(find.byType(EcAdSlot), findsNothing);
     // Scaffold gives its child loose constraints; an absent ad is empty.
     expect(tester.getSize(find.byType(SettingsTabletAd)).height, 0);
-  }, variant: mobile);
+  }, variant: TargetPlatformVariant.only(TargetPlatform.android));
+
+  testWidgets('an iPad requests nothing for now', (tester) async {
+    final ads = await mount(tester);
+    expect(ads.placements, isEmpty);
+    expect(tester.getSize(find.byType(SettingsTabletAd)).height, 0);
+  }, variant: TargetPlatformVariant.only(TargetPlatform.iOS));
 }
