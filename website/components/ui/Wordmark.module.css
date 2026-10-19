@@ -1,9 +1,17 @@
 .wordmark {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
   font-family: var(--ec-credit);
   font-weight: 700;
   font-size: 14px;
   letter-spacing: 0.38em;
   text-transform: uppercase;
+}
+
+.icon {
+  flex: none;
+  border-radius: 7px;
 }
 
 .ink,
@@ -14,4 +22,17 @@
 .white,
 .white:hover {
   color: #fff;
+}
+
+@media (max-width: 640px) {
+  .wordmark {
+    gap: 8px;
+    font-size: 12px;
+    letter-spacing: 0.25em;
+  }
+
+  .icon {
+    width: 28px;
+    height: 28px;
+  }
 }

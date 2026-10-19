@@ -160,6 +160,9 @@ class FakeAdService implements AdService {
 
   int appOpenShown = 0;
   int appOpenPreloaded = 0;
+  int exportInterstitialPreloaded = 0;
+  int exportInterstitialShown = 0;
+  Object? exportInterstitialFailure;
 
   /// The slots asked for, in order, with how each is drawn.
   final requested = <(AdPlacement, AdSlotStyle)>[];
@@ -179,6 +182,15 @@ class FakeAdService implements AdService {
 
   @override
   void preloadAppOpen() => appOpenPreloaded++;
+
+  @override
+  void preloadExportInterstitial() => exportInterstitialPreloaded++;
+
+  @override
+  Future<void> showExportInterstitial() async {
+    exportInterstitialShown++;
+    if (exportInterstitialFailure case final error?) throw error;
+  }
 
   @override
   bool showingFullScreen = false;

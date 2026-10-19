@@ -30,11 +30,22 @@ class AdMobAdService implements AdService {
   bool _disposed = false;
   Timer? _appOpenRetry;
   int _appOpenAttempts = 0;
+  InterstitialAd? _exportInterstitial;
+  DateTime? _exportInterstitialLoadedAt;
+  bool _exportInterstitialLoading = false;
+  Timer? _exportInterstitialRetry;
+  int _exportInterstitialAttempts = 0;
+  final DateTime Function() _now;
 
   /// [_personalised] reads the user's personalised-ads choice at request time.
-  AdMobAdService(this._personalised, {AdUnits? units, bool Function()? enabled})
-    : _units = units ?? AdUnits.current,
-      _enabled = enabled ?? (() => true);
+  AdMobAdService(
+    this._personalised, {
+    AdUnits? units,
+    bool Function()? enabled,
+    DateTime Function()? now,
+  }) : _units = units ?? AdUnits.current,
+       _enabled = enabled ?? (() => true),
+       _now = now ?? DateTime.now;
 
   /// Consent, then the SDK. False when ads can't be requested — no units
   /// for this platform, or consent not given.
@@ -108,9 +119,9 @@ class AdMobAdService implements AdService {
 
   String _nativeUnit(AdPlacement placement) => switch (placement) {
     AdPlacement.library => _units!.libraryNative,
+    AdPlacement.settings => _units!.settingsNative,
     AdPlacement.rendering => _units!.renderingNative,
     AdPlacement.exportComplete => _units!.exportReadyNative,
-    AdPlacement.settings => _units!.settingsNative,
   };
 
   @override
@@ -149,6 +160,7 @@ class AdMobAdService implements AdService {
 
   @override
   Future<RewardOutcome> showRewarded() async {
+    if (_fullScreen) return RewardOutcome.unavailable;
     if (!await _ensureReady()) return RewardOutcome.unavailable;
     final loaded = Completer<RewardedInterstitialAd?>();
     await RewardedInterstitialAd.load(
@@ -164,6 +176,10 @@ class AdMobAdService implements AdService {
     );
     final ad = await loaded.future;
     if (ad == null) return RewardOutcome.unavailable;
+    if (_disposed || !_enabled() || _fullScreen) {
+      ad.dispose();
+      return RewardOutcome.unavailable;
+    }
 
     var earned = false;
     final ended = Completer<RewardOutcome>();
@@ -192,6 +208,7 @@ class AdMobAdService implements AdService {
   @override
   Future<void> showAppOpen() async {
     if (_disposed || _fullScreen || !await _ensureReady()) return;
+    if (_disposed || !_enabled() || _fullScreen) return;
     final ad = _appOpen;
     final fresh =
         _appOpenLoadedAt != null &&
@@ -273,9 +290,124 @@ class AdMobAdService implements AdService {
     );
   }
 
+  @override
+  void preloadExportInterstitial() {
+    if (_disposed ||
+        !_enabled() ||
+        _units?.exportSuccessInterstitial == null ||
+        _exportInterstitialLoading ||
+        _exportInterstitial != null) {
+      return;
+    }
+    _exportInterstitialRetry?.cancel();
+    _exportInterstitialLoading = true;
+    unawaited(_loadExportInterstitial());
+  }
+
+  Future<void> _loadExportInterstitial() async {
+    _exportInterstitialAttempts++;
+    try {
+      if (!await _ensureReady()) {
+        _exportInterstitialLoading = false;
+        _retryExportInterstitial();
+        return;
+      }
+      if (_disposed || !_enabled()) {
+        _exportInterstitialLoading = false;
+        return;
+      }
+      await InterstitialAd.load(
+        adUnitId: _units!.exportSuccessInterstitial!,
+        request: _request,
+        adLoadCallback: InterstitialAdLoadCallback(
+          onAdLoaded: (ad) {
+            _exportInterstitialLoading = false;
+            if (_disposed || !_enabled()) {
+              ad.dispose();
+              return;
+            }
+            _exportInterstitial = ad;
+            _exportInterstitialLoadedAt = _now();
+            _exportInterstitialAttempts = 0;
+          },
+          onAdFailedToLoad: (error) {
+            _exportInterstitialLoading = false;
+            _logFailure('export interstitial', error);
+            _retryExportInterstitial();
+          },
+        ),
+      );
+    } catch (error) {
+      _exportInterstitialLoading = false;
+      debugPrint('AdMob: export interstitial load failed — $error');
+      _retryExportInterstitial();
+    }
+  }
+
+  void _retryExportInterstitial() {
+    if (_disposed ||
+        !_enabled() ||
+        _exportInterstitialAttempts >= AdRetryPolicy.maxAttempts) {
+      return;
+    }
+    _exportInterstitialRetry?.cancel();
+    _exportInterstitialRetry = Timer(
+      AdRetryPolicy.delay(_exportInterstitialAttempts),
+      preloadExportInterstitial,
+    );
+  }
+
+  @override
+  Future<void> showExportInterstitial() async {
+    final lifecycle = WidgetsBinding.instance.lifecycleState;
+    if (_disposed ||
+        !_enabled() ||
+        _fullScreen ||
+        (lifecycle != null && lifecycle != AppLifecycleState.resumed)) {
+      return;
+    }
+    final ad = _exportInterstitial;
+    if (ad == null) return; // No late popup when a pending request completes.
+    _exportInterstitial = null;
+    final loadedAt = _exportInterstitialLoadedAt;
+    _exportInterstitialLoadedAt = null;
+    if (loadedAt == null ||
+        _now().difference(loadedAt) >= const Duration(hours: 1)) {
+      ad.dispose();
+      preloadExportInterstitial();
+      return;
+    }
+    var finished = false;
+    void ended() {
+      if (finished) return;
+      finished = true;
+      ad.dispose();
+      _fullScreen = false;
+      preloadExportInterstitial();
+    }
+
+    ad.fullScreenContentCallback = FullScreenContentCallback(
+      onAdDismissedFullScreenContent: (_) => ended(),
+      onAdFailedToShowFullScreenContent: (_, error) {
+        debugPrint('AdMob: export interstitial show failed — $error');
+        ended();
+      },
+    );
+    _fullScreen = true;
+    try {
+      await ad.show();
+    } catch (error) {
+      debugPrint('AdMob: export interstitial show failed — $error');
+      ended();
+    }
+  }
+
   void dispose() {
     _disposed = true;
     _appOpenRetry?.cancel();
+    _exportInterstitialRetry?.cancel();
+    _exportInterstitial?.dispose();
+    _exportInterstitial = null;
     _appOpen?.dispose();
     _appOpen = null;
   }

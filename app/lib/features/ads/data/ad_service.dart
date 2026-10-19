@@ -4,21 +4,29 @@ import '../../../core/widgets/ec_ad_slot.dart';
 import '../widgets/tablet_ad.dart';
 
 /// Where a native ad sits. The free plan has exactly these, plus the
-/// opt-in rewarded ad on 6.1a — never the editor, the monitor, the
-/// template picker, a failed render, or the exported file.
+/// opt-in rewarded ad on 6.1a and an interstitial after export succeeds — never
+/// the editor, the monitor, the template picker, a failed render, or the file.
 enum AdPlacement {
   /// The foot of the library (1.1, 1.2).
-  library('Filmsupply — 60% off first licence', 'Stock footage for indie cuts.'),
+  library(
+    'Filmsupply — 60% off first licence',
+    'Stock footage for indie cuts.',
+  ),
+
+  /// Below the Settings detail on native tablets.
+  settings('Musicbed — Songs cleared for festival cuts', 'Music licensing for filmmakers'),
 
   /// While a render encodes (6.2).
-  rendering('Artlist — royalty-free score', 'Static, silent, gone when the render ends.'),
+  rendering(
+    'Artlist — royalty-free score',
+    'Static, silent, gone when the render ends.',
+  ),
 
   /// Below the destinations once the file has saved (6.4).
-  exportComplete('Soundstripe — score your next cut', 'Music licensing for filmmakers'),
-
-  /// Under the tablet's Settings section list (T7.1) — never in a
-  /// section's detail.
-  settings('Musicbed — Songs cleared for festival cuts', 'Music licensing for filmmakers');
+  exportComplete(
+    'Soundstripe — score your next cut',
+    'Music licensing for filmmakers',
+  );
 
   /// House copy for where no ad network is wired in.
   final String houseHeadline;
@@ -106,6 +114,12 @@ abstract interface class AdService {
   /// background has one ready. Shows nothing.
   void preloadAppOpen();
 
+  /// Preloads a standard interstitial while an eligible export runs.
+  void preloadExportInterstitial();
+
+  /// Shows a ready ad after success. Never waits for inventory to load.
+  Future<void> showExportInterstitial();
+
   /// An ad covers the app right now. A render keeps going behind it, even
   /// though the app is briefly inactive.
   bool get showingFullScreen;
@@ -138,6 +152,12 @@ class PlaceholderAdService implements AdService {
 
   @override
   void preloadAppOpen() {}
+
+  @override
+  void preloadExportInterstitial() {}
+
+  @override
+  Future<void> showExportInterstitial() async {}
 
   @override
   bool get showingFullScreen => false;

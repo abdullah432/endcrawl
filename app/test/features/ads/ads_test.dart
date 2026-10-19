@@ -12,8 +12,35 @@ import '../../support/fixtures.dart';
 
 void main() {
   group('app-open ad on resume', () {
+    testWidgets(
+      'returning from our own full-screen ad does not stack an app-open ad',
+      (tester) async {
+        final app = AppHarness();
+        await app.pump(tester);
+        app.ads.showingFullScreen = true;
+        tester.binding.handleAppLifecycleStateChanged(
+          AppLifecycleState.inactive,
+        );
+        tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
+        await tester.pump();
+        app.ads.showingFullScreen = false;
+        tester.binding.handleAppLifecycleStateChanged(
+          AppLifecycleState.inactive,
+        );
+        tester.binding.handleAppLifecycleStateChanged(
+          AppLifecycleState.resumed,
+        );
+        await tester.pump();
+        expect(app.ads.appOpenShown, 0);
+      },
+    );
+
     /// Sends the app to the background for [away], then brings it back.
-    Future<void> leaveAndReturn(WidgetTester tester, AppHarness app, Duration away) async {
+    Future<void> leaveAndReturn(
+      WidgetTester tester,
+      AppHarness app,
+      Duration away,
+    ) async {
       final binding = tester.binding;
       binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
       binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
@@ -24,25 +51,37 @@ void main() {
       await tester.pump();
     }
 
-    testWidgets('shows on a return from the background — never on a cold start', (tester) async {
-      final app = AppHarness();
-      await app.pump(tester);
-      expect(app.ads.appOpenShown, 0, reason: 'never on open');
-      expect(app.ads.appOpenPreloaded, 1, reason: 'loaded on open, for the first return');
+    testWidgets(
+      'shows on a return from the background — never on a cold start',
+      (tester) async {
+        final app = AppHarness();
+        await app.pump(tester);
+        expect(app.ads.appOpenShown, 0, reason: 'never on open');
+        expect(
+          app.ads.appOpenPreloaded,
+          1,
+          reason: 'loaded on open, for the first return',
+        );
 
-      await leaveAndReturn(tester, app, const Duration(seconds: 15));
-      expect(app.ads.appOpenShown, 1);
-    });
+        await leaveAndReturn(tester, app, const Duration(seconds: 15));
+        expect(app.ads.appOpenShown, 1);
+      },
+    );
 
-    testWidgets('a short trip away counts too — AdMob\'s cap decides how often', (tester) async {
-      final app = AppHarness();
-      await app.pump(tester);
-      await leaveAndReturn(tester, app, const Duration(seconds: 1));
-      await leaveAndReturn(tester, app, const Duration(seconds: 1));
-      expect(app.ads.appOpenShown, 2);
-    });
+    testWidgets(
+      'a short trip away counts too — AdMob\'s cap decides how often',
+      (tester) async {
+        final app = AppHarness();
+        await app.pump(tester);
+        await leaveAndReturn(tester, app, const Duration(seconds: 1));
+        await leaveAndReturn(tester, app, const Duration(seconds: 1));
+        expect(app.ads.appOpenShown, 2);
+      },
+    );
 
-    testWidgets('not when the app was only inactive, never hidden', (tester) async {
+    testWidgets('not when the app was only inactive, never hidden', (
+      tester,
+    ) async {
       final app = AppHarness();
       await app.pump(tester);
       tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
@@ -52,14 +91,20 @@ void main() {
     });
 
     testWidgets('never on Pro', (tester) async {
-      final app = AppHarness(plan: FakeEntitlementRepository(const Entitlement.pro(period: BillingPeriod.monthly)));
+      final app = AppHarness(
+        plan: FakeEntitlementRepository(
+          const Entitlement.pro(period: BillingPeriod.monthly),
+        ),
+      );
       await app.pump(tester);
       await leaveAndReturn(tester, app, const Duration(minutes: 2));
       expect(app.ads.appOpenShown, 0);
       expect(app.ads.appOpenPreloaded, 0, reason: 'Pro never loads one');
     });
 
-    testWidgets('shows on a return mid-render, and the render still finishes', (tester) async {
+    testWidgets('shows on a return mid-render, and the render still finishes', (
+      tester,
+    ) async {
       final app = AppHarness(
         projects: FakeProjectRepository(seed: [film()]),
         frames: FakeFrames(frames: 400),
@@ -110,11 +155,17 @@ void main() {
 
   test('the native card gets the palette as #RRGGBB per role', () {
     final colours = nativeCardColours(EcPalette.light);
-    expect(colours.keys, unorderedEquals(['surface', 'line', 'tint', 'ink', 'muted', 'onInk']));
+    expect(
+      colours.keys,
+      unorderedEquals(['surface', 'line', 'tint', 'ink', 'muted', 'onInk']),
+    );
     for (final v in colours.values) {
       expect(v, matches(RegExp(r'^#[0-9A-F]{6}$')));
     }
     final ink = EcPalette.light.ink.toARGB32() & 0xFFFFFF;
-    expect(colours['ink'], '#${ink.toRadixString(16).padLeft(6, '0').toUpperCase()}');
+    expect(
+      colours['ink'],
+      '#${ink.toRadixString(16).padLeft(6, '0').toUpperCase()}',
+    );
   });
 }

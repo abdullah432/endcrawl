@@ -11,12 +11,9 @@ import 'package:flutter/foundation.dart';
 /// manifest placeholder in android/app/build.gradle.kts.
 class AdUnits {
   final String libraryNative;
+  final String settingsNative;
   final String renderingNative;
   final String exportReadyNative;
-
-  /// Under the tablet Settings list (T7.1). Shares the library's unit
-  /// until a unit of its own is created in AdMob.
-  String get settingsNative => libraryNative;
 
   /// "Watch ad · render once" (6.1a) — a rewarded interstitial.
   final String proRenderRewarded;
@@ -24,12 +21,17 @@ class AdUnits {
   /// Shown when the app comes back from the background.
   final String appOpenResume;
 
+  /// Standard interstitial after a successful export; null if unconfigured.
+  final String? exportSuccessInterstitial;
+
   const AdUnits({
     required this.libraryNative,
+    required this.settingsNative,
     required this.renderingNative,
     required this.exportReadyNative,
     required this.proRenderRewarded,
     required this.appOpenResume,
+    this.exportSuccessInterstitial,
   });
 
   /// The units for this build and platform, or null where there are none
@@ -51,37 +53,45 @@ class AdUnits {
   /// Verified Android app ca-app-pub-6644211975790806~5643195524.
   static const _androidRelease = AdUnits(
     libraryNative: 'ca-app-pub-6644211975790806/6465497619',
+    settingsNative: 'ca-app-pub-6644211975790806/2251596457',
     renderingNative: 'ca-app-pub-6644211975790806/7706337805',
     exportReadyNative: 'ca-app-pub-6644211975790806/4888602772',
     proRenderRewarded: 'ca-app-pub-6644211975790806/1799405002',
     appOpenResume: 'ca-app-pub-6644211975790806/6421176298',
+    exportSuccessInterstitial: 'ca-app-pub-6644211975790806/4830936025',
   );
 
   /// LastReel iOS app ca-app-pub-6644211975790806~3747523873 (its app ID is
   /// set for Release builds in ios/Flutter/Release.xcconfig).
   static const _iosRelease = AdUnits(
     libraryNative: 'ca-app-pub-6644211975790806/7231930165',
+    settingsNative: 'ca-app-pub-6644211975790806/9235632198',
     renderingNative: 'ca-app-pub-6644211975790806/8683033622',
     exportReadyNative: 'ca-app-pub-6644211975790806/2333072682',
     proRenderRewarded: 'ca-app-pub-6644211975790806/9584876749',
     appOpenResume: 'ca-app-pub-6644211975790806/2740441803',
+    exportSuccessInterstitial: 'ca-app-pub-6644211975790806/7459691102',
   );
 
   // Google's published sample units: always test ads, safe to click.
   static const _iosTest = AdUnits(
     libraryNative: 'ca-app-pub-3940256099942544/3986624511',
+    settingsNative: 'ca-app-pub-3940256099942544/3986624511',
     renderingNative: 'ca-app-pub-3940256099942544/3986624511',
     exportReadyNative: 'ca-app-pub-3940256099942544/3986624511',
     proRenderRewarded: 'ca-app-pub-3940256099942544/6978759866',
     appOpenResume: 'ca-app-pub-3940256099942544/5575463023',
+    exportSuccessInterstitial: 'ca-app-pub-3940256099942544/4411468910',
   );
 
   static const _androidTest = AdUnits(
     libraryNative: 'ca-app-pub-3940256099942544/2247696110',
+    settingsNative: 'ca-app-pub-3940256099942544/2247696110',
     renderingNative: 'ca-app-pub-3940256099942544/2247696110',
     exportReadyNative: 'ca-app-pub-3940256099942544/2247696110',
     proRenderRewarded: 'ca-app-pub-3940256099942544/5354046379',
     appOpenResume: 'ca-app-pub-3940256099942544/9257395921',
+    exportSuccessInterstitial: 'ca-app-pub-3940256099942544/1033173712',
   );
 }
 

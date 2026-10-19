@@ -12,10 +12,11 @@ export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
 const font = (file: string) => readFile(join(process.cwd(), "assets/fonts", file));
-const [serif, serifItalic, narrow] = await Promise.all([
+const [serif, serifItalic, narrow, appIcon] = await Promise.all([
   font("InstrumentSerif-Regular.ttf"),
   font("InstrumentSerif-Italic.ttf"),
   font("ArchivoNarrow-Bold.ttf"),
+  readFile(join(process.cwd(), "assets/brand/app-icon.png")),
 ]);
 
 /** The social preview: the hero, as a still — black, the headline, a few credits. */
@@ -36,7 +37,11 @@ export default function Image() {
           gap: 28,
         }}
       >
-        <div style={{ ...credit, fontSize: 22, letterSpacing: 8, fontWeight: 700 }}>Lastreel</div>
+        <div style={{ display: "flex", alignItems: "center", gap: 18 }}>
+          {/* ImageResponse embeds this image directly into the generated PNG. */}
+          <img src={`data:image/png;base64,${appIcon.toString("base64")}`} width={56} height={56} alt="" style={{ borderRadius: 12 }} />
+          <span style={{ ...credit, fontSize: 22, letterSpacing: 8, fontWeight: 700 }}>Lastreel</span>
+        </div>
         <div style={{ display: "flex", fontFamily: "Instrument Serif", fontSize: 150, lineHeight: 1 }}>
           {hero.heading.text}&nbsp;<span style={{ fontStyle: "italic" }}>{hero.heading.emphasis}</span>
         </div>

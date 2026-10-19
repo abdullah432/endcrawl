@@ -7,6 +7,10 @@ See [responsive web setup and validation](../docs/responsive-web.md) for tablet/
 desktop compositions, browser exports, paid-only web access and the required
 Firebase/RevenueCat server configuration. Mobile Free/Pro behavior is preserved.
 
+Before the first `flutter pub get`, install the sibling
+[`cookoo_video_export` shared package](../docs/shared-video-export.md). The native
+encoder dependency is local and is not published on pub.dev.
+
 ## Stack
 
 - **Flutter** (iOS & Android), **Riverpod** (`flutter_riverpod`) for state,
