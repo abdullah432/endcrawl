@@ -26,6 +26,7 @@ import '../../plan/screens/pro_sheet.dart';
 import '../../plan/widgets/plan_meter.dart';
 import '../controllers/settings_controller.dart';
 import '../models/legal_document.dart';
+import '../widgets/settings_tablet_ad.dart';
 import 'delete_account_screen.dart';
 import 'legal_document_screen.dart';
 import 'privacy_screen.dart';
@@ -95,6 +96,7 @@ class SettingsScreen extends ConsumerWidget {
               groups.otherApps(),
               const SizedBox(height: 22),
               groups.legal(),
+              const SettingsTabletAd(),
             ]),
             const CookooPromoBlock(),
             _Gutter(children: [
@@ -460,7 +462,13 @@ class _SplitSettingsState extends State<_SplitSettings> {
               Expanded(
                 child: SingleChildScrollView(
                   padding: const EdgeInsets.fromLTRB(22, 22, 22, 32),
-                  child: KeyedSubtree(key: ValueKey(selected), child: selected.body(widget.groups)),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      KeyedSubtree(key: ValueKey(selected), child: selected.body(widget.groups)),
+                      const SettingsTabletAd(),
+                    ],
+                  ),
                 ),
               ),
             ],
@@ -543,6 +551,7 @@ class _DesktopSettings extends StatelessWidget {
                           ),
                         ],
                       ),
+                      const SettingsTabletAd(),
                     ],
                   ),
                 ),

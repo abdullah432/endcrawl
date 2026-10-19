@@ -6,6 +6,7 @@ import 'package:lastreel/core/config/ad_config.dart';
 
 List<String> ids(AdUnits units) => [
   units.libraryNative,
+  units.settingsNative,
   units.renderingNative,
   units.exportReadyNative,
   units.proRenderRewarded,
@@ -21,6 +22,7 @@ void main() {
     )!;
     expect(ids(units), [
       'ca-app-pub-6644211975790806/6465497619',
+      'ca-app-pub-6644211975790806/2251596457',
       'ca-app-pub-6644211975790806/7706337805',
       'ca-app-pub-6644211975790806/4888602772',
       'ca-app-pub-6644211975790806/1799405002',
@@ -48,6 +50,7 @@ void main() {
     )!;
     expect(ids(units), [
       'ca-app-pub-6644211975790806/7231930165',
+      'ca-app-pub-6644211975790806/9235632198',
       'ca-app-pub-6644211975790806/8683033622',
       'ca-app-pub-6644211975790806/2333072682',
       'ca-app-pub-6644211975790806/9584876749',

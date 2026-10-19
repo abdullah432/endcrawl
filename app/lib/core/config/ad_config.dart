@@ -11,6 +11,7 @@ import 'package:flutter/foundation.dart';
 /// manifest placeholder in android/app/build.gradle.kts.
 class AdUnits {
   final String libraryNative;
+  final String settingsNative;
   final String renderingNative;
   final String exportReadyNative;
 
@@ -25,6 +26,7 @@ class AdUnits {
 
   const AdUnits({
     required this.libraryNative,
+    required this.settingsNative,
     required this.renderingNative,
     required this.exportReadyNative,
     required this.proRenderRewarded,
@@ -51,6 +53,7 @@ class AdUnits {
   /// Verified Android app ca-app-pub-6644211975790806~5643195524.
   static const _androidRelease = AdUnits(
     libraryNative: 'ca-app-pub-6644211975790806/6465497619',
+    settingsNative: 'ca-app-pub-6644211975790806/2251596457',
     renderingNative: 'ca-app-pub-6644211975790806/7706337805',
     exportReadyNative: 'ca-app-pub-6644211975790806/4888602772',
     proRenderRewarded: 'ca-app-pub-6644211975790806/1799405002',
@@ -62,6 +65,7 @@ class AdUnits {
   /// set for Release builds in ios/Flutter/Release.xcconfig).
   static const _iosRelease = AdUnits(
     libraryNative: 'ca-app-pub-6644211975790806/7231930165',
+    settingsNative: 'ca-app-pub-6644211975790806/9235632198',
     renderingNative: 'ca-app-pub-6644211975790806/8683033622',
     exportReadyNative: 'ca-app-pub-6644211975790806/2333072682',
     proRenderRewarded: 'ca-app-pub-6644211975790806/9584876749',
@@ -72,6 +76,7 @@ class AdUnits {
   // Google's published sample units: always test ads, safe to click.
   static const _iosTest = AdUnits(
     libraryNative: 'ca-app-pub-3940256099942544/3986624511',
+    settingsNative: 'ca-app-pub-3940256099942544/3986624511',
     renderingNative: 'ca-app-pub-3940256099942544/3986624511',
     exportReadyNative: 'ca-app-pub-3940256099942544/3986624511',
     proRenderRewarded: 'ca-app-pub-3940256099942544/6978759866',
@@ -81,6 +86,7 @@ class AdUnits {
 
   static const _androidTest = AdUnits(
     libraryNative: 'ca-app-pub-3940256099942544/2247696110',
+    settingsNative: 'ca-app-pub-3940256099942544/2247696110',
     renderingNative: 'ca-app-pub-3940256099942544/2247696110',
     exportReadyNative: 'ca-app-pub-3940256099942544/2247696110',
     proRenderRewarded: 'ca-app-pub-3940256099942544/5354046379',

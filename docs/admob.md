@@ -8,6 +8,7 @@ App ID: `ca-app-pub-6644211975790806~5643195524`.
 | Placement | Format | Production ad unit |
 | --- | --- | --- |
 | Library | Native advanced | `ca-app-pub-6644211975790806/6465497619` |
+| Tablet Settings | Native advanced | `ca-app-pub-6644211975790806/2251596457` |
 | Rendering | Native advanced | `ca-app-pub-6644211975790806/7706337805` |
 | Export ready | Native advanced | `ca-app-pub-6644211975790806/4888602772` |
 | Pro export reward | Rewarded interstitial | `ca-app-pub-6644211975790806/1799405002` |
@@ -21,6 +22,7 @@ App ID supplied for LastReel iOS: `ca-app-pub-6644211975790806~3747523873`.
 | Placement | Format | Production ad unit |
 | --- | --- | --- |
 | Library | Native advanced | `ca-app-pub-6644211975790806/7231930165` |
+| iPad Settings | Native advanced | `ca-app-pub-6644211975790806/9235632198` |
 | Rendering | Native advanced | `ca-app-pub-6644211975790806/8683033622` |
 | Export ready | Native advanced | `ca-app-pub-6644211975790806/2333072682` |
 | Pro export reward | Rewarded interstitial | `ca-app-pub-6644211975790806/9584876749` |
@@ -38,6 +40,11 @@ builds have no AdMob units. These identifiers are public, not secrets.
 - Free accounts show native ads in the library, rendering and ready views.
   A full Free library intentionally replaces its ad with the upgrade card.
 - Pro, trials and the native tester Pro override show no ads.
+- Settings has a native placement on Free iPads and Android tablets only,
+  below the detail content, using the existing native factory and consent
+  flow. Tablet detection uses the display's shortest side (600 logical pixels)
+  so an iPad keeps the placement in a narrow split-view window. Phones,
+  desktop apps and web do not request it; no fill leaves no blank frame.
 - On Android and iOS Free, an interstitial is preloaded when a render starts
   and shown once after encoding finishes successfully and the output is available. The
   appropriate platform's unit is used. Failed/cancelled renders and web do not
@@ -71,7 +78,7 @@ cd app
 flutter run -t tool/ad_smoke.dart -d <simulator-id>
 ```
 
-This debug-only entry point renders the three real native placements with
+This debug-only entry point renders the four real native placements with
 Google's sample inventory and preloads an app-open test ad. It uses the same
 consent flow and native factory as the app, without reading or changing any
 account/project data. Console messages distinguish consent, initialization,

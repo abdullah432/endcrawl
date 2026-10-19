@@ -82,16 +82,22 @@ void main() {
         .setMockMethodCallHandler(instanceManager.channel, null);
   });
 
-  Future<AdMobAdService> mount(WidgetTester tester) async {
+  Future<AdMobAdService> mount(
+    WidgetTester tester, {
+    AdPlacement placement = AdPlacement.library,
+    AdUnits? units,
+  }) async {
     final service = AdMobAdService(
       () => false,
-      units: AdUnits.forBuild(platform: TargetPlatform.iOS, releaseMode: false),
+      units:
+          units ??
+          AdUnits.forBuild(platform: TargetPlatform.iOS, releaseMode: false),
     );
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
           body: service.nativeAd(
-            AdPlacement.library,
+            placement,
             framed: (_) => const Text('Loaded creative'),
           ),
         ),
@@ -123,6 +129,23 @@ void main() {
     await TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .handlePlatformMessage(instanceManager.channel.name, message, (_) {});
     await tester.pump();
+  }
+
+  for (final platform in [TargetPlatform.iOS, TargetPlatform.android]) {
+    testWidgets(
+      'Settings requests its own native unit on $platform',
+      (tester) async {
+        final units = AdUnits.forBuild(platform: platform, releaseMode: true)!;
+        await mount(tester, placement: AdPlacement.settings, units: units);
+        final request = named('loadNativeAd').single.arguments as Map;
+        expect(request['adUnitId'], units.settingsNative);
+        expect(request['factoryId'], nativeCardFactoryId);
+        expect(find.text('Loaded creative'), findsNothing);
+        await event(tester, request['adId'] as int, 'onAdLoaded');
+        expect(find.text('Loaded creative'), findsOneWidget);
+      },
+      variant: TargetPlatformVariant.only(platform),
+    );
   }
 
   testWidgets(

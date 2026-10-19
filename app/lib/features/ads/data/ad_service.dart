@@ -12,6 +12,9 @@ enum AdPlacement {
     'Stock footage for indie cuts.',
   ),
 
+  /// Below the Settings detail on native tablets.
+  settings('Sponsored', 'Advertisement'),
+
   /// While a render encodes (6.2).
   rendering(
     'Artlist — royalty-free score',
