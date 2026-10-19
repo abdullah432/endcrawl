@@ -66,6 +66,7 @@ class AdUnits {
     exportReadyNative: 'ca-app-pub-6644211975790806/2333072682',
     proRenderRewarded: 'ca-app-pub-6644211975790806/9584876749',
     appOpenResume: 'ca-app-pub-6644211975790806/2740441803',
+    exportSuccessInterstitial: 'ca-app-pub-6644211975790806/7459691102',
   );
 
   // Google's published sample units: always test ads, safe to click.
@@ -75,6 +76,7 @@ class AdUnits {
     exportReadyNative: 'ca-app-pub-3940256099942544/3986624511',
     proRenderRewarded: 'ca-app-pub-3940256099942544/6978759866',
     appOpenResume: 'ca-app-pub-3940256099942544/5575463023',
+    exportSuccessInterstitial: 'ca-app-pub-3940256099942544/4411468910',
   );
 
   static const _androidTest = AdUnits(

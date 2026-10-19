@@ -25,6 +25,7 @@ App ID supplied for LastReel iOS: `ca-app-pub-6644211975790806~3747523873`.
 | Export ready | Native advanced | `ca-app-pub-6644211975790806/2333072682` |
 | Pro export reward | Rewarded interstitial | `ca-app-pub-6644211975790806/9584876749` |
 | Resume | App open | `ca-app-pub-6644211975790806/2740441803` |
+| Successful export | Interstitial | `ca-app-pub-6644211975790806/7459691102` |
 
 `AdUnits.current` selects each platform's production units only in release
 mode. Debug/profile Android and iOS builds use Google's sample units and app
@@ -37,9 +38,9 @@ builds have no AdMob units. These identifiers are public, not secrets.
 - Free accounts show native ads in the library, rendering and ready views.
   A full Free library intentionally replaces its ad with the upgrade card.
 - Pro, trials and the native tester Pro override show no ads.
-- On Android Free, an interstitial is preloaded when a render starts and shown
-  once after encoding finishes successfully and the output is available. The
-  supplied unit is Android-only. Failed/cancelled renders, iOS and web do not
+- On Android and iOS Free, an interstitial is preloaded when a render starts
+  and shown once after encoding finishes successfully and the output is available. The
+  appropriate platform's unit is used. Failed/cancelled renders and web do not
   show this placement. Saving/sharing or reopening the ready screen does not
   trigger another impression.
 - An unavailable, loading, expired or failed interstitial leaves the ready

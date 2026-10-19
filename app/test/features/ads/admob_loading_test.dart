@@ -390,15 +390,36 @@ void main() {
       expect(named('loadInterstitialAd'), hasLength(2));
     });
 
-    testWidgets('iOS has no Android export-interstitial requests', (
-      tester,
-    ) async {
-      final ads = service(platform: TargetPlatform.iOS);
-      ads.preloadExportInterstitial();
-      await tester.pump();
-      await ads.showExportInterstitial();
-      expect(named('MobileAds#initialize'), isEmpty);
-      expect(named('loadInterstitialAd'), isEmpty);
-    });
+    for (final failsToPresent in [false, true]) {
+      testWidgets(
+        'iOS uses its own unit and releases the ad after ${failsToPresent ? 'presentation failure' : 'dismissal'}',
+        (tester) async {
+          final ads = service(platform: TargetPlatform.iOS);
+          final id = await load(tester, ads);
+          expect(
+            (named('loadInterstitialAd').single.arguments as Map)['adUnitId'],
+            'ca-app-pub-3940256099942544/4411468910',
+          );
+          await ads.showExportInterstitial();
+          await ads.showExportInterstitial();
+          expect(named('showAdWithoutView'), hasLength(1));
+          expect(ads.showingFullScreen, isTrue);
+          await event(
+            tester,
+            id,
+            failsToPresent
+                ? 'didFailToPresentFullScreenContentWithError'
+                : 'adDidDismissFullScreenContent',
+            showError: failsToPresent
+                ? AdError(0, 'test', 'Presentation failed')
+                : null,
+          );
+          expect(ads.showingFullScreen, isFalse);
+          expect(named('disposeAd'), hasLength(1));
+          expect(named('loadInterstitialAd'), hasLength(2));
+        },
+        variant: TargetPlatformVariant.only(TargetPlatform.iOS),
+      );
+    }
   });
 }

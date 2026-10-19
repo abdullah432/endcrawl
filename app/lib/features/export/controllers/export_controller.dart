@@ -484,7 +484,8 @@ class ExportController extends Notifier<ExportState> {
   }
 
   bool get _exportAdsAllowed =>
-      defaultTargetPlatform == TargetPlatform.android &&
+      (defaultTargetPlatform == TargetPlatform.android ||
+          defaultTargetPlatform == TargetPlatform.iOS) &&
       !ref.read(runningOnWebProvider) &&
       (ref.read(entitlementProvider).value?.showsAds ?? false);
 

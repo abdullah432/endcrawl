@@ -13,7 +13,10 @@ import '../../support/fixtures.dart';
 
 void main() {
   late AppHarness app;
-  final android = TargetPlatformVariant.only(TargetPlatform.android);
+  final mobile = TargetPlatformVariant({
+    TargetPlatform.android,
+    TargetPlatform.iOS,
+  });
   setUp(
     () => app = AppHarness(projects: FakeProjectRepository(seed: [film()])),
   );
@@ -61,7 +64,7 @@ void main() {
       await finish(tester);
       expect(app.ads.exportInterstitialShown, 2);
     },
-    variant: android,
+    variant: mobile,
   );
 
   testWidgets(
@@ -87,7 +90,7 @@ void main() {
       );
       expect(app.ads.exportInterstitialShown, 1);
     },
-    variant: android,
+    variant: mobile,
   );
 
   testWidgets('cancelled exports show no interstitial', (tester) async {
@@ -96,7 +99,7 @@ void main() {
     container.read(exportControllerProvider.notifier).cancel();
     await finish(tester);
     expect(app.ads.exportInterstitialShown, 0);
-  }, variant: android);
+  }, variant: mobile);
 
   testWidgets(
     'ad errors cannot change successful output into a failed render',
@@ -112,7 +115,7 @@ void main() {
       expect(find.text('Save to Files'), findsOneWidget);
       expect(tester.takeException(), isNull);
     },
-    variant: android,
+    variant: mobile,
   );
 
   testWidgets('Pro exports never preload or show the interstitial', (
@@ -124,7 +127,7 @@ void main() {
     await finish(tester);
     expect(app.ads.exportInterstitialPreloaded, 0);
     expect(app.ads.exportInterstitialShown, 0);
-  }, variant: android);
+  }, variant: mobile);
 
   testWidgets('upgrading during a render suppresses the completion ad', (
     tester,
@@ -135,17 +138,5 @@ void main() {
     await finish(tester);
     expect(app.ads.exportInterstitialPreloaded, 1);
     expect(app.ads.exportInterstitialShown, 0);
-  }, variant: android);
-
-  testWidgets(
-    'iOS does not use the Android interstitial placement',
-    (tester) async {
-      await open(tester);
-      await tap(tester, 'Render H.264');
-      await finish(tester);
-      expect(app.ads.exportInterstitialPreloaded, 0);
-      expect(app.ads.exportInterstitialShown, 0);
-    },
-    variant: TargetPlatformVariant.only(TargetPlatform.iOS),
-  );
+  }, variant: mobile);
 }

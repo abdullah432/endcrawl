@@ -52,8 +52,8 @@ void main() {
       'ca-app-pub-6644211975790806/2333072682',
       'ca-app-pub-6644211975790806/9584876749',
       'ca-app-pub-6644211975790806/2740441803',
+      'ca-app-pub-6644211975790806/7459691102',
     ]);
-    expect(units.exportSuccessInterstitial, isNull);
   });
 
   test('each platform serves only its own production IDs, and others none', () {

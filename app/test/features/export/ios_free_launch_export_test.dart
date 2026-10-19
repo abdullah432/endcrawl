@@ -51,6 +51,8 @@ void main() {
     expect(app.encoder.started.single.codec, Codec.h264);
     expect(app.ads.rewardedShown, 0);
     expect(find.text('Save to Files'), findsOneWidget);
+    expect(app.ads.exportInterstitialPreloaded, 1);
+    expect(app.ads.exportInterstitialShown, 1);
     expect(find.text('SPONSORED'), findsOneWidget);
     expect(find.text('Soundstripe — score your next cut'), findsOneWidget);
     expect(find.text('REMOVE ADS'), findsNothing);
