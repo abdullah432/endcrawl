@@ -46,6 +46,8 @@ class ExportSheet extends ConsumerWidget {
     final container = ProviderScope.containerOf(context, listen: false);
     if (context.isTablet) {
       // T6.1 / P6.1: the whole screen, every phase drawn on the page.
+      final controller = container.read(exportControllerProvider.notifier);
+      controller.exportPageShown(open: true);
       await Navigator.of(context).push<void>(
         MaterialPageRoute(
           fullscreenDialog: true,
@@ -61,6 +63,7 @@ class ExportSheet extends ConsumerWidget {
           ),
         ),
       );
+      controller.exportPageShown(open: false);
     } else {
       await showEcSheet<void>(
         context,

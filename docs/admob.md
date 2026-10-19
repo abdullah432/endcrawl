@@ -37,23 +37,28 @@ builds have no AdMob units. These identifiers are public, not secrets.
 
 ## Tablet slots
 
-Native Android tablets (shortest side ≥ 600, medium layout) follow the tablet
-handoff A (`design/` brief, §5). Ad slot names in analytics are `library_foot`,
-`settings_list`, `render_wait` and `rewarded_pro_render`.
+Native tablets (shortest side ≥ 600, medium layout) follow tablet handoff A.
+Ad slot names in analytics are `library_foot`, `settings_list` (the Settings
+unit), `render_wait` and `rewarded_pro_render`.
 
-| Slot | Where | Unit | Layout |
+| Slot | Where | Unit | Layout (Android) |
 | --- | --- | --- | --- |
 | `library_foot` | Foot of the Projects tab, at 0, 1 and 2 of 2 | Library | `strip` / `stripPortrait` |
-| `settings_list` | Under the Settings section list; end of the portrait Settings page | Library (until a dedicated unit exists) | `compact` |
+| `settings_list` | Below the Settings content: under the detail in landscape, under the page or the section in portrait | Settings | `strip` / `stripPortrait` |
 | `render_wait` | Under the render progress | Rendering | phone row |
 
-`AdUnits.settingsNative` reuses the library unit; create a dedicated native
-unit in AdMob and set it there to report the Settings slot separately. The
-Android factory (`NativeAdFactory.kt`) draws the tablet shapes from
-`customOptions["layout"]`; the Dart card around them adds "Remove ads". iOS keeps
-its row until iPad ships. Each slot reserves its height while loading and
-closes up if nothing fills it. Only the visible tab requests its ad, and the
-tablet shows no ad once a render is ready.
+`SettingsTabletAd` is the one Settings slot for every layout; outside the
+tablet's Settings tab (a split-view iPad, a desktop-width tablet) it is the
+phone row. The Android factory (`NativeAdFactory.kt`) draws the tablet shapes
+from `customOptions["layout"]`, and the Dart card around them adds "Remove ads";
+iOS keeps the phone row until iPad ships. Each slot reserves its height while
+loading and closes up if nothing fills it. Only the visible tab requests its
+ad, and the tablet shows no native ad once a render is ready.
+
+The successful-export interstitial on a tablet shows only over the export
+page: a render sent to the background with "Keep working" ends without one,
+since the editor is ad-free. On every platform a render the rewarded ad
+unlocked gets no interstitial — one ad per render.
 
 ## When an ad is visible
 

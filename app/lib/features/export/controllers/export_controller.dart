@@ -154,6 +154,15 @@ class ExportController extends Notifier<ExportState> {
   String? _completedOutput;
   AppLifecycleListener? _lifecycle;
 
+  /// The tablet shows the export interstitial only over its export page,
+  /// never over the editor a background render returned to (§5: no ads
+  /// where the roll is made). Null on the phone, which has no such rule.
+  int? _exportPagesOpen;
+
+  /// The tablet's export page is on screen ([open]) or has closed.
+  void exportPageShown({required bool open}) =>
+      _exportPagesOpen = ((_exportPagesOpen ?? 0) + (open ? 1 : -1)).clamp(0, 1 << 20);
+
   @override
   ExportState build() {
     ref.listen(currentUidProvider, (previous, next) {
@@ -265,7 +274,8 @@ class ExportController extends Notifier<ExportState> {
     final job = _job = _Job();
     state = state.withRun(run);
     _watchLifecycle();
-    if (_exportAdsAllowed) {
+    // A render the rewarded ad paid for gets no second ad when it ends.
+    if (_exportAdsAllowed && !run.onPass) {
       ref.read(adServiceProvider).preloadExportInterstitial();
     }
     unawaited(_render(job, project, run));
@@ -476,7 +486,10 @@ class ExportController extends Notifier<ExportState> {
             .withRun(run);
     _stopWatchingLifecycle();
     unawaited(_record(run));
-    if (run.phase == ExportPhase.done && _exportAdsAllowed) {
+    if (run.phase == ExportPhase.done &&
+        _exportAdsAllowed &&
+        !run.onPass &&
+        (_exportPagesOpen == null || _exportPagesOpen! > 0)) {
       // Export output is already published. Inventory or SDK failures cannot
       // turn a successful render into a failure or delay file destinations.
       unawaited(_showExportInterstitial());

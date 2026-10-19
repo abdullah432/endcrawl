@@ -10,8 +10,6 @@ import '../../../core/widgets/ec_settings.dart';
 import '../../../core/widgets/ec_toast.dart';
 import '../../../domain/models/app_user.dart';
 import '../../../domain/models/entitlement.dart';
-import '../../ads/data/ad_service.dart';
-import '../../ads/widgets/sponsored_slot.dart';
 import '../../cookoo/widgets/cookoo_swiper.dart';
 import '../../desk/desk_invite.dart';
 import '../../home/tablet_layout.dart';
@@ -22,6 +20,7 @@ import '../../plan/screens/pro_sheet.dart';
 import '../../plan/widgets/plan_meter.dart';
 import '../../plan/controllers/release_policy.dart';
 import '../controllers/settings_controller.dart';
+import '../widgets/settings_tablet_ad.dart';
 import 'delete_account_screen.dart';
 import 'privacy_screen.dart';
 import 'profile_screen.dart';
@@ -36,8 +35,8 @@ import 'subscription_screen.dart';
 /// plan, then the sections, Sign out and Delete — and a section opens one
 /// level deeper with "‹ Settings".
 ///
-/// On Free one small ad (`settings_list`) sits under the list, or at the
-/// end of the portrait page — never in a section's detail.
+/// On Free one ad ([SettingsTabletAd]) sits below the Settings content —
+/// under the detail in landscape, under the page or the section in portrait.
 ///
 /// The open section lives in [settingsSectionProvider], so it survives
 /// rotation and is remembered for the session; in portrait, Plan is the
@@ -170,8 +169,6 @@ class _LandscapeSettings extends ConsumerWidget {
                   ],
                 ),
               ),
-              // Stays put while the sections change.
-              const _SettingsAd(),
             ],
           ),
         ),
@@ -192,6 +189,7 @@ class _LandscapeSettings extends ConsumerWidget {
                     child: _Heading(section: section, size: 34),
                   ),
                 KeyedSubtree(key: ValueKey(section), child: _body(groups, section)),
+                const SettingsTabletAd(),
               ],
             ),
           ),
@@ -338,8 +336,7 @@ class _PortraitRoot extends ConsumerWidget {
                   row(title: 'Sign out', onTap: groups.signOut),
                   row(title: 'Delete account', destructive: true, onTap: () => DeleteAccountScreen.open(context)),
                 ]),
-                const Spacer(),
-                const _SettingsAd(gap: 14),
+                const SettingsTabletAd(),
               ],
             ),
           ),
@@ -349,19 +346,8 @@ class _PortraitRoot extends ConsumerWidget {
   }
 }
 
-/// `settings_list`, only while the Settings tab shows, so a hidden tab
-/// requests no ad.
-class _SettingsAd extends ConsumerWidget {
-  final double gap;
-  const _SettingsAd({this.gap = 0});
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) => ref.watch(homeTabProvider) == HomeDestination.settings
-      ? TabletAdSlot(AdPlacement.settings, layout: AdLayout.compact, gap: gap)
-      : const SizedBox.shrink();
-}
-
-/// P7.2: one level in from the Settings page. The tab bar stays; no ad.
+/// P7.2: one level in from the Settings page. The tab bar stays, and the
+/// Settings ad sits below the section's content.
 class _PortraitSection extends ConsumerWidget {
   final SettingsGroups groups;
   final SettingsSection section;
@@ -409,6 +395,7 @@ class _PortraitSection extends ConsumerWidget {
           _Heading(section: section, size: 42),
           const SizedBox(height: 14),
           _body(groups, section),
+          const SettingsTabletAd(),
         ],
       ),
     );

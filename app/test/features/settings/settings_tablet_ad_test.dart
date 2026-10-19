@@ -8,7 +8,7 @@ import 'package:lastreel/domain/models/entitlement.dart';
 import 'package:lastreel/features/access/controllers/web_access.dart';
 import 'package:lastreel/features/ads/ads_providers.dart';
 import 'package:lastreel/features/ads/data/ad_service.dart';
-import 'package:lastreel/features/settings/screens/settings_screen.dart';
+import 'package:lastreel/features/ads/widgets/tablet_ad.dart';
 import 'package:lastreel/features/settings/widgets/settings_tablet_ad.dart';
 
 import '../../support/app_harness.dart';
@@ -32,6 +32,8 @@ class _SettingsAds extends FakeAdService {
 }
 
 const tablet = Size(1194, 834);
+
+final adSlot = find.byWidgetPredicate((w) => w is EcAdSlot || w is TabletAdCard);
 
 void main() {
   final mobile = TargetPlatformVariant({
@@ -61,11 +63,10 @@ void main() {
       }
       await tester.pumpAndSettle();
       expect(ads.placements, contains(AdPlacement.settings));
+      // The tablet's Settings tab draws it as the tablet ad card; a
+      // split-view iPad's Settings screen as the phone's row.
       expect(
-        find.descendant(
-          of: find.byType(SettingsScreen),
-          matching: find.byType(EcAdSlot),
-        ),
+        find.descendant(of: find.byType(SettingsTabletAd), matching: adSlot),
         findsOneWidget,
       );
       expect(tester.takeException(), isNull);
@@ -77,7 +78,7 @@ void main() {
         expect(find.byType(SettingsTabletAd), findsOneWidget);
         app.plan.entitlement = const Entitlement.pro();
         await tester.pumpAndSettle();
-        expect(find.byType(EcAdSlot), findsNothing);
+        expect(adSlot, findsNothing);
       }
     }, variant: mobile);
   }

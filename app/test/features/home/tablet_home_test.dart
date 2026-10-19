@@ -103,14 +103,22 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('Stored with your account'.toUpperCase()), findsOneWidget);
       expect(logged(app, 'settings_section_opened', {'section': 'privacy'}), isTrue);
-      // The list and its ad stay put.
+      // The ad sits below the detail, not in the section list.
       expect(ad(AdPlacement.settings), findsOneWidget);
+      expect(
+        tester.getTopLeft(ad(AdPlacement.settings)).dx,
+        greaterThan(tester.getTopRight(find.text('Delete account').first).dx),
+      );
+      expect(
+        tester.getTopLeft(ad(AdPlacement.settings)).dy,
+        greaterThan(tester.getBottomLeft(find.text('Delete…')).dy),
+      );
 
       tester.view.physicalSize = portrait;
       await tester.pumpAndSettle();
       expect(find.text('What we keep, and what you control.'), findsOneWidget);
-      // A section's detail never shows an ad.
-      expect(ad(AdPlacement.settings), findsNothing);
+      // Below the section's content in portrait too.
+      expect(ad(AdPlacement.settings), findsOneWidget);
 
       await tester.tap(find.bySemanticsLabel('Back to Settings'));
       await tester.pumpAndSettle();

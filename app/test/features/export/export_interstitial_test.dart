@@ -139,4 +139,46 @@ void main() {
     expect(app.ads.exportInterstitialPreloaded, 1);
     expect(app.ads.exportInterstitialShown, 0);
   }, variant: mobile);
+
+  testWidgets('a render the rewarded ad paid for gets no second ad', (
+    tester,
+  ) async {
+    await open(tester);
+    await tap(tester, 'ProRes 422 HQ');
+    await tap(tester, '▶  Watch ad · render once');
+    await finish(tester);
+    expect(app.ads.rewardedShown, 1);
+    expect(app.ads.exportInterstitialPreloaded, 0);
+    expect(app.ads.exportInterstitialShown, 0);
+  }, variant: mobile);
+
+  group('tablet', () {
+    const tablet = Size(1194, 834);
+
+    Future<void> openTablet(WidgetTester tester) async {
+      await app.pump(tester, size: tablet);
+      await tap(tester, 'The Long Way Down');
+      await tap(tester, 'Export');
+    }
+
+    testWidgets('shows once over the export page when the render ends', (
+      tester,
+    ) async {
+      await openTablet(tester);
+      await tap(tester, 'Render');
+      expect(app.ads.exportInterstitialPreloaded, 1);
+      await finish(tester);
+      expect(app.ads.exportInterstitialShown, 1);
+    }, variant: mobile);
+
+    testWidgets('never over the editor a background render went back to', (
+      tester,
+    ) async {
+      await openTablet(tester);
+      await tap(tester, 'Render');
+      await tap(tester, 'Keep working · renders in background');
+      await finish(tester);
+      expect(app.ads.exportInterstitialShown, 0);
+    }, variant: mobile);
+  });
 }
