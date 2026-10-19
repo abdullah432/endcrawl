@@ -21,7 +21,7 @@ class AdUnits {
   /// Shown when the app comes back from the background.
   final String appOpenResume;
 
-  /// Standard interstitial after a successful export; null if unconfigured.
+  /// Standard interstitial when Export is opened; null if unconfigured.
   final String? exportSuccessInterstitial;
 
   const AdUnits({

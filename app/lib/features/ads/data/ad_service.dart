@@ -3,7 +3,7 @@ import 'package:flutter/widgets.dart';
 import '../../../core/widgets/ec_ad_slot.dart';
 
 /// Where a native ad sits. The free plan has exactly these, plus the
-/// opt-in rewarded ad on 6.1a and an interstitial after export succeeds — never
+/// opt-in rewarded ad on 6.1a and an interstitial when Export is opened — never
 /// the editor, the monitor, the template picker, a failed render, or the file.
 enum AdPlacement {
   /// The foot of the library (1.1, 1.2).
@@ -70,7 +70,7 @@ abstract interface class AdService {
   /// background has one ready. Shows nothing.
   void preloadAppOpen();
 
-  /// Preloads a standard interstitial while an eligible export runs.
+  /// Preloads a standard interstitial ahead of the Export entry action.
   void preloadExportInterstitial();
 
   /// Shows a ready ad after success. Never waits for inventory to load.

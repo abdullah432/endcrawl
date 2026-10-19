@@ -166,6 +166,12 @@ class ExportController extends Notifier<ExportState> {
     ref.listen(webAccessAllowedProvider, (_, allowed) {
       if (!allowed) cancel();
     });
+    ref.listen(entitlementProvider, (previous, next) {
+      if (!(previous?.value?.showsAds ?? false) &&
+          (next.value?.showsAds ?? false)) {
+        prepareExportAd();
+      }
+    });
     ref.onDispose(() {
       _job?.cancel();
       _lifecycle?.dispose();
@@ -265,9 +271,6 @@ class ExportController extends Notifier<ExportState> {
     final job = _job = _Job();
     state = state.withRun(run);
     _watchLifecycle();
-    if (_exportAdsAllowed) {
-      ref.read(adServiceProvider).preloadExportInterstitial();
-    }
     unawaited(_render(job, project, run));
     return true;
   }
@@ -476,10 +479,15 @@ class ExportController extends Notifier<ExportState> {
             .withRun(run);
     _stopWatchingLifecycle();
     unawaited(_record(run));
-    if (run.phase == ExportPhase.done && _exportAdsAllowed) {
-      // Export output is already published. Inventory or SDK failures cannot
-      // turn a successful render into a failure or delay file destinations.
-      unawaited(_showExportInterstitial());
+  }
+
+  /// Warm inventory while editing, before the user presses Export.
+  void prepareExportAd() {
+    if (!_exportAdsAllowed) return;
+    try {
+      ref.read(adServiceProvider).preloadExportInterstitial();
+    } catch (error) {
+      debugPrint('AdMob: export interstitial preload unavailable — $error');
     }
   }
 
@@ -489,7 +497,9 @@ class ExportController extends Notifier<ExportState> {
       !ref.read(runningOnWebProvider) &&
       (ref.read(entitlementProvider).value?.showsAds ?? false);
 
-  Future<void> _showExportInterstitial() async {
+  /// The Export entry action. No inventory or SDK error may block the sheet.
+  Future<void> showExportEntryAd() async {
+    if (!_exportAdsAllowed || state.rendering) return;
     try {
       await ref.read(adServiceProvider).showExportInterstitial();
     } catch (error) {
