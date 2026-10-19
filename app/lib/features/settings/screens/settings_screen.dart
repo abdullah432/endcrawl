@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show TargetPlatform, defaultTargetPlatform;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -93,8 +94,7 @@ class SettingsScreen extends ConsumerWidget {
               const SizedBox(height: 22),
               groups.support(),
               const SizedBox(height: 22),
-              groups.otherApps(),
-              const SizedBox(height: 22),
+              if (groups.hasOtherApps) ...[groups.otherApps(), const SizedBox(height: 22)],
               groups.legal(),
               const SettingsTabletAd(),
             ]),
@@ -250,6 +250,10 @@ class SettingsGroups {
     ]);
   }
 
+  /// The other apps are on Google Play only, so iOS doesn't list them: an
+  /// App Store build must not send people to another store.
+  bool get hasOtherApps => defaultTargetPlatform != TargetPlatform.iOS;
+
   /// "Explore our other apps · by COOKOO": one honest line per app, and
   /// Get opens its Google Play page.
   Widget otherApps() {
@@ -366,7 +370,10 @@ extension on _Section {
         _Section.app => groups.app(),
         _Section.support => Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [groups.support(), const SizedBox(height: 18), groups.otherApps()],
+            children: [
+              groups.support(),
+              if (groups.hasOtherApps) ...[const SizedBox(height: 18), groups.otherApps()],
+            ],
           ),
         _Section.legal => groups.legal(),
         _Section.studio => Column(
@@ -550,8 +557,7 @@ class _DesktopSettings extends StatelessWidget {
                                 if (groups.testerAllowed) ...[groups.tester(), gap],
                                 if (user != null) ...[_ProfileCard(user: user), gap],
                                 groups.support(),
-                                gap,
-                                groups.otherApps(),
+                                if (groups.hasOtherApps) ...[gap, groups.otherApps()],
                                 // Hidden for now: "Made by COOKOO" and the studio-card switch.
                                 // gap,
                                 // groups.studio(),

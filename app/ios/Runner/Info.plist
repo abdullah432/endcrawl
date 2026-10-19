@@ -37,6 +37,8 @@
 	<string>LastReel saves the credit rolls you render to your photo library.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>LastReel needs photo library access to export and save your credit roll videos.</string>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>UIApplicationSceneManifest</key>

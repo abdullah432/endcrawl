@@ -88,7 +88,13 @@ Widget _body(SettingsGroups groups, SettingsSection section) {
     ),
     SettingsSection.support => Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [groups.support(), gap, groups.otherApps(), gap, const CookooPromoBlock(), const _Version()],
+      children: [
+        groups.support(),
+        if (groups.hasOtherApps) ...[gap, groups.otherApps()],
+        gap,
+        const CookooPromoBlock(),
+        const _Version(),
+      ],
     ),
     SettingsSection.privacy => const PrivacyDetail(),
     SettingsSection.legal => groups.legalLinks(),

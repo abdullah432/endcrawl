@@ -356,6 +356,13 @@ extension on ProSheet {
               style: t.caption,
             ),
             const SizedBox(height: 4),
+            // The auto-renewal terms every purchase screen must carry.
+            Text(
+              'Payment is charged to your store account. Subscriptions renew automatically at the displayed price for the selected period unless cancelled in your store settings. Cancel anytime; access continues until the paid period ends.',
+              textAlign: TextAlign.center,
+              style: t.caption,
+            ),
+            const SizedBox(height: 4),
             Wrap(
               alignment: WrapAlignment.center,
               spacing: 8,
@@ -378,6 +385,12 @@ extension on ProSheet {
                   variant: EcButtonVariant.plain,
                   size: EcButtonSize.small,
                   onPressed: () => LegalDocumentScreen.open(context, termsOfService),
+                ),
+                EcButton(
+                  label: 'Privacy',
+                  variant: EcButtonVariant.plain,
+                  size: EcButtonSize.small,
+                  onPressed: () => ref.read(externalLinksProvider).openUrl(AppLinks.privacyPolicy),
                 ),
               ],
             ),
