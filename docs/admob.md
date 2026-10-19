@@ -55,6 +55,14 @@ builds have no AdMob units. These identifiers are public, not secrets.
   with delays of 30 and 60 seconds. Native slots can also recover on resume.
 - A native slot has no empty sponsored frame while loading or after no fill.
 
+## Android release build
+
+Run tests to completion before starting the release build, then use
+`flutter build apk --release` from `app/` (with the intended Android
+`--build-name` and `--build-number`). Allow Flutter to regenerate platform
+tooling: using `--no-pub` after tests can retain the test plugin registrant
+and fail release compilation because `integration_test` is not packaged.
+
 ## Simulator smoke check
 
 ```sh
