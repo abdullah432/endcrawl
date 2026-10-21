@@ -4,7 +4,7 @@ publish_to: "none"
 # Android (Play Store):
 # version: 0.0.7+12
 # iOS (App Store, first build):
-version: 0.0.1+5
+version: 1.0.0+6
 
 environment:
   sdk: ">=3.12.0 <4.0.0"

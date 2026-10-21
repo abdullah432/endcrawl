@@ -93,14 +93,15 @@ email verification globally or bypass authentication for reviewers.
 
 ## Build and verify
 
-The owner will create/upload the final build. The rejected App Store version
-is **1.0**, while the rejected binary reports **0.0.1 (5)**. Match the App Store
-version and use a new unused build number (6 below, if it has not been used):
+A signed App Store archive and IPA have now been built and validated as
+**1.0.0 (6)**. The current `pubspec.yaml` uses the same release metadata.
+The owner can upload `app/build/ios/ipa/LastReel.ipa`; use a new unused build
+number for a later replacement build:
 
 ```sh
 cd app
 flutter pub get
-flutter build ipa --build-name=1.0 --build-number=6 --export-options-plist=ios/ExportOptions.plist
+flutter build ipa --build-name=1.0.0 --build-number=6 --export-options-plist=ios/ExportOptions.plist
 ```
 
 The provisioning profile must have been regenerated after enabling the Apple
@@ -133,9 +134,17 @@ archive; the owner must complete these checks in the newly signed build.
   Debug/Profile/Release configuration references were also checked directly.
 - The installed distribution profile includes Apple sign-in, uses the correct
   bundle/team identifiers, and matches a signing identity in the local keychain.
-- A real Apple Account sign-in/deletion smoke test and final archive/upload are
-  pending the owner's new build. Reviewer email/password setup is owned by the
-  user and was not completed as part of this setup.
+- Signed archive and App Store IPA **1.0.0 (6)** built successfully after the
+  rebase was completed. The exported IPA contains 45 valid privacy manifests,
+  including the shared encoder manifest, and the correct Apple entitlement.
+- Final artifact: `app/build/ios/ipa/LastReel.ipa` (approximately 41 MB).
+  SHA-256: `4519b35f0b6ff30b56c6d59a01ad4c42b6f731924a2e845e92598b3f608987b5`.
+- The reported missing privacy-file error does not reproduce in the final
+  signed build. Keep the dependency privacy resources intact.
+- The build still reports the existing, non-blocking launch-image placeholder
+  warning and an informational CocoaPods/Swift Package migration notice.
+- Real Apple Account sign-in/deletion checks, reviewer email/password setup,
+  and upload/resubmission remain with the owner.
 
 ## References
 
