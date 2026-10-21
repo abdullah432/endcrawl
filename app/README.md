@@ -156,11 +156,11 @@ than from `initState`/`dispose`.
 
 ## Onboarding and accounts
 
-Onboarding is one screen (0.1). A credit roll plays in a black monitor frame
-and **Continue with Google** and **Sign up with email** are the only
-decision on offer. Sign in with Apple is built but switched off
-(`Features.appleSignIn` in `lib/core/config/features.dart`); turning it on
-brings back the Apple buttons on 0.1/0.2 and the Apple row on 7.2. There is deliberately no feature carousel: the
+Onboarding is one screen (0.1). A credit roll plays in a black monitor frame.
+iPhone and iPad offer **Continue with Apple**, **Continue with Google**, and
+email sign-up. Android and web retain Google and email; the shared
+`Features.appleSignIn` availability check also controls the account-method row.
+There is deliberately no feature carousel: the
 product's promise is a broadcast-clean roll in under a minute, and three
 cards to swipe through before you can start would undercut exactly that. The
 roll is the explanation.
@@ -470,11 +470,13 @@ Gradle plugin to the Android build.
 **2. Enable the sign-in providers** in the Firebase console → Authentication →
 Sign-in method: **Email/Password** and **Google**.
 
-Apple is optional while `Features.appleSignIn` is off. To turn it on: enable
-the **Apple** provider, and in Xcode add the **Sign in with Apple** capability to the Runner
-target (Signing & Capabilities). For Apple sign-in on Android, also create a
-Services ID and key in the Apple Developer account and enter them on the
-Apple provider in the Firebase console; iOS needs only the capability.
+**Apple is required for the iOS release.** Enable the Apple provider and the
+`com.lastreel.app` Sign in with Apple capability. Runner includes
+`Runner/Runner.entitlements` in Debug, Profile, and Release. The Firebase Apple
+provider also needs the LastReel Services ID, Team ID, and private key for
+account-deletion token revocation. Keep the key outside source control.
+See [the Apple release setup](../docs/apple-sign-in-setup.md) for configuration,
+provisioning, reviewer access and the device verification steps.
 
 **3. Finish the Google Sign-in platform setup**, which `flutterfire configure`
 does *not* do:

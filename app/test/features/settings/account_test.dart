@@ -56,7 +56,7 @@ void main() {
       expect(app.auth.currentUser?.methods, {SignInMethod.google});
     });
 
-    testWidgets('Apple is not offered while it is switched off', (tester) async {
+    testWidgets('Android retains its existing account connection options', (tester) async {
       await openSettings(tester);
       await tapText(tester, 'Mara Oyelaran');
 
@@ -200,6 +200,17 @@ void main() {
       await tapText(tester, 'Done');
       expect(deletedScreen, findsNothing);
       expect(find.text('Continue with Google'), findsOneWidget, reason: 'the welcome screen');
+    });
+
+    testWidgets('a failed provider revocation preserves projects, profile and login', (tester) async {
+      await confirmDelete(tester);
+      app.auth.prepareDeletionFailure = const AppFailure(FailureKind.network, 'Provider revocation unavailable.');
+      await tapText(tester, 'Continue with Google');
+      expect(app.auth.deletionPreparations, 1);
+      expect(find.text('Provider revocation unavailable.'), findsOneWidget);
+      expect(app.projects.projects, hasLength(1));
+      expect(app.profile.deleted, isFalse);
+      expect(app.auth.deleted, isFalse);
     });
 
     testWidgets('closing the Google sheet keeps everything and says so', (tester) async {

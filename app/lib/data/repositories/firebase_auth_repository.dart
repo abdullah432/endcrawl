@@ -19,6 +19,8 @@ class FirebaseAuthRepository implements AuthRepository {
   /// Set once [GoogleSignIn.initialize] has completed. 7.x requires it before
   /// any other call, and it only needs to happen once per process.
   Future<void>? _googleInitialization;
+  String? _appleDeletionCode;
+  String? _appleDeletionUid;
 
   FirebaseAuthRepository({FirebaseAuth? auth, GoogleSignIn? google})
       : _auth = auth ?? FirebaseAuth.instance,
@@ -94,7 +96,9 @@ class FirebaseAuthRepository implements AuthRepository {
     return _guard(() async {
       // Firebase drives Sign in with Apple natively on iOS and through a
       // web flow elsewhere; no extra package is needed.
-      final result = await _auth.signInWithProvider(_appleProvider());
+      final result = kIsWeb
+          ? await _auth.signInWithPopup(_appleProvider())
+          : await _auth.signInWithProvider(_appleProvider());
       return _requireUser(result.user);
     });
   }
@@ -135,7 +139,11 @@ class FirebaseAuthRepository implements AuthRepository {
   @override
   Future<Result<AppUser>> linkApple() {
     return _guard(() async {
-      await _requireFirebaseUser().linkWithProvider(_appleProvider());
+      if (kIsWeb) {
+        await _requireFirebaseUser().linkWithPopup(_appleProvider());
+      } else {
+        await _requireFirebaseUser().linkWithProvider(_appleProvider());
+      }
       return _reloaded();
     });
   }
@@ -154,7 +162,12 @@ class FirebaseAuthRepository implements AuthRepository {
     final user = currentUser;
     if (user == null || !user.canUnlink(method)) return const Err(lastSignInMethod);
     return _guard(() async {
-      await _requireFirebaseUser().unlink(_providerIdFor(method));
+      final firebaseUser = _requireFirebaseUser();
+      if (method == SignInMethod.apple) {
+        final credential = await _reauthenticateApple(firebaseUser);
+        await _revokeApple(credential);
+      }
+      await firebaseUser.unlink(_providerIdFor(method));
       return _reloaded();
     });
   }
@@ -163,9 +176,13 @@ class FirebaseAuthRepository implements AuthRepository {
   Future<Result<void>> reauthenticate({String? password}) {
     return _guard(() async {
       final user = _requireFirebaseUser();
+      _appleDeletionCode = null;
+      _appleDeletionUid = null;
       switch (currentUser?.primaryMethod) {
         case SignInMethod.apple:
-          await user.reauthenticateWithProvider(_appleProvider());
+          final result = await _reauthenticateApple(user);
+          _appleDeletionCode = result.additionalUserInfo?.authorizationCode;
+          _appleDeletionUid = user.uid;
         case SignInMethod.google when kIsWeb:
           await user.reauthenticateWithPopup(_googleProvider());
         case SignInMethod.google:
@@ -177,6 +194,31 @@ class FirebaseAuthRepository implements AuthRepository {
       }
     });
   }
+
+  Future<UserCredential> _reauthenticateApple(User user) => kIsWeb
+      ? user.reauthenticateWithPopup(_appleProvider())
+      : user.reauthenticateWithProvider(_appleProvider());
+
+  Future<void> _revokeApple(UserCredential credential) async {
+    final code = credential.additionalUserInfo?.authorizationCode;
+    if (code == null || code.isEmpty) {
+      throw FirebaseAuthException(code: 'requires-recent-login');
+    }
+    await _auth.revokeTokenWithAuthorizationCode(code);
+  }
+
+  @override
+  Future<Result<void>> prepareAccountDeletion() => _guard(() async {
+    final user = _requireFirebaseUser();
+    if (!(currentUser?.methods.contains(SignInMethod.apple) ?? false)) return;
+    final code = _appleDeletionCode;
+    if (_appleDeletionUid != user.uid || code == null || code.isEmpty) {
+      throw FirebaseAuthException(code: 'requires-recent-login');
+    }
+    await _auth.revokeTokenWithAuthorizationCode(code);
+    _appleDeletionCode = null;
+    _appleDeletionUid = null;
+  });
 
   Future<AuthCredential> _googleCredential() async {
     await (_googleInitialization ??= _google.initialize());
@@ -218,6 +260,8 @@ class FirebaseAuthRepository implements AuthRepository {
       // cached Google session with it.
       if (_googleInitialization != null) await _google.signOut();
       await _auth.signOut();
+      _appleDeletionCode = null;
+      _appleDeletionUid = null;
     });
   }
 
@@ -229,6 +273,8 @@ class FirebaseAuthRepository implements AuthRepository {
   @override
   Future<Result<void>> signOut() {
     return _guard(() async {
+      _appleDeletionCode = null;
+      _appleDeletionUid = null;
       // Signing out of Firebase alone would leave the Google session cached,
       // so the next sign-in would silently reuse the same account instead of
       // letting the user choose one.

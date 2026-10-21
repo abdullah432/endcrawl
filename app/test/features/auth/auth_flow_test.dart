@@ -30,7 +30,7 @@ void main() {
   }
 
   group('0.1 Welcome', () {
-    testWidgets('offers Google and email, with the credits rolling; Apple is off', (tester) async {
+    testWidgets('Android offers Google and email with the credits rolling', (tester) async {
       await AppHarness.signedOut().pump(tester);
 
       expect(find.text('Continue with Apple'), findsNothing);

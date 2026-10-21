@@ -49,6 +49,9 @@ class AccountController {
     final auth = _ref.read(authRepositoryProvider);
     final projects = _ref.read(projectRepositoryProvider);
 
+    if (await auth.prepareAccountDeletion() case Err(:final failure)) {
+      return Err(failure);
+    }
     if (await projects.deleteAll() case Err(:final failure)) return Err(failure);
     if (await _ref.read(userProfileRepositoryProvider).delete() case Err(:final failure)) return Err(failure);
 

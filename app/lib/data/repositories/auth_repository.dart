@@ -54,6 +54,10 @@ abstract interface class AuthRepository {
   /// email accounts, the provider's own sheet for Apple and Google.
   Future<Result<void>> reauthenticate({String? password});
 
+  /// Revoke a linked Apple grant after fresh verification, before any
+  /// project or profile is erased. Other sign-in methods need no work.
+  Future<Result<void>> prepareAccountDeletion();
+
   /// Deletes the signed-in auth account only. Callers that own data
   /// elsewhere (projects, profile) delete that first.
   Future<Result<void>> deleteCurrentUser();
