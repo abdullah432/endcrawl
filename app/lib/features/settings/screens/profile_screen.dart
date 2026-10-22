@@ -186,6 +186,35 @@ class _MethodRow extends ConsumerWidget {
 
     Future<void> onTap() async {
       if (!connected) {
+        if (method == SignInMethod.apple ||
+            user.methods.contains(SignInMethod.apple)) {
+          final agreed = await showEcSheet<bool>(
+            context,
+            builder: (sheet) => Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text('Connect ${method.label}?', style: t.displayS),
+                const SizedBox(height: 12),
+                Text(
+                  'This links your Apple identity, including a private relay email if you chose one, '
+                  'with the other sign-in methods on this LastReel account. '
+                  'Only continue if you want these identities connected.',
+                  style: t.body,
+                ),
+                const SizedBox(height: 20),
+                EcButton(
+                  label: 'Continue',
+                  onPressed: () => Navigator.of(sheet).pop(true),
+                ),
+                EcButton.text(
+                  label: 'Cancel',
+                  onPressed: () => Navigator.of(sheet).pop(false),
+                ),
+              ],
+            ),
+          );
+          if (agreed != true || !context.mounted) return;
+        }
         if (method == SignInMethod.password) {
           final done = await _PasswordSetupSheet.show(
             context,

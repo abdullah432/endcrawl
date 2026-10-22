@@ -34,11 +34,24 @@ class AccountController {
   /// profile, while the security rules still recognise the owner, then the
   /// sign-in itself. Any failure stops there, leaving the account usable.
   Future<Result<void>> deleteAccount({String? password}) async {
+    if (await verifyIdentity(password: password) case Err(:final failure)) return Err(failure);
+    return deleteVerified();
+  }
+
+  /// The first half of [deleteAccount]: a fresh sign-in with the account's
+  /// own method. Firebase refuses a different account ("user-mismatch").
+  Future<Result<void>> verifyIdentity({String? password}) =>
+      _ref.read(authRepositoryProvider).reauthenticate(password: password);
+
+  /// The second half of [deleteAccount], for right after [verifyIdentity]
+  /// succeeded — the 7.6b screen runs the two apart to say which is under way.
+  Future<Result<void>> deleteVerified() async {
     final auth = _ref.read(authRepositoryProvider);
     final projects = _ref.read(projectRepositoryProvider);
 
-    if (await auth.reauthenticate(password: password) case Err(:final failure)) return Err(failure);
-
+    if (await auth.prepareAccountDeletion() case Err(:final failure)) {
+      return Err(failure);
+    }
     if (await projects.deleteAll() case Err(:final failure)) return Err(failure);
     if (await _ref.read(userProfileRepositoryProvider).delete() case Err(:final failure)) return Err(failure);
 
@@ -46,8 +59,24 @@ class AccountController {
     await session.setLeftOpen(null);
     await session.setLastOpened(null);
 
-    return auth.deleteCurrentUser();
+    // Raised before the sign-in goes, so the gate opens on "Account deleted"
+    // (7.6c) rather than flashing the welcome screen first. It only shows
+    // once the account is actually gone, and is dropped if that fails.
+    final deleted = _ref.read(accountDeletedProvider.notifier)..set(true);
+    final result = await auth.deleteCurrentUser();
+    if (result is Err) deleted.set(false);
+    return result;
   }
+}
+
+/// True between a successful deletion and "Done" on 7.6c.
+final accountDeletedProvider = NotifierProvider<AccountDeleted, bool>(AccountDeleted.new);
+
+class AccountDeleted extends Notifier<bool> {
+  @override
+  bool build() => false;
+
+  void set(bool deleted) => state = deleted;
 }
 
 final accountControllerProvider = Provider<AccountController>(AccountController.new);

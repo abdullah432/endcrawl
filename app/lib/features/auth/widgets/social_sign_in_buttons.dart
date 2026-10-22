@@ -8,10 +8,9 @@ import 'google_mark.dart';
 
 /// "Continue with Apple" and "Continue with Google".
 ///
-/// [compact] is the side-by-side pair under "or" on 0.2 ("Apple", "Google");
-/// otherwise they stack full-width, as on the welcome screen. Apple is
-/// black and Google white, per each company's button guidelines. Apple
-/// shows only when [Features.appleSignIn] is on; Google then stands alone.
+/// [compact] allows a side-by-side pair when the full provider labels fit.
+/// Apple is black and Google white, with equal prominence. Phones stack
+/// the native Apple/Google pair so neither title needs to be abbreviated.
 class SocialSignInButtons extends ConsumerWidget {
   final bool compact;
 
@@ -19,7 +18,11 @@ class SocialSignInButtons extends ConsumerWidget {
   /// tall, side by side when [compact].
   final bool tablet;
 
-  const SocialSignInButtons({super.key, this.compact = false, this.tablet = false});
+  const SocialSignInButtons({
+    super.key,
+    this.compact = false,
+    this.tablet = false,
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -27,10 +30,11 @@ class SocialSignInButtons extends ConsumerWidget {
     final controller = ref.read(authControllerProvider.notifier);
     final idle = !form.busy;
 
-    final short = compact && !tablet;
+    final appleAvailable = Features.appleSignIn;
+    final short = compact && !tablet && !appleAvailable;
     final height = tablet ? 52.0 : null;
     final apple = EcButton(
-      label: short ? 'Apple' : 'Continue with Apple',
+      label: 'Continue with Apple',
       variant: EcButtonVariant.black,
       size: short ? EcButtonSize.medium : EcButtonSize.large,
       height: height,
@@ -49,12 +53,25 @@ class SocialSignInButtons extends ConsumerWidget {
       onPressed: idle ? controller.signInWithGoogle : null,
     );
 
-    if (!Features.appleSignIn) return google;
+    if (!appleAvailable) return google;
     // The tablet leads with Google (T0.1); the phone with Apple.
     final pair = tablet ? [google, apple] : [apple, google];
-    if (compact) {
-      return Row(children: [Expanded(child: pair[0]), const SizedBox(width: 10), Expanded(child: pair[1])]);
+    Widget stacked() => Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [pair[0], const SizedBox(height: 10), pair[1]],
+    );
+    // The sign-in scaffold measures intrinsic height, so use its known
+    // tablet layout and viewport instead of a nested LayoutBuilder.
+    final scale = MediaQuery.textScalerOf(context).scale(15) / 15;
+    if (!compact || !tablet || MediaQuery.sizeOf(context).width < 620 * scale) {
+      return stacked();
     }
-    return Column(mainAxisSize: MainAxisSize.min, children: [pair[0], const SizedBox(height: 10), pair[1]]);
+    return Row(
+      children: [
+        Expanded(child: pair[0]),
+        const SizedBox(width: 10),
+        Expanded(child: pair[1]),
+      ],
+    );
   }
 }

@@ -30,7 +30,7 @@ void main() {
   }
 
   group('0.1 Welcome', () {
-    testWidgets('offers Google and email, with the credits rolling; Apple is off', (tester) async {
+    testWidgets('Android offers Google and email with the credits rolling', (tester) async {
       await AppHarness.signedOut().pump(tester);
 
       expect(find.text('Continue with Apple'), findsNothing);
@@ -134,7 +134,7 @@ void main() {
         auth: FakeAuthRepository()
           ..failWith = const AppFailure(
             FailureKind.permission,
-            'That password doesn’t match this email. Try again or reset it.',
+            'That password doesn’t match this email. Used Google before? Continue with Google, or reset your password.',
             field: AuthField.password,
           ),
       );
@@ -145,7 +145,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(app.auth.signInWithEmailCalls, 1);
-      expect(find.text('That password doesn’t match this email. Try again or reset it.'), findsOneWidget);
+      expect(find.text('That password doesn’t match this email. Used Google before? Continue with Google, or reset your password.'), findsOneWidget);
     });
 
     testWidgets('an invalid email is caught before any request', (tester) async {

@@ -22,6 +22,8 @@ class FakeAuthRepository implements AuthRepository {
 
   /// Set to make the next call fail, for exercising error states.
   AppFailure? failWith;
+  AppFailure? prepareDeletionFailure;
+  int deletionPreparations = 0;
 
   int signInWithEmailCalls = 0;
   int signInWithGoogleCalls = 0;
@@ -169,6 +171,14 @@ class FakeAuthRepository implements AuthRepository {
   Future<Result<void>> reauthenticate({String? password}) async {
     reauthentications++;
     reauthPassword = password;
+    if (failWith case final failure?) return Err(failure);
+    return const Ok(null);
+  }
+
+  @override
+  Future<Result<void>> prepareAccountDeletion() async {
+    deletionPreparations++;
+    if (prepareDeletionFailure case final failure?) return Err(failure);
     if (failWith case final failure?) return Err(failure);
     return const Ok(null);
   }
