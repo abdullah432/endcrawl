@@ -7,7 +7,9 @@ import 'package:lastreel/features/ads/data/admob_ad_service.dart';
 /// Developer smoke check for the real native ad factory and SDK. This
 /// entry point always uses Google's sample units and never touches accounts.
 void main() {
-  if (!kDebugMode) throw StateError('Ad smoke checks require a debug build.');
+  if (kReleaseMode) {
+    throw StateError('Ad smoke checks require a debug or profile build.');
+  }
   WidgetsFlutterBinding.ensureInitialized();
   runApp(const _AdSmoke());
 }

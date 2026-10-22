@@ -9,6 +9,7 @@ App ID: `ca-app-pub-6644211975790806~5643195524`.
 | --- | --- | --- |
 | Library | Native advanced | `ca-app-pub-6644211975790806/6465497619` |
 | Tablet Settings | Native advanced | `ca-app-pub-6644211975790806/2251596457` |
+| Render the roll (tablet settings) | Native advanced | `ca-app-pub-6644211975790806/7487430088` |
 | Rendering | Native advanced | `ca-app-pub-6644211975790806/7706337805` |
 | Export ready | Native advanced | `ca-app-pub-6644211975790806/4888602772` |
 | Pro export reward | Rewarded interstitial | `ca-app-pub-6644211975790806/1799405002` |
@@ -23,6 +24,7 @@ App ID supplied for LastReel iOS: `ca-app-pub-6644211975790806~3747523873`.
 | --- | --- | --- |
 | Library | Native advanced | `ca-app-pub-6644211975790806/7231930165` |
 | iPad Settings (hidden for now) | Native advanced | `ca-app-pub-6644211975790806/9235632198` |
+| Render the roll (tablet settings) | Native advanced | `ca-app-pub-6644211975790806/8861677778` |
 | Rendering | Native advanced | `ca-app-pub-6644211975790806/8683033622` |
 | Export ready | Native advanced | `ca-app-pub-6644211975790806/2333072682` |
 | Pro export reward | Rewarded interstitial | `ca-app-pub-6644211975790806/9584876749` |
@@ -39,12 +41,13 @@ builds have no AdMob units. These identifiers are public, not secrets.
 
 Native tablets (shortest side ≥ 600, medium layout) follow tablet handoff A.
 Ad slot names in analytics are `library_foot`, `settings_list` (the Settings
-unit), `render_wait` and `rewarded_pro_render`.
+unit), `export_settings_foot`, `render_wait` and `rewarded_pro_render`.
 
 | Slot | Where | Unit | Layout (Android) |
 | --- | --- | --- | --- |
 | `library_foot` | Foot of the Projects tab, at 0, 1 and 2 of 2 | Library | `strip` / `stripPortrait` |
 | `settings_list` | Below the Settings content: under the detail in landscape, under the page or the section in portrait (Android only for now) | Settings | `strip` / `stripPortrait` |
+| `export_settings_foot` | Bottom of the “Render the roll” settings page, before rendering, in both tablet orientations | Render the roll | `strip` / `stripPortrait` |
 | `render_wait` | Under the progress card on the render page (T6.2, P6.2), only while the render runs | Rendering | `strip` / `stripPortrait` |
 
 `SettingsTabletAd` is the one Settings slot for every layout; outside the
@@ -59,9 +62,17 @@ The export interstitial follows the phone: shown once a render succeeds, never
 on the Export action — "Export…" from the tablet's project menu opens the
 export page directly too.
 
+The AdMob console name `render_the_rool_screen_native` maps to
+`AdPlacement.exportSettings` → `AdUnits.exportSettingsNative`. Its Android and
+iOS production IDs above were supplied on 2026-10-22. This is separate from
+`renderingNative`, which is used while encoding. The settings footer uses the
+same native ad component as the home screen, with the existing Free/Pro and
+consent checks. It appears on Android tablets and iPads only, never on phones.
+Debug/profile builds continue to use test IDs.
+
 ## When an ad is visible
 
-- Free accounts show native ads in the library, rendering and ready views.
+- Free accounts show native ads in the library, tablet export settings, rendering and ready views.
   A full Free library intentionally replaces its ad with the upgrade card.
 - Pro, trials and the native tester Pro override show no ads.
 - Settings has a native placement on Free Android tablets only, below the
@@ -101,6 +112,26 @@ Run tests to completion before starting the release build, then use
 tooling: using `--no-pub` after tests can retain the test plugin registrant
 and fail release compilation because `integration_test` is not packaged.
 
+## TestFlight and App Store testing devices
+
+TestFlight uses release configuration; installing through TestFlight does not
+by itself make ads test ads. For an installed TestFlight or App Store build,
+register the iPhone under AdMob → Settings → Test devices with its **IDFA**.
+The USB/Xcode UDID and the SDK's hashed test-device identifier are different
+identifiers and must not be entered as the IDFA.
+
+The connected iPhone 13 Pro was registered in the AdMob account as
+`iPhone 13 device` on 2026-10-22 using its IDFA after tracking permission was
+authorized. Device identifiers are kept in AdMob, not in this repository.
+Keep tracking permission enabled for IDFA-based test-device recognition.
+
+Google documents up to 24 hours for a new registration to take effect. Confirm
+the **Test Ad** badge before interacting with an ad. Registration covers AdMob
+Network ads; mediated networks require their own test-mode setup. Debug/profile
+builds already use Google's sample ad units.
+
+Reference: [Google's test-device setup](https://support.google.com/admob/answer/9691433).
+
 ## Simulator smoke check
 
 ```sh
@@ -108,12 +139,14 @@ cd app
 flutter run -t tool/ad_smoke.dart -d <simulator-id>
 ```
 
-This debug-only entry point renders the four real native placements with
+This debug/profile-only entry point renders the configured native placements with
 Google's sample inventory and preloads an app-open test ad. It uses the same
 consent flow and native factory as the app, without reading or changing any
 account/project data. Console messages distinguish consent, initialization,
 load failures and successfully loaded ads. Restore the product entry point
-afterward with `flutter run -t lib/main.dart -d <simulator-id>`.
+afterward with `flutter run -t lib/main.dart -d <simulator-id>`. On a physical
+iPhone, `flutter run --profile -t tool/ad_smoke.dart -d <device-id>` also uses
+sample inventory and can run without a debugger.
 
 Google's [test-ad guide](https://developers.google.com/admob/flutter/test-ads)
 and [UMP guide](https://developers.google.com/admob/flutter/privacy) describe

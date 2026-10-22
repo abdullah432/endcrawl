@@ -16,6 +16,9 @@ enum AdPlacement {
   /// Below the Settings detail on native tablets.
   settings('Musicbed — Songs cleared for festival cuts', 'Music licensing for filmmakers'),
 
+  /// At the foot of tablet export settings (6.1).
+  exportSettings('Artlist — royalty-free score', 'Music licensing for filmmakers'),
+
   /// While a render encodes (6.2).
   rendering(
     'Artlist — royalty-free score',

@@ -12,6 +12,9 @@ import 'package:flutter/foundation.dart';
 class AdUnits {
   final String libraryNative;
   final String settingsNative;
+
+  /// Tablet “Render the roll” settings footer (render_the_rool_screen_native).
+  final String exportSettingsNative;
   final String renderingNative;
   final String exportReadyNative;
 
@@ -27,6 +30,7 @@ class AdUnits {
   const AdUnits({
     required this.libraryNative,
     required this.settingsNative,
+    this.exportSettingsNative = 'ca-app-pub-3940256099942544/3986624511',
     required this.renderingNative,
     required this.exportReadyNative,
     required this.proRenderRewarded,
@@ -53,6 +57,7 @@ class AdUnits {
   /// Verified Android app ca-app-pub-6644211975790806~5643195524.
   static const _androidRelease = AdUnits(
     libraryNative: 'ca-app-pub-6644211975790806/6465497619',
+    exportSettingsNative: 'ca-app-pub-6644211975790806/7487430088',
     settingsNative: 'ca-app-pub-6644211975790806/2251596457',
     renderingNative: 'ca-app-pub-6644211975790806/7706337805',
     exportReadyNative: 'ca-app-pub-6644211975790806/4888602772',
@@ -65,6 +70,7 @@ class AdUnits {
   /// set for Release builds in ios/Flutter/Release.xcconfig).
   static const _iosRelease = AdUnits(
     libraryNative: 'ca-app-pub-6644211975790806/7231930165',
+    exportSettingsNative: 'ca-app-pub-6644211975790806/8861677778',
     settingsNative: 'ca-app-pub-6644211975790806/9235632198',
     renderingNative: 'ca-app-pub-6644211975790806/8683033622',
     exportReadyNative: 'ca-app-pub-6644211975790806/2333072682',
@@ -86,6 +92,7 @@ class AdUnits {
 
   static const _androidTest = AdUnits(
     libraryNative: 'ca-app-pub-3940256099942544/2247696110',
+    exportSettingsNative: 'ca-app-pub-3940256099942544/2247696110',
     settingsNative: 'ca-app-pub-3940256099942544/2247696110',
     renderingNative: 'ca-app-pub-3940256099942544/2247696110',
     exportReadyNative: 'ca-app-pub-3940256099942544/2247696110',

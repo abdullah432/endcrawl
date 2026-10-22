@@ -60,6 +60,36 @@ void main() {
     await tester.pumpAndSettle();
   }
 
+  for (final platform in [TargetPlatform.iOS, TargetPlatform.android]) {
+    for (final size in [landscape, portrait, const Size(390, 844)]) {
+      testWidgets('export settings ad is tablet only: $platform $size', (
+        tester,
+      ) async {
+        final app = harness();
+        await app.pump(tester, size: size);
+        await tap(tester, 'The Long Way Down');
+        await tap(tester, 'Export');
+        final placements = app.ads.requested.map((request) => request.$1);
+        expect(
+          placements.contains(AdPlacement.exportSettings),
+          size.shortestSide >= 600,
+        );
+        expect(tester.takeException(), isNull);
+      }, variant: TargetPlatformVariant.only(platform));
+    }
+  }
+
+  testWidgets('Pro does not request the export settings ad', (tester) async {
+    final app = harness(plan: const Entitlement.pro());
+    await app.pump(tester, size: landscape);
+    await tap(tester, 'The Long Way Down');
+    await tap(tester, 'Export');
+    expect(
+      app.ads.requested.map((r) => r.$1),
+      isNot(contains(AdPlacement.exportSettings)),
+    );
+  });
+
   testWidgets('rendering: the monitor, progress, the wait ad and the renders list', (tester) async {
     final app = harness();
     await startRender(tester, app, landscape);

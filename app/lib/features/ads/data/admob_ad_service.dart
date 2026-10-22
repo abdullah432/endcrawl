@@ -122,6 +122,7 @@ class AdMobAdService implements AdService {
   String _nativeUnit(AdPlacement placement) => switch (placement) {
     AdPlacement.library => _units!.libraryNative,
     AdPlacement.settings => _units!.settingsNative,
+    AdPlacement.exportSettings => _units!.exportSettingsNative,
     AdPlacement.rendering => _units!.renderingNative,
     AdPlacement.exportComplete => _units!.exportReadyNative,
   };

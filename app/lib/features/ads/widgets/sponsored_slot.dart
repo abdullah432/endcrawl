@@ -79,6 +79,7 @@ class TabletAdSlot extends ConsumerWidget {
   static String slotName(AdPlacement placement) => switch (placement) {
     AdPlacement.library => 'library_foot',
     AdPlacement.settings => 'settings_list',
+    AdPlacement.exportSettings => 'export_settings_foot',
     AdPlacement.rendering => 'render_wait',
     AdPlacement.exportComplete => 'export_ready',
   };

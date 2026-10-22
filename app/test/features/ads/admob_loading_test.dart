@@ -148,6 +148,20 @@ void main() {
     );
   }
 
+  for (final platform in [TargetPlatform.iOS, TargetPlatform.android]) {
+    testWidgets('Export settings requests its separate unit on $platform', (
+      tester,
+    ) async {
+      final units = AdUnits.forBuild(platform: platform, releaseMode: true)!;
+      await mount(tester, placement: AdPlacement.exportSettings, units: units);
+      final request = named('loadNativeAd').single.arguments as Map;
+      expect(request['adUnitId'], units.exportSettingsNative);
+      expect(request['adUnitId'], isNot(units.renderingNative));
+      await event(tester, request['adId'] as int, 'onAdLoaded');
+      expect(find.text('Loaded creative'), findsOneWidget);
+    }, variant: TargetPlatformVariant.only(platform));
+  }
+
   testWidgets(
     'cached consent loads while its network refresh is still pending',
     (tester) async {

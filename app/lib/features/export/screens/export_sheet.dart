@@ -759,6 +759,7 @@ class _TabletSettings extends ConsumerWidget {
             ),
             const SizedBox(height: 12),
             action,
+            TabletAdSlot(AdPlacement.exportSettings, layout: AdLayout.strip, portrait: portrait, gap: 20),
           ],
         ),
       );
@@ -796,6 +797,7 @@ class _TabletSettings extends ConsumerWidget {
               ],
             ),
           ),
+          TabletAdSlot(AdPlacement.exportSettings, layout: AdLayout.strip, portrait: portrait, gap: 20),
         ],
       ),
     );
