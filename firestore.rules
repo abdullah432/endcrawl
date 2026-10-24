@@ -24,6 +24,9 @@ rules_version = '2';
 //   - preferences: map         (required — project defaults, app switches,
 //                               privacy choices; see UserProfile in Dart)
 //   - updatedAt: timestamp     (required, server time)
+//   - name, email: string|null (optional, server-maintained identity)
+//   - projectCount: int        (optional, server-maintained current count)
+// Legacy clients may omit metadata on replacement; backend repair restores it.
 // Deliberately no plan/entitlement field: anything the client can write,
 // the client can grant itself.
 //
@@ -95,13 +98,21 @@ service cloud.firestore {
     }
 
     function isValidProfile() {
-      return incoming().keys().hasOnly(['schemaVersion', 'marketingOptIn', 'preferences', 'updatedAt'])
+      return incoming().keys().hasOnly(['schemaVersion', 'marketingOptIn', 'preferences', 'updatedAt', 'name', 'email', 'projectCount'])
         && incoming().keys().hasAll(['schemaVersion', 'marketingOptIn', 'preferences', 'updatedAt'])
         && incoming().schemaVersion == 1
         && incoming().marketingOptIn is bool
         && incoming().preferences is map
         && incoming().preferences.size() <= 32
         && incoming().updatedAt == request.time;
+    }
+
+    function profileMetadataUnchanged() {
+      // Omission is allowed for old app versions, but adding or changing a
+      // server-maintained value is not. Metadata never grants project access.
+      return (!('name' in incoming()) || ('name' in resource.data && incoming().name == resource.data.name))
+        && (!('email' in incoming()) || ('email' in resource.data && incoming().email == resource.data.email))
+        && (!('projectCount' in incoming()) || ('projectCount' in resource.data && incoming().projectCount == resource.data.projectCount));
     }
 
     // Fields a client must never be able to rewrite after creation.
@@ -117,7 +128,9 @@ service cloud.firestore {
 
     match /users/{uid} {
       allow read, delete: if isOwner(uid);
-      allow create, update: if isOwner(uid) && isValidProfile();
+      allow create: if isOwner(uid) && isValidProfile()
+        && !incoming().keys().hasAny(['name', 'email', 'projectCount']);
+      allow update: if isOwner(uid) && isValidProfile() && profileMetadataUnchanged();
     }
 
     match /users/{uid}/projects/{projectId} {

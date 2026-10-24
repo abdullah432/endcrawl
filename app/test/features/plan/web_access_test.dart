@@ -20,8 +20,6 @@ void main() {
         web: true,
       );
       await app.pump(tester, size: const Size(1440, 900));
-      await tester.tap(find.text('Preview the app first'));
-      await tester.pumpAndSettle();
       expect(find.text('The Long Way Down'), findsOneWidget);
       expect(find.textContaining('Preview · Pro required'), findsNothing);
       final scope = ProviderScope.containerOf(

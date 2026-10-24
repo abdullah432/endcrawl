@@ -46,7 +46,9 @@ class _TimingLookScreenState extends ConsumerState<TimingLookScreen> {
   @override
   Widget build(BuildContext context) {
     final desktop = context.layoutClass == LayoutClass.expanded;
-    final portrait = context.tabletLayout == TabletLayout.portrait;
+    // This route can remain open while a foldable switches to its cover
+    // display. Its tablet columns must collapse with the available width.
+    final portrait = context.tabletLayout == TabletLayout.portrait || context.layoutClass == LayoutClass.compact;
     void onTab(TimingLookTab t) => setState(() => _tab = t);
     return Scaffold(
       backgroundColor: Colors.transparent,
@@ -119,6 +121,40 @@ class _PortraitBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (MediaQuery.sizeOf(context).width - MediaQuery.paddingOf(context).horizontal < 600) {
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                _EditorPill(onTap: () => Navigator.of(context).maybePop()),
+                EcButton(
+                  label: 'Done',
+                  variant: EcButtonVariant.ink,
+                  size: EcButtonSize.medium,
+                  height: 46,
+                  expand: false,
+                  onPressed: () => Navigator.of(context).maybePop(),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Semantics(
+              header: true,
+              label: tab == TimingLookTab.timing ? 'Timing' : 'Look',
+              child: EcSegmented(
+                labels: const ['Timing', 'Look'],
+                selectedIndex: tab.index,
+                onChanged: (i) => onTab(TimingLookTab.values[i]),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
     return SizedBox(
       height: 84,
       child: Padding(
@@ -196,7 +232,13 @@ class _PortraitBody extends StatelessWidget {
             card(
               const Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [LookControls(), SizedBox(height: 18), BackgroundControls(), SizedBox(height: 14), _GuidesNote()],
+                children: [
+                  LookControls(),
+                  SizedBox(height: 18),
+                  BackgroundControls(),
+                  SizedBox(height: 14),
+                  _GuidesNote(),
+                ],
               ),
             ),
         ],
@@ -510,48 +552,72 @@ class DwellChart extends ConsumerWidget {
                 ? Center(child: Text('No blocks yet.', style: t.caption))
                 : LayoutBuilder(
                     builder: (context, c) {
-                      final chartH = c.maxHeight - 18;
+                      final labelStyle = t.mono.copyWith(fontSize: 8.5);
+                      final labels = [
+                        for (final b in blocks)
+                          TextPainter(
+                            text: TextSpan(text: b.kind.code, style: labelStyle),
+                            textDirection: Directionality.of(context),
+                            textScaler: MediaQuery.textScalerOf(context),
+                            maxLines: 1,
+                          )..layout(),
+                      ];
+                      final labelHeight = labels.fold<double>(0, (height, label) => math.max(height, label.height));
+                      final columnWidth = labels.fold<double>(28, (width, label) => math.max(width, label.width + 6));
+                      for (final label in labels) {
+                        label.dispose();
+                      }
+                      final chartH = math.max(0.0, c.maxHeight - labelHeight - 4);
                       final floorY = chartH * (1 - floor / top);
-                      return Stack(
-                        children: [
-                          Positioned(
-                            left: 0,
-                            right: 0,
-                            top: floorY,
-                            child: Container(height: 1, color: p.line2),
-                          ),
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.end,
+                      return SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: SizedBox(
+                          width: math.max(c.maxWidth, blocks.length * columnWidth),
+                          height: c.maxHeight,
+                          child: Stack(
                             children: [
-                              for (final b in blocks)
-                                Expanded(
-                                  child: Tooltip(
-                                    message: '${b.kind.code} · ${dwell[b.id]!.toStringAsFixed(1)}s',
-                                    child: Padding(
-                                      padding: const EdgeInsets.symmetric(horizontal: 3),
-                                      child: Column(
-                                        mainAxisAlignment: MainAxisAlignment.end,
-                                        children: [
-                                          Container(
-                                            height: (chartH * (dwell[b.id]! / top)).clamp(2, chartH),
-                                            decoration: BoxDecoration(
-                                              color: dwell[b.id]! >= floor ? p.okWash : p.warnWash,
-                                              border: Border.all(
-                                                color: dwell[b.id]! >= floor ? p.ok.withValues(alpha: .35) : p.warnLine,
+                              Positioned(
+                                left: 0,
+                                right: 0,
+                                top: floorY,
+                                child: Container(height: 1, color: p.line2),
+                              ),
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.end,
+                                children: [
+                                  for (final b in blocks)
+                                    Expanded(
+                                      child: Tooltip(
+                                        message: '${b.kind.code} · ${dwell[b.id]!.toStringAsFixed(1)}s',
+                                        child: Padding(
+                                          padding: const EdgeInsets.symmetric(horizontal: 3),
+                                          child: Column(
+                                            mainAxisAlignment: MainAxisAlignment.end,
+                                            children: [
+                                              Container(
+                                                height: (chartH * (dwell[b.id]! / top)).clamp(0, chartH),
+                                                decoration: BoxDecoration(
+                                                  color: dwell[b.id]! >= floor ? p.okWash : p.warnWash,
+                                                  border: Border.all(
+                                                    color: dwell[b.id]! >= floor
+                                                        ? p.ok.withValues(alpha: .35)
+                                                        : p.warnLine,
+                                                  ),
+                                                  borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
+                                                ),
                                               ),
-                                              borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
-                                            ),
+                                              const SizedBox(height: 4),
+                                              Text(b.kind.code, style: labelStyle, maxLines: 1),
+                                            ],
                                           ),
-                                          const SizedBox(height: 4),
-                                          Text(b.kind.code, style: t.mono.copyWith(fontSize: 8.5)),
-                                        ],
+                                        ),
                                       ),
                                     ),
-                                  ),
-                                ),
+                                ],
+                              ),
                             ],
                           ),
-                        ],
+                        ),
                       );
                     },
                   ),

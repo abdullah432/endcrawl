@@ -1,5 +1,7 @@
 import 'package:lastreel/domain/models/project_settings.dart';
+import 'package:lastreel/domain/models/credit_block.dart';
 import 'package:lastreel/features/timing/screens/background_sheet.dart';
+import 'package:lastreel/features/timing/screens/timing_look_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -10,7 +12,11 @@ import '../../support/fixtures.dart';
 void main() {
   late AppHarness app;
 
-  setUp(() => app = AppHarness(projects: FakeProjectRepository(seed: [film(mode: TimingMode.duration)])));
+  setUp(
+    () => app = AppHarness(
+      projects: FakeProjectRepository(seed: [film(mode: TimingMode.duration)]),
+    ),
+  );
 
   Future<void> tapText(WidgetTester tester, String text) async {
     final finder = find.text(text).last;
@@ -33,6 +39,45 @@ void main() {
   }
 
   group('5.1 timing', () {
+    testWidgets('many-block chart stays readable through folding and enlarged text', (tester) async {
+      final project = film().copyWith(
+        blocks: [
+          for (var i = 0; i < 28; i++) NameListBlock(id: 'department-$i', header: 'Department $i', names: ['Name $i']),
+        ],
+      );
+      app = AppHarness(projects: FakeProjectRepository(seed: [project]));
+      await app.pump(tester, size: const Size(1000, 680));
+      await tester.tap(find.text('The Long Way Down').first);
+      await tester.pumpAndSettle();
+      await tapText(tester, 'Timing');
+
+      for (final size in [const Size(1000, 680), const Size(480, 680), const Size(680, 1000)]) {
+        tester.view.physicalSize = size;
+        tester.platformDispatcher.textScaleFactorTestValue = 1.5;
+        addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+        await tester.pumpAndSettle();
+        final chart = find.byType(DwellChart);
+        await tester.ensureVisible(chart);
+        await tester.pumpAndSettle();
+        expect(tester.takeException(), isNull, reason: '$size');
+
+        final scroller = find.descendant(
+          of: chart,
+          matching: find.byWidgetPredicate(
+            (widget) => widget is SingleChildScrollView && widget.scrollDirection == Axis.horizontal,
+          ),
+        );
+        await tester.drag(scroller, const Offset(-1000, 0));
+        await tester.pumpAndSettle();
+        final scrollState = tester.state<ScrollableState>(
+          find.descendant(of: scroller, matching: find.byType(Scrollable)),
+        );
+        expect(scrollState.position.pixels, greaterThan(0));
+        expect(find.text('DPT'), findsNWidgets(28));
+        expect(tester.takeException(), isNull, reason: 'scrolling at $size');
+      }
+    });
+
     testWidgets('runtime is the input and the scroll rate is derived', (tester) async {
       await openEditor(tester);
       await tapText(tester, 'Timing');

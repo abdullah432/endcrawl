@@ -139,18 +139,65 @@ client configuration. From the repository root:
 ```sh
 npm --prefix functions ci
 npm --prefix functions test
-firebase functions:secrets:set REVENUECAT_SECRET_API_KEY --project YOUR_PROJECT
+firebase functions:secrets:set REVENUECAT_API_KEY --project YOUR_PROJECT
 firebase functions:secrets:set REVENUECAT_WEBHOOK_AUTH --project YOUR_PROJECT
 firebase deploy --only functions,firestore:rules --project YOUR_PROJECT
 ```
 
 Enter secrets interactively; never place them in Dart defines or Flutter assets.
-The API key must be a RevenueCat secret REST key with customer-read access for
-the existing mobile project. In RevenueCat, configure the deployed
+The API key is the existing project's public app key, which RevenueCat supports
+for the Customer Info endpoint used here. The backend only gets canonical
+customer information; it does not need a privileged key for granting entitlements,
+refunds or customer deletion. In RevenueCat, configure the deployed
 `revenueCatWebhook` URL and set its Authorization header to the **exact** value
 stored in `REVENUECAT_WEBHOOK_AUTH` (including `Bearer ` if you chose that prefix).
 Send subscription events, refunds, expirations and transfers. Keep customer IDs
 aligned with Firebase UIDs. Ensure the callable and Firestore worker both deploy.
+
+### Billing pilot deployment — 24 October 2026
+
+The three billing handlers are now deployed in `endcrawl-620c2`. Billing has its
+own `BILLING_ROLLOUT_MODE` (`off` by default) and `BILLING_PILOT_UID`, independently
+of profile repair. The deployed mode is `pilot`, restricted to the administrator-
+resolved UID for `abdullah234ktk@gmail.com`. The callable ignores client-supplied
+account IDs. Webhook ingress filters affected IDs before enqueueing, and the
+retrying worker checks the gate again before reading/updating accounts.
+
+Firebase Secret Manager holds `REVENUECAT_API_KEY` and the random
+`REVENUECAT_WEBHOOK_AUTH` header. The RevenueCat integration named
+`LastReel Firebase billing pilot` targets the deployed webhook and includes both
+production and sandbox notifications. Its built-in test returned HTTP 200.
+No new privileged RevenueCat key was created.
+
+The demo-only Auth/Firestore/Functions suite passes all 22 tests under Node 22,
+including callable authentication, provider failures preserving the last ledger,
+pilot isolation, webhook authorization, duplicate delivery and worker retries.
+Its dedicated emulator ports avoid interrupting an already-running development
+emulator. A test fixture now waits for the worker acknowledgement before cleanup.
+
+Live verification passes for ingress authentication, duplicate webhook delivery,
+canonical reconciliation and ignored non-pilot events. All four original account
+projects, settings and consent are unchanged. An actual signed-in browser check
+now returns **No Pro subscription on this account**, matching RevenueCat's empty
+subscriptions/entitlements, instead of a missing-function error. Real Pro
+detection, browser editing and export remain pending a purchase restoration for
+this same Firebase account. No Pro flag or promotional entitlement was inserted.
+Both billing and profile synchronization remain restricted to the pilot.
+
+For a repeatable billing-only pilot deployment and verification:
+
+```sh
+npm --prefix functions run prepare:billing-deployment
+firebase deploy --config output/billing-pilot/deployment/firebase.json --project endcrawl-620c2 --only functions:refreshEntitlement,functions:revenueCatWebhook,functions:reconcileBillingEvent --non-interactive --force
+npm --prefix functions run verify:billing-pilot
+```
+
+Packaging requires the designated account snapshot and pilot mode. Verification
+checks the deployed guards before sending an explicitly named test webhook; it
+never purchases or grants Pro. It loads the webhook credential into memory from
+Secret Manager, saves private before/after snapshots under ignored
+`output/billing-pilot/live-<timestamp>/`, and compares original project contents
+and settings. No broader rollout occurs automatically.
 
 The handoff uses the existing verified Android listing and a QR code on desktop.
 iOS says Coming soon unless a real `IOS_APP_STORE_URL` is supplied at build time.

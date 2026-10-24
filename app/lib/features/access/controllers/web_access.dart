@@ -18,21 +18,6 @@ final webPreviewProvider = Provider<bool>((ref) {
   return !(ref.watch(entitlementProvider).value?.isPro ?? false);
 });
 
-/// Set once the person leaves the access page for the app — "Preview the
-/// app first", or "Open my projects" after unlocking. Until then a free
-/// account signing in on the web lands on the access page (D2).
-class WebEntry extends Notifier<bool> {
-  @override
-  bool build() {
-    ref.watch(currentUidProvider); // A different account starts over.
-    return false;
-  }
-
-  void enter() => state = true;
-}
-
-final webEntryProvider = NotifierProvider<WebEntry, bool>(WebEntry.new);
-
 /// The workspace actions the web preview locks, each with the wording the
 /// locked dialog (D8) uses for it.
 enum LockedAction {
@@ -55,7 +40,7 @@ enum LockedAction {
 /// Refused by any workspace write while the web is in preview.
 const webPreviewLocked = AppFailure(
   FailureKind.permission,
-  'LastReel on the web is a preview without Pro. Subscribe in the app, then check access.',
+  'Web and desktop editing require LastReel Pro. Subscribe in the mobile app with the same account, then check access here.',
 );
 
 enum AccessPhase { entry, checking, notFound, unlocked, failed }

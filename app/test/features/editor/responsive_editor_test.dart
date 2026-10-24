@@ -119,6 +119,28 @@ void main() {
     });
   }
 
+  testWidgets(
+    'unfolded phone uses readable cast fields in its narrow inspector',
+    (tester) async {
+      final app = AppHarness(projects: FakeProjectRepository(seed: [film()]));
+      tester.view.padding = const FakeViewPadding(right: 96);
+      addTearDown(tester.view.resetPadding);
+      await app.pump(tester, size: const Size(1000, 680));
+      await tester.tap(find.text('The Long Way Down').first);
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.byWidgetPredicate(
+          (widget) => widget is BlockRow && widget.block.id == 'cst',
+        ),
+      );
+      await tester.pumpAndSettle();
+      final role = find.widgetWithText(TextField, 'Renny').first;
+      await tester.ensureVisible(role);
+      expect(tester.getSize(role).width, greaterThan(100));
+      expect(tester.takeException(), isNull);
+    },
+  );
+
   testWidgets('tablet form keeps its draft with keyboard insets', (
     tester,
   ) async {

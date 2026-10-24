@@ -44,16 +44,22 @@ class TransportBar extends ConsumerWidget {
         ),
         _TransportButton(label: '+1f', tooltip: 'Forward one frame', onTap: playback.stepForward),
         _TransportButton(icon: Icons.skip_next_rounded, tooltip: 'To tail', width: 36, onTap: playback.toTail),
-        const Spacer(),
-        LookPill(
-          label: settings.look == RollLook.flat2d ? '2D' : '3D',
-          onTap: () => LookSheet.show(context),
-        ),
-        const SizedBox(width: 6),
-        Flexible(
-          child: LookPill(
-            label: backgroundLabel(settings.background),
-            onTap: () => BackgroundSheet.show(context),
+        Expanded(
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              LookPill(
+                label: settings.look == RollLook.flat2d ? '2D' : '3D',
+                onTap: () => LookSheet.show(context),
+              ),
+              const SizedBox(width: 6),
+              Flexible(
+                child: LookPill(
+                  label: backgroundLabel(settings.background),
+                  onTap: () => BackgroundSheet.show(context),
+                ),
+              ),
+            ],
           ),
         ),
       ],

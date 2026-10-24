@@ -20,23 +20,19 @@ import '../controllers/web_access.dart';
 /// the phone (Pro is bought in the Android app through Google Play), and
 /// the check when the person comes back. The web never sells or bills.
 ///
-/// Free accounts land here after signing in on the web; "Preview the app
-/// first" goes on to the read-only library, and every locked action in the
-/// preview leads back here.
+/// Opened on request from the workspace or a locked-action explanation.
+/// Signing in goes straight to the library; this page is never an entry gate.
 class WebAccessScreen extends ConsumerWidget {
   const WebAccessScreen({super.key});
 
   static Future<void> open(BuildContext context) =>
       Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const WebAccessScreen()));
 
-  /// Leaves for the app: back to where it was opened from, or — as the
-  /// signed-in landing page — on into the library.
-  static void leave(BuildContext context, WidgetRef ref) {
+  /// Returns to the workspace where the subscription instructions were opened.
+  static void leave(BuildContext context) {
     final navigator = Navigator.of(context);
     if (navigator.canPop()) {
       navigator.pop();
-    } else {
-      ref.read(webEntryProvider.notifier).enter();
     }
   }
 
@@ -48,7 +44,13 @@ class WebAccessScreen extends ConsumerWidget {
       return const BiggerScreensPage();
     }
     final user = ref.watch(authStateProvider).value;
-    final check = ref.watch(accessCheckProvider);
+    final requestedCheck = ref.watch(accessCheckProvider);
+    final check = requestedCheck.phase == AccessPhase.entry && ref.watch(entitlementProvider).hasError
+        ? const AccessCheck(
+            AccessPhase.failed,
+            message: 'Could not check Pro access. You can retry or preview your projects.',
+          )
+        : requestedCheck;
     final unlocked = check.phase == AccessPhase.unlocked;
     final wide = MediaQuery.sizeOf(context).width >= 1100;
 
@@ -122,7 +124,7 @@ class _TopBar extends ConsumerWidget {
             const Spacer(),
             if (showPreview)
               TextButton(
-                onPressed: () => WebAccessScreen.leave(context, ref),
+                onPressed: () => WebAccessScreen.leave(context),
                 style: TextButton.styleFrom(foregroundColor: p.accent, minimumSize: const Size(44, 44)),
                 child: Text('Preview the app first', style: t.buttonSmall.copyWith(fontSize: 13.5, color: p.accent)),
               ),
@@ -720,7 +722,7 @@ class _UnlockedCard extends ConsumerWidget {
             EcButton(
               label: 'Open my projects  →',
               onPressed: () {
-                WebAccessScreen.leave(context, ref);
+                WebAccessScreen.leave(context);
               },
             ),
             const SizedBox(height: 12),

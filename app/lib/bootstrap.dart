@@ -1,12 +1,16 @@
+import 'dart:async';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'core/services/analytics.dart';
+import 'core/services/profile_sync.dart';
 import 'core/services/external_links.dart';
 import 'core/config/billing_config.dart';
 import 'data/repositories/revenuecat_entitlement_repository.dart';
@@ -66,6 +70,42 @@ final authRepositoryProvider = Provider<AuthRepository>((ref) {
 /// The signed-in account, or null. Everything downstream keys off this.
 final authStateProvider = StreamProvider<AppUser?>((ref) {
   return ref.watch(authRepositoryProvider).userChanges();
+});
+
+/// Builds opt in explicitly. A pilot build also pins its UID; the backend
+/// independently checks its own rollout mode and administrator-configured UID.
+final profileSyncEnabledProvider = Provider<bool>(
+  (ref) =>
+      const bool.fromEnvironment('PROFILE_SYNC_ENABLED', defaultValue: false),
+);
+final profileSyncPilotUidProvider = Provider<String>(
+  (ref) => const String.fromEnvironment('PROFILE_SYNC_PILOT_UID'),
+);
+
+final profileSyncProvider = Provider<ProfileSync>((ref) {
+  final enabled = ref.watch(profileSyncEnabledProvider);
+  final pilotUid = ref.watch(profileSyncPilotUidProvider);
+  final sync = ProfileSync(
+    enabledFor: (uid) => enabled && (pilotUid.isEmpty || pilotUid == uid),
+    client: enabled
+        ? FirebaseProfileSyncClient(
+            FirebaseFunctions.instanceFor(region: 'us-central1'),
+            ref.watch(firebaseAuthProvider),
+          )
+        : null,
+    onFailure: () => debugPrint('Account profile synchronization will retry.'),
+  );
+  ref.onDispose(sync.dispose);
+  return sync;
+});
+
+final profileSessionSyncProvider = Provider<void>((ref) {
+  final sync = ref.watch(profileSyncProvider);
+  ref.listen(authStateProvider, (_, next) {
+    if (next.hasValue) sync.userChanged(next.value);
+  }, fireImmediately: true);
+  final lifecycle = AppLifecycleListener(onResume: sync.resumed);
+  ref.onDispose(lifecycle.dispose);
 });
 
 /// Just the signed-in uid. Data repositories watch this rather than the
@@ -189,7 +229,14 @@ class AppServices {
 /// Initialises Firebase and resolves the platform services. Called before
 /// `runApp`, so the first frame already has everything it needs.
 Future<AppServices> bootstrap() async {
+  void pilotStartup(String stage) {
+    if (kIsWeb && const bool.fromEnvironment('PROFILE_SYNC_ENABLED')) {
+      debugPrint('Pilot startup: $stage');
+    }
+  }
+  pilotStartup('initializing Firebase');
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  pilotStartup('Firebase ready');
 
   // Offline persistence is on by default on iOS and Android; it is set
   // explicitly here because this app depends on it — the brief's users are
@@ -201,9 +248,11 @@ Future<AppServices> bootstrap() async {
   );
 
   final preferences = await SharedPreferences.getInstance();
+  pilotStartup('preferences ready');
 
   final deskInviteStore = PreferencesDeskInviteStore(preferences);
   await deskInviteStore.countSession();
+  pilotStartup('services ready');
 
   return AppServices(
     auth: FirebaseAuth.instance,

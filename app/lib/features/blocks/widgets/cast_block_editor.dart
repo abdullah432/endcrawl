@@ -53,7 +53,11 @@ class _CastBlockEditorState extends ConsumerState<CastBlockEditor> {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => LayoutBuilder(
+        builder: (context, constraints) => _buildEditor(context, constraints.maxWidth),
+      );
+
+  Widget _buildEditor(BuildContext context, double width) {
     final p = context.palette;
     final t = context.type;
     final block = widget.block;
@@ -61,7 +65,8 @@ class _CastBlockEditorState extends ConsumerState<CastBlockEditor> {
     final controller = ref.read(projectControllerProvider.notifier);
     final cg = computeCastGeometry(block, project.geometry);
     final aspect = project.settings.format.aspect;
-    final split = widget.columns > 1 && block.rows.length > 1;
+    // Wide devices can still give the inspector a narrow pane.
+    final split = widget.columns > 1 && block.rows.length > 1 && width >= 600;
     final letters = block.rows.length > 8 && !split ? _index(block) : const <String, int>{};
     final roleHint = block.kind == BlockKind.crewTwoColumn ? 'Job' : 'Role';
 

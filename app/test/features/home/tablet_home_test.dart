@@ -11,6 +11,7 @@ import 'package:lastreel/features/editor/screens/editor_screen.dart';
 import 'package:lastreel/features/home/screens/tablet_home.dart';
 import 'package:lastreel/features/home/tablet_layout.dart';
 import 'package:lastreel/features/home/widgets/tablet_tab_bar.dart';
+import 'package:lastreel/features/home/widgets/app_side_nav.dart';
 import 'package:lastreel/features/library/controllers/library_controller.dart';
 import 'package:lastreel/features/monitor/controllers/playback_controller.dart';
 import 'package:lastreel/features/project/controllers/project_controller.dart';
@@ -81,6 +82,35 @@ void main() {
   });
 
   group('Settings is a tab', () {
+    testWidgets('folding keeps Settings open and Back returns to Projects', (tester) async {
+      final app = pro();
+      await app.pump(tester, size: const Size(1000, 680));
+      await tester.tap(find.text('Settings').first);
+      await tester.pumpAndSettle();
+      final scope = container(tester);
+      scope.read(settingsSectionProvider.notifier).select(SettingsSection.legal);
+      await tester.pumpAndSettle();
+
+      tester.view.physicalSize = const Size(480, 680);
+      await tester.pumpAndSettle();
+      expect(find.text('LEGAL & PRIVACY'), findsOneWidget);
+      expect(find.byTooltip('Back'), findsOneWidget);
+      expect(scope.read(homeTabProvider), HomeDestination.settings);
+
+      tester.view.physicalSize = const Size(1000, 680);
+      await tester.pumpAndSettle();
+      expect(scope.read(settingsSectionProvider), SettingsSection.legal);
+      expect(find.text('Terms, privacy policy, licences.'), findsOneWidget);
+
+      tester.view.physicalSize = const Size(480, 680);
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Back'));
+      await tester.pumpAndSettle();
+      expect(scope.read(homeTabProvider), HomeDestination.projects);
+      expect(find.text('The Long Way Down'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+
     testWidgets('the rail stays, there is no back button, and the plan leads', (tester) async {
       final app = free();
       await app.pump(tester, size: landscape);

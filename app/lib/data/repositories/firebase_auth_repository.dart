@@ -1,5 +1,5 @@
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show kIsWeb, debugPrint;
 import 'package:google_sign_in/google_sign_in.dart';
 
 import '../../core/config/features.dart';
@@ -15,6 +15,7 @@ import 'auth_repository.dart';
 class FirebaseAuthRepository implements AuthRepository {
   final FirebaseAuth _auth;
   final GoogleSignIn _google;
+  final bool _isWeb;
 
   /// Set once [GoogleSignIn.initialize] has completed. 7.x requires it before
   /// any other call, and it only needs to happen once per process.
@@ -22,9 +23,10 @@ class FirebaseAuthRepository implements AuthRepository {
   String? _appleDeletionCode;
   String? _appleDeletionUid;
 
-  FirebaseAuthRepository({FirebaseAuth? auth, GoogleSignIn? google})
+  FirebaseAuthRepository({FirebaseAuth? auth, GoogleSignIn? google, bool? isWeb})
       : _auth = auth ?? FirebaseAuth.instance,
-        _google = google ?? GoogleSignIn.instance;
+        _google = google ?? GoogleSignIn.instance,
+        _isWeb = isWeb ?? kIsWeb;
 
   // userChanges(), not authStateChanges(): the latter only fires on
   // sign-in/out, so a verified email or a new display name would never
@@ -82,11 +84,16 @@ class FirebaseAuthRepository implements AuthRepository {
       // 7.x: authenticate() returns a non-null account or throws — a user
       // backing out arrives as GoogleSignInException(code: canceled), not
       // as a null account the way the 6.x signIn() API worked.
-      // The web has no native Google sheet (google_sign_in 7.x can't
-      // `authenticate()` there), so Firebase runs its own popup instead.
-      final result = kIsWeb
-          ? await _auth.signInWithPopup(_googleProvider())
-          : await _auth.signInWithCredential(await _googleCredential());
+      // A full-page web redirect avoids browsers losing the popup's result
+      // while Google returns to Firebase. Firebase completes pending redirects
+      // during Auth initialization, before userChanges emits the restored user.
+      if (_isWeb) {
+        await _auth.signInWithRedirect(_googleProvider());
+        // The SDK normally navigates without resolving this future. Retain a
+        // guarded result for environments that return without navigating.
+        return _requireUser(_auth.currentUser);
+      }
+      final result = await _auth.signInWithCredential(await _googleCredential());
       return _requireUser(result.user);
     });
   }
@@ -96,7 +103,7 @@ class FirebaseAuthRepository implements AuthRepository {
     return _guard(() async {
       // Firebase drives Sign in with Apple natively on iOS and through a
       // web flow elsewhere; no extra package is needed.
-      final result = kIsWeb
+      final result = _isWeb
           ? await _auth.signInWithPopup(_appleProvider())
           : await _auth.signInWithProvider(_appleProvider());
       return _requireUser(result.user);
@@ -127,7 +134,7 @@ class FirebaseAuthRepository implements AuthRepository {
   @override
   Future<Result<AppUser>> linkGoogle() {
     return _guard(() async {
-      if (kIsWeb) {
+      if (_isWeb) {
         await _requireFirebaseUser().linkWithPopup(_googleProvider());
       } else {
         await _requireFirebaseUser().linkWithCredential(await _googleCredential());
@@ -139,7 +146,7 @@ class FirebaseAuthRepository implements AuthRepository {
   @override
   Future<Result<AppUser>> linkApple() {
     return _guard(() async {
-      if (kIsWeb) {
+      if (_isWeb) {
         await _requireFirebaseUser().linkWithPopup(_appleProvider());
       } else {
         await _requireFirebaseUser().linkWithProvider(_appleProvider());
@@ -183,7 +190,7 @@ class FirebaseAuthRepository implements AuthRepository {
           final result = await _reauthenticateApple(user);
           _appleDeletionCode = result.additionalUserInfo?.authorizationCode;
           _appleDeletionUid = user.uid;
-        case SignInMethod.google when kIsWeb:
+        case SignInMethod.google when _isWeb:
           await user.reauthenticateWithPopup(_googleProvider());
         case SignInMethod.google:
           await user.reauthenticateWithCredential(await _googleCredential());
@@ -195,7 +202,7 @@ class FirebaseAuthRepository implements AuthRepository {
     });
   }
 
-  Future<UserCredential> _reauthenticateApple(User user) => kIsWeb
+  Future<UserCredential> _reauthenticateApple(User user) => _isWeb
       ? user.reauthenticateWithPopup(_appleProvider())
       : user.reauthenticateWithProvider(_appleProvider());
 
@@ -320,6 +327,11 @@ class FirebaseAuthRepository implements AuthRepository {
     try {
       return Ok(await body());
     } on FirebaseAuthException catch (e, s) {
+      // Pilot diagnostics contain only a Firebase error code, never credentials
+      // or provider response objects. Normal release builds keep this off.
+      if (_isWeb && const bool.fromEnvironment('PROFILE_SYNC_ENABLED')) {
+        debugPrint('Pilot Firebase authentication failure: ${e.code}');
+      }
       return Err(_mapAuthException(e, s));
     } on GoogleSignInException catch (e, s) {
       if (e.code == GoogleSignInExceptionCode.canceled) {

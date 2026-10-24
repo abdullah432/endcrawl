@@ -32,6 +32,7 @@ import '../widgets/rename_sheet.dart';
 import 'wide_library.dart';
 import '../../home/screens/tablet_home.dart';
 import '../../home/tablet_layout.dart';
+import '../../home/widgets/app_side_nav.dart';
 import '../../access/controllers/web_access.dart';
 import '../../access/widgets/locked_dialog.dart';
 
@@ -54,6 +55,17 @@ class LibraryScreen extends ConsumerWidget {
     DeskInvite.check(context, view.value);
     // T1.1 / P1.1: a tablet gets the Projects and Settings tabs.
     if (context.isTablet) return const TabletHome();
+    // Keep Settings open when folding replaces the tablet shell.
+    if (!ref.watch(runningOnWebProvider) && ref.watch(homeTabProvider) == HomeDestination.settings) {
+      void back() => selectHomeTab(ProviderScope.containerOf(context, listen: false), HomeDestination.projects);
+      return PopScope(
+        canPop: false,
+        onPopInvokedWithResult: (didPop, _) {
+          if (!didPop) back();
+        },
+        child: SettingsScreen(onBack: back),
+      );
+    }
     if (context.layoutClass.isWide && MediaQuery.sizeOf(context).height > 600) {
       return const WideLibrary();
     }

@@ -8,7 +8,13 @@
   },
   "scripts": {
     "build": "tsc",
-    "test": "npm run build && node --test test/*.test.js"
+    "test": "npm run build && node --test test/*.test.js",
+    "test:profiles": "node scripts/test-profiles.mjs",
+    "prepare:profile-pilot": "node scripts/prepare-profile-pilot.mjs",
+    "prepare:profile-deployment": "npm run build && node scripts/prepare-profile-deployment.mjs",
+    "verify:profile-pilot": "node scripts/verify-profile-pilot.mjs --admin-exercise",
+    "prepare:billing-deployment": "npm run build && node scripts/prepare-billing-deployment.mjs",
+    "verify:billing-pilot": "node scripts/verify-billing-pilot.mjs --exercise-webhook"
   },
   "dependencies": {
     "firebase-admin": "^14.5.0",

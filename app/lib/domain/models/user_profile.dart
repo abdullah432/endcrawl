@@ -12,23 +12,45 @@ class UserProfile {
   final bool marketingOptIn;
   final Preferences preferences;
 
-  const UserProfile({this.marketingOptIn = false, this.preferences = const Preferences()});
+  /// Server-maintained metadata. Absent on legacy profiles until reconciled.
+  final String? name;
+  final String? email;
+  final int? projectCount;
 
-  UserProfile copyWith({bool? marketingOptIn, Preferences? preferences}) => UserProfile(
+  const UserProfile({
+    this.marketingOptIn = false,
+    this.preferences = const Preferences(),
+    this.name,
+    this.email,
+    this.projectCount,
+  });
+
+  UserProfile copyWith({bool? marketingOptIn, Preferences? preferences}) =>
+      UserProfile(
         marketingOptIn: marketingOptIn ?? this.marketingOptIn,
         preferences: preferences ?? this.preferences,
+        name: name,
+        email: email,
+        projectCount: projectCount,
       );
 
+  /// Only owner-writable settings are serialized for client saves.
   Map<String, Object?> toJson() => {
-        'schemaVersion': currentSchemaVersion,
-        'marketingOptIn': marketingOptIn,
-        'preferences': preferences.toJson(),
-      };
+    'schemaVersion': currentSchemaVersion,
+    'marketingOptIn': marketingOptIn,
+    'preferences': preferences.toJson(),
+  };
 
   factory UserProfile.fromJson(Map<String, Object?> json) => UserProfile(
-        marketingOptIn: asBool(json['marketingOptIn'], false),
-        preferences: Preferences.fromJson(asMap(json['preferences'])),
-      );
+    marketingOptIn: asBool(json['marketingOptIn'], false),
+    preferences: Preferences.fromJson(asMap(json['preferences'])),
+    name: json['name'] is String ? json['name'] as String : null,
+    email: json['email'] is String ? json['email'] as String : null,
+    projectCount:
+        json['projectCount'] is int && (json['projectCount'] as int) >= 0
+        ? json['projectCount'] as int
+        : null,
+  );
 }
 
 /// Settings that follow the account to every device.
@@ -88,16 +110,16 @@ class Preferences {
   }
 
   Map<String, Object?> toJson() => {
-        'defaultFps': defaultFps,
-        'defaultFormatId': defaultFormatId,
-        'safeGuides': safeGuides,
-        'readabilityWarnings': readabilityWarnings,
-        'haptics': haptics,
-        'renderNotifications': renderNotifications,
-        'crashReports': crashReports,
-        'usageAnalytics': usageAnalytics,
-        'personalisedAds': personalisedAds,
-      };
+    'defaultFps': defaultFps,
+    'defaultFormatId': defaultFormatId,
+    'safeGuides': safeGuides,
+    'readabilityWarnings': readabilityWarnings,
+    'haptics': haptics,
+    'renderNotifications': renderNotifications,
+    'crashReports': crashReports,
+    'usageAnalytics': usageAnalytics,
+    'personalisedAds': personalisedAds,
+  };
 
   factory Preferences.fromJson(Map<String, Object?> json) {
     const d = Preferences();
@@ -105,9 +127,15 @@ class Preferences {
       defaultFps: asDouble(json['defaultFps'], d.defaultFps),
       defaultFormatId: asString(json['defaultFormatId'], d.defaultFormatId),
       safeGuides: asBool(json['safeGuides'], d.safeGuides),
-      readabilityWarnings: asBool(json['readabilityWarnings'], d.readabilityWarnings),
+      readabilityWarnings: asBool(
+        json['readabilityWarnings'],
+        d.readabilityWarnings,
+      ),
       haptics: asBool(json['haptics'], d.haptics),
-      renderNotifications: asBool(json['renderNotifications'], d.renderNotifications),
+      renderNotifications: asBool(
+        json['renderNotifications'],
+        d.renderNotifications,
+      ),
       crashReports: asBool(json['crashReports'], d.crashReports),
       usageAnalytics: asBool(json['usageAnalytics'], d.usageAnalytics),
       personalisedAds: asBool(json['personalisedAds'], d.personalisedAds),

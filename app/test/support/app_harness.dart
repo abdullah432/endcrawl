@@ -1,4 +1,5 @@
 import 'package:lastreel/bootstrap.dart';
+import 'package:lastreel/core/services/profile_sync.dart';
 import 'package:lastreel/core/config/release_config.dart';
 import 'package:lastreel/data/sources/session_store.dart';
 import 'package:lastreel/features/ads/ads_providers.dart';
@@ -65,6 +66,7 @@ class AppHarness {
 
   /// Null exercises the build's default; false tests restored subscriptions.
   bool? iosFreeLaunch;
+  ProfileSync? profileSync;
 
   AppHarness({
     FakeAuthRepository? auth,
@@ -81,6 +83,7 @@ class AppHarness {
     DateTime? now,
     this.web = false,
     this.iosFreeLaunch,
+    this.profileSync,
     this.testerAllowed = false,
     this.deskChance = true,
   }) : auth = auth ?? FakeAuthRepository(initialUser: testUser),
@@ -141,6 +144,8 @@ class AppHarness {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          if (profileSync case final sync?)
+            profileSyncProvider.overrideWithValue(sync),
           if (iosFreeLaunch case final enabled?)
             iosFreeLaunchFlagProvider.overrideWithValue(enabled),
           webAccessRequiredProvider.overrideWithValue(web),

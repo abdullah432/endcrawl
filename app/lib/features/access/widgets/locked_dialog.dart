@@ -68,7 +68,8 @@ class _LockedDialog extends StatelessWidget {
           const SizedBox(height: 8),
           Text(
             'You can open this project, play it and read every setting. '
-            'To ${action.verb} here, subscribe in the LastReel app, then check access.',
+            'Web and desktop editing require LastReel Pro. '
+            'To ${action.verb} here, subscribe in the mobile app with the same account, then check access here.',
             style: t.body.copyWith(fontSize: 14, height: 1.55),
           ),
           const SizedBox(height: 20),

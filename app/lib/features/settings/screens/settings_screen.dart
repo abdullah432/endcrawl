@@ -48,7 +48,8 @@ import '../../desk/desktop_web_card.dart';
 /// project defaults, then support and legal. Sign out and Delete sit alone
 /// at the bottom, away from everyday rows.
 class SettingsScreen extends ConsumerWidget {
-  const SettingsScreen({super.key});
+  final VoidCallback? onBack;
+  const SettingsScreen({super.key, this.onBack});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -69,7 +70,7 @@ class SettingsScreen extends ConsumerWidget {
     // Rows sit in a 16 px gutter; only the COOKOO swiper runs edge to edge,
     // so its next slide can peek in.
     return EcScaffold(
-      topBar: const EcTopBar(),
+      topBar: EcTopBar(onBack: onBack),
       scrollable: false,
       padding: EdgeInsets.zero,
       body: SingleChildScrollView(

@@ -9,7 +9,6 @@ import '../../../core/theme/theme_context.dart';
 import '../../../core/widgets/ec_logo.dart';
 import '../../../core/widgets/ec_scaffold.dart';
 import '../../access/controllers/web_access.dart';
-import '../../access/screens/web_access_screen.dart';
 import '../../desk/bigger_screens_page.dart';
 import '../../library/screens/library_screen.dart';
 import '../../onboarding/screens/welcome_screen.dart';
@@ -55,23 +54,15 @@ class AuthGate extends ConsumerWidget {
   }
 }
 
-/// Signed in on the web: Pro accounts go straight to their projects; a
-/// free account lands on the access page (D2) until it chooses to preview.
-/// After a successful check the access page stays up to say so (D6) until
-/// "Open my projects". At phone width the web is the "made for bigger
-/// screens" page (1.8c) instead, for Free and Pro alike.
+/// Signed-in desktop browsers open the library immediately. Workspace guards
+/// keep it in preview until Pro is verified, including while checks are pending
+/// or fail. Phone browsers show the computer handoff for Free and Pro alike.
 class _WebHome extends ConsumerWidget {
   const _WebHome();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     if (MediaQuery.sizeOf(context).width < Breakpoints.medium) return const BiggerScreensPage();
-    final plan = ref.watch(entitlementProvider);
-    if (!plan.hasValue) return const _Splash();
-    final entered = ref.watch(webEntryProvider);
-    final justUnlocked = ref.watch(accessCheckProvider.select((c) => c.phase == AccessPhase.unlocked));
-    final pro = plan.value!.isPro;
-    if (!entered && (!pro || justUnlocked)) return const WebAccessScreen();
     return const LibraryScreen();
   }
 }

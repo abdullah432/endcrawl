@@ -187,9 +187,10 @@ store purchase checks remain required.
 
 ## Web
 
-Only verified Pro accounts can operate the browser workspace. Free accounts see
-the app behind an access gate and subscribe through the mobile app using the same
-Firebase account. See [responsive web setup](responsive-web.md) for the server-owned
+Only verified Pro accounts can edit or export in the browser workspace. Signed-in
+desktop users open their projects directly; Free users can preview and play them,
+and locked actions explain mobile subscription using the same Firebase account.
+See [responsive web setup](responsive-web.md) for the server-owned
 entitlement ledger, Firebase Functions deployment, RevenueCat webhook secrets and
 mobile-to-web verification steps. Native Free limits and purchases stay unchanged.
 

@@ -10,7 +10,15 @@ import '../../../domain/models/user_profile.dart';
 /// Which action is running, so only its button shows a spinner and the
 /// others simply disable — "Continue with Apple" shouldn't spin because
 /// Google is working.
-enum AuthAction { email, apple, google, reset, resendVerification, checkVerification, changeEmail }
+enum AuthAction {
+  email,
+  apple,
+  google,
+  reset,
+  resendVerification,
+  checkVerification,
+  changeEmail,
+}
 
 /// How long before a reset link or verification email can be re-sent.
 /// Shown as "Resend in 0:42" so nobody taps twice and gets two emails.
@@ -45,10 +53,12 @@ class AuthFormState {
   bool isRunning(AuthAction action) => running == action;
 
   /// The failure for one input, or null.
-  String? errorFor(String field) => failure?.field == field ? failure!.message : null;
+  String? errorFor(String field) =>
+      failure?.field == field ? failure!.message : null;
 
   /// A failure that isn't about any one input.
-  String? get formError => failure != null && failure!.field == null ? failure!.message : null;
+  String? get formError =>
+      failure != null && failure!.field == null ? failure!.message : null;
 
   AuthFormState _copy({
     AuthAction? running,
@@ -86,17 +96,22 @@ class AuthController extends Notifier<AuthFormState> {
   /// navigation action (Riverpod forbids writing to a provider during build).
   /// Keeps the send timestamps so cooldowns survive moving between screens.
   void clearMessages() => state = AuthFormState(
-        resetSentAt: state.resetSentAt,
-        verificationSentAt: state.verificationSentAt,
-      );
+    resetSentAt: state.resetSentAt,
+    verificationSentAt: state.verificationSentAt,
+  );
 
   Future<void> signIn({required String email, required String password}) async {
     final problem = _check([
-      if (!looksLikeEmail(email)) _invalid(AuthField.email, 'Enter a valid email address.'),
-      if (password.isEmpty) _invalid(AuthField.password, 'Enter your password.'),
+      if (!looksLikeEmail(email))
+        _invalid(AuthField.email, 'Enter a valid email address.'),
+      if (password.isEmpty)
+        _invalid(AuthField.password, 'Enter your password.'),
     ]);
     if (problem) return;
-    await _run(AuthAction.email, () => _auth.signInWithEmail(email: email, password: password));
+    await _run(
+      AuthAction.email,
+      () => _auth.signInWithEmail(email: email, password: password),
+    );
   }
 
   Future<void> createAccount({
@@ -107,29 +122,45 @@ class AuthController extends Notifier<AuthFormState> {
   }) async {
     final problem = _check([
       if (name.trim().isEmpty) _invalid(AuthField.name, 'Enter your name.'),
-      if (!looksLikeEmail(email)) _invalid(AuthField.email, 'Enter a valid email address.'),
+      if (!looksLikeEmail(email))
+        _invalid(AuthField.email, 'Enter a valid email address.'),
       if (!PasswordPolicy.isAcceptable(password))
-        _invalid(AuthField.password, 'Use at least ${PasswordPolicy.minLength} characters, including a number.'),
+        _invalid(
+          AuthField.password,
+          'Use at least ${PasswordPolicy.minLength} characters, including a number.',
+        ),
     ]);
     if (problem) return;
 
     await _run(AuthAction.email, () async {
-      final result = await _auth.registerWithEmail(name: name, email: email, password: password);
+      final result = await _auth.registerWithEmail(
+        name: name,
+        email: email,
+        password: password,
+      );
       if (result case Ok(:final value)) {
-        if (Features.emailVerification) state = state._copy(verificationSentAt: _now());
-        // Only an opt-in needs writing: a missing profile document already
-        // reads as the default, which is "off".
-        if (marketingOptIn) {
-          await ref.read(userProfileRepositoryForProvider(value.uid)).save(const UserProfile(marketingOptIn: true));
+        if (Features.emailVerification) {
+          state = state._copy(verificationSentAt: _now());
         }
+        // Pilot builds persist both choices. Other accounts retain the legacy
+        // opt-in behavior until the rollout is enabled for them.
+        final sync = ref.read(profileSyncProvider);
+        if (marketingOptIn || sync.enabledFor(value.uid)) {
+          await ref
+              .read(userProfileRepositoryForProvider(value.uid))
+              .save(UserProfile(marketingOptIn: marketingOptIn));
+        }
+        sync.userChanged(value);
       }
       return result;
     });
   }
 
-  Future<void> signInWithGoogle() => _run(AuthAction.google, _auth.signInWithGoogle);
+  Future<void> signInWithGoogle() =>
+      _run(AuthAction.google, _auth.signInWithGoogle);
 
-  Future<void> signInWithApple() => _run(AuthAction.apple, _auth.signInWithApple);
+  Future<void> signInWithApple() =>
+      _run(AuthAction.apple, _auth.signInWithApple);
 
   /// Seconds left before the reset link can be re-sent, or zero.
   Duration resetCooldownLeft() => _left(state.resetSentAt);
@@ -138,7 +169,12 @@ class AuthController extends Notifier<AuthFormState> {
 
   Future<void> sendPasswordReset(String email) async {
     if (state.busy || resetCooldownLeft() > Duration.zero) return;
-    if (_check([if (!looksLikeEmail(email)) _invalid(AuthField.email, 'Enter a valid email address.')])) return;
+    if (_check([
+      if (!looksLikeEmail(email))
+        _invalid(AuthField.email, 'Enter a valid email address.'),
+    ])) {
+      return;
+    }
 
     state = state._copy(running: AuthAction.reset, clearFailure: true);
     final result = await _auth.sendPasswordResetEmail(email);
@@ -146,14 +182,21 @@ class AuthController extends Notifier<AuthFormState> {
     // such account" would hand out the check Firebase's enumeration
     // protection exists to deny.
     state = switch (result) {
-      Ok() => state._copy(clearRunning: true, resetSentTo: email.trim(), resetSentAt: _now()),
+      Ok() => state._copy(
+        clearRunning: true,
+        resetSentTo: email.trim(),
+        resetSentAt: _now(),
+      ),
       Err(:final failure) => state._copy(clearRunning: true, failure: failure),
     };
   }
 
   Future<void> resendVerification() async {
     if (state.busy || verificationCooldownLeft() > Duration.zero) return;
-    state = state._copy(running: AuthAction.resendVerification, clearFailure: true);
+    state = state._copy(
+      running: AuthAction.resendVerification,
+      clearFailure: true,
+    );
     final result = await _auth.sendEmailVerification();
     state = switch (result) {
       Ok() => state._copy(clearRunning: true, verificationSentAt: _now()),
@@ -163,7 +206,8 @@ class AuthController extends Notifier<AuthFormState> {
 
   /// Re-reads the account; if the link was clicked, the user stream emits a
   /// verified user and the gate moves on by itself.
-  Future<void> checkVerification() => _run(AuthAction.checkVerification, _auth.reloadUser, quiet: true);
+  Future<void> checkVerification() =>
+      _run(AuthAction.checkVerification, _auth.reloadUser, quiet: true);
 
   /// "Use a different email" on 0.5: the unverified account holds nothing
   /// yet, so it's deleted rather than left behind to squat on the address.
@@ -171,19 +215,45 @@ class AuthController extends Notifier<AuthFormState> {
   /// person back to the start.
   Future<void> useDifferentEmail() async {
     await _run(AuthAction.changeEmail, () async {
+      final uid = _auth.currentUser?.uid;
+      final sync = ref.read(profileSyncProvider);
+      if (uid != null && sync.enabledFor(uid)) {
+        try {
+          await sync.suspend(uid);
+          final result = await ref
+              .read(userProfileRepositoryForProvider(uid))
+              .delete();
+          if (result is Err) {
+            await sync.resume(uid).catchError((Object _) {});
+            return await _auth.signOut();
+          }
+        } on Object {
+          await sync.resume(uid).catchError((Object _) {});
+          return _auth.signOut();
+        }
+      }
       final deleted = await _auth.deleteCurrentUser();
-      if (deleted is Err) return _auth.signOut();
+      if (deleted is Err) {
+        if (uid != null) await sync.resume(uid).catchError((Object _) {});
+        return _auth.signOut();
+      }
       return deleted;
     }, quiet: true);
   }
 
-  Future<void> _run(AuthAction action, Future<Result<Object?>> Function() body, {bool quiet = false}) async {
+  Future<void> _run(
+    AuthAction action,
+    Future<Result<Object?>> Function() body, {
+    bool quiet = false,
+  }) async {
     if (state.busy) return;
     state = state._copy(running: action, clearFailure: true);
     final result = await body();
     state = switch (result) {
       Ok() => state._copy(clearRunning: true),
-      Err(:final failure) when isCancellation(failure) || quiet => state._copy(clearRunning: true),
+      Err(:final failure) when isCancellation(failure) || quiet => state._copy(
+        clearRunning: true,
+      ),
       Err(:final failure) => state._copy(clearRunning: true, failure: failure),
     };
   }
@@ -212,4 +282,6 @@ bool looksLikeEmail(String value) {
   return RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(trimmed);
 }
 
-final authControllerProvider = NotifierProvider<AuthController, AuthFormState>(AuthController.new);
+final authControllerProvider = NotifierProvider<AuthController, AuthFormState>(
+  AuthController.new,
+);

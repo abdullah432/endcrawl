@@ -10,7 +10,7 @@ import { customer } from './fixtures.js';
 
 test('emulator: owner reads, client writes denied, transfers and delayed reconciliation', {skip: !process.env.FIRESTORE_EMULATOR_HOST}, async () => {
   const projectId = 'demo-lastreel-billing';
-  const env = await initializeTestEnvironment({projectId, firestore: {rules: await readFile('../firestore.rules', 'utf8')}});
+  const env = await initializeTestEnvironment({projectId, firestore: {rules: await readFile(new URL('../../firestore.rules', import.meta.url), 'utf8')}});
   const app = initializeApp({projectId}, 'billing-tests');
   const db = getFirestore(app);
   const now = Date.parse('2026-10-09T00:00:00Z');

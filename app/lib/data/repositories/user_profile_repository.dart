@@ -22,18 +22,22 @@ class FirestoreUserProfileRepository implements UserProfileRepository {
 
   FirestoreUserProfileRepository(this._firestore, {required this.uid});
 
-  DocumentReference<Map<String, dynamic>> get _doc => _firestore.collection('users').doc(uid);
+  DocumentReference<Map<String, dynamic>> get _doc =>
+      _firestore.collection('users').doc(uid);
 
   @override
   Stream<UserProfile> watch() => _doc.snapshots().map((snap) {
-        final data = snap.data();
-        return data == null ? const UserProfile() : UserProfile.fromJson(data);
-      });
+    final data = snap.data();
+    return data == null ? const UserProfile() : UserProfile.fromJson(data);
+  });
 
   @override
   Future<Result<void>> save(UserProfile profile) => _guard(
-        () => _doc.set({...profile.toJson(), 'updatedAt': FieldValue.serverTimestamp()}),
-      );
+    () => _doc.set({
+      ...profile.toJson(),
+      'updatedAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true)),
+  );
 
   @override
   Future<Result<void>> delete() => _guard(_doc.delete);
@@ -45,7 +49,14 @@ class FirestoreUserProfileRepository implements UserProfileRepository {
     } on FirebaseException catch (e, s) {
       return Err(firestoreFailure(e, s, subject: 'your settings'));
     } on Object catch (e, s) {
-      return Err(AppFailure(FailureKind.unknown, 'Could not save your settings.', cause: e, stackTrace: s));
+      return Err(
+        AppFailure(
+          FailureKind.unknown,
+          'Could not save your settings.',
+          cause: e,
+          stackTrace: s,
+        ),
+      );
     }
   }
 }
@@ -54,7 +65,10 @@ class FirestoreUserProfileRepository implements UserProfileRepository {
 class SignedOutUserProfileRepository implements UserProfileRepository {
   const SignedOutUserProfileRepository();
 
-  static const _failure = AppFailure(FailureKind.permission, 'Sign in to change your settings.');
+  static const _failure = AppFailure(
+    FailureKind.permission,
+    'Sign in to change your settings.',
+  );
 
   @override
   Stream<UserProfile> watch() => Stream.value(const UserProfile());

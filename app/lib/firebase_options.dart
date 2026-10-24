@@ -51,7 +51,10 @@ class DefaultFirebaseOptions {
     appId: '1:660045439222:web:dbdb2caaa5854738f14cd7',
     messagingSenderId: '660045439222',
     projectId: 'endcrawl-620c2',
-    authDomain: 'endcrawl-620c2.firebaseapp.com',
+    authDomain: String.fromEnvironment(
+      'FIREBASE_AUTH_DOMAIN',
+      defaultValue: 'endcrawl-620c2.firebaseapp.com',
+    ),
     storageBucket: 'endcrawl-620c2.firebasestorage.app',
     measurementId: 'G-9E0RR3BRBJ',
   );

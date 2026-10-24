@@ -5,6 +5,7 @@ import 'package:lastreel/core/config/app_links.dart';
 import 'package:lastreel/domain/models/entitlement.dart';
 import 'package:lastreel/features/access/screens/web_access_screen.dart';
 import 'package:lastreel/features/desk/bigger_screens_page.dart';
+import 'package:lastreel/features/library/screens/library_screen.dart';
 
 import '../../support/app_harness.dart';
 import '../../support/fake_auth_repository.dart';
@@ -40,8 +41,6 @@ void main() {
   ) async {
     final app = AppHarness(web: true);
     await app.pump(tester, size: const Size(1440, 900));
-    await tester.tap(find.text('Preview the app first'));
-    await tester.pumpAndSettle();
     final context = tester.element(find.byType(Navigator).first);
     WebAccessScreen.open(context);
     await tester.pumpAndSettle();
@@ -63,12 +62,13 @@ void main() {
     expect(find.text('Preview the app first'), findsOneWidget);
   });
 
-  testWidgets('Free desktop access swaps to phone handoff when narrowed', (
+  testWidgets('Free desktop preview swaps to phone handoff when narrowed', (
     tester,
   ) async {
     final app = AppHarness(web: true);
     await app.pump(tester, size: const Size(1440, 900));
-    expect(find.byType(WebAccessScreen), findsOneWidget);
+    expect(find.byType(LibraryScreen), findsOneWidget);
+    expect(find.byType(WebAccessScreen), findsNothing);
 
     tester.view.physicalSize = AppHarness.phone;
     await tester.pumpAndSettle();
@@ -98,7 +98,8 @@ void main() {
 
     tester.view.physicalSize = const Size(1440, 900);
     await tester.pumpAndSettle();
-    expect(find.byType(WebAccessScreen), findsOneWidget);
+    expect(find.byType(LibraryScreen), findsOneWidget);
+    expect(find.byType(WebAccessScreen), findsNothing);
     expect(app.auth.currentUser?.uid, testUser.uid);
   });
 }
