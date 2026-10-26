@@ -8,7 +8,7 @@ import { createRequire } from 'node:module';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { setTimeout as delay } from 'node:timers/promises';
-import { normalizeEntitlement } from '../lib/entitlements.js';
+import { normalizeEntitlement, subscriptionSnapshot } from '../lib/entitlements.js';
 
 const project = 'endcrawl-620c2';
 const email = 'abdullah234ktk@gmail.com';
@@ -57,7 +57,8 @@ async function verify() {
     return docs.sort((a, b) => a.name.localeCompare(b.name));
   }
   const before = { profile: await api(`${base}/users/${uid}`, { optional: true }),
-    projects: await projectsForAccount(), ledger: await api(`${base}/billingEntitlements/${uid}`, { optional: true }) };
+    projects: await projectsForAccount(), ledger: await api(`${base}/billingEntitlements/${uid}`, { optional: true }),
+    subscription: await api(`${base}/billing/revenuecat/subscriptions/${uid}`, { optional: true }) };
   const output = resolve(root, 'output/billing-pilot', `live-${new Date().toISOString().replaceAll(':', '-')}`);
   await mkdir(output, { recursive: true, mode: 0o700 });
   await writeFile(resolve(output, 'before.json'), JSON.stringify(before, null, 2), { mode: 0o600 });
@@ -99,10 +100,19 @@ async function verify() {
   const response = await fetch(`https://api.revenuecat.com/v1/subscribers/${uid}`, {
     headers: { Authorization: `Bearer ${key}` }, signal: AbortSignal.timeout(20000) });
   assert.ok(response.ok, 'Canonical RevenueCat lookup failed');
-  const canonical = normalizeEntitlement(await response.json(), Date.now());
+  const customer = await response.json();
+  const checkedAt = Date.now();
+  const canonical = normalizeEntitlement(customer, checkedAt);
+  const expectedSubscription = subscriptionSnapshot(uid, customer, canonical, checkedAt);
   const after = { profile: await api(`${base}/users/${uid}`), projects: await projectsForAccount(),
-    ledger: await api(`${base}/billingEntitlements/${uid}`) };
+    ledger: await api(`${base}/billingEntitlements/${uid}`),
+    subscription: await api(`${base}/billing/revenuecat/subscriptions/${uid}`) };
   assert.equal(after.ledger.fields.plan.stringValue, canonical.plan, 'Ledger does not match RevenueCat');
+  assert.equal(after.subscription.fields.uid.stringValue, uid, 'Subscription belongs to another account');
+  assert.equal(after.subscription.fields.status.stringValue, expectedSubscription.status,
+    'Subscription status does not match RevenueCat');
+  assert.equal(after.subscription.fields.subKey?.stringValue ?? null, expectedSubscription.subKey,
+    'Subscription key does not match RevenueCat');
   assert.equal(hash(after.projects), hash(before.projects), 'An original project changed');
   for (const name of ['preferences', 'marketingOptIn']) {
     assert.equal(hash(after.profile.fields[name]), hash(before.profile.fields[name]), `Existing ${name} changed`);

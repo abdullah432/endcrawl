@@ -118,6 +118,21 @@ immediately. Initial checking is neutral; temporary failures retain verified
 access only through its recorded expiry. Firestore rules allow each user to
 read their own ledger and deny all client writes.
 
+The same server reconciliation also stores a provider-specific subscription
+snapshot at `billing/revenuecat/subscriptions/{uid}`. This follows the
+Planformer separation of user profiles and `billing/<provider>/subscriptions`:
+it records `uid`, `status`, `currentPeriodEnd`, `subKey`, and `updatedAt`, plus
+RevenueCat product, store, sandbox and source-version metadata. RevenueCat v1
+identifies subscriptions by product, so `subKey` is the product-based snapshot
+key rather than a Stripe-style subscription ID. A missing or expired purchase
+is recorded as `none`, `inactive`, `expired` or `refunded`; it never becomes Pro merely because a
+document exists. The snapshot and existing entitlement ledger are written in
+one Firestore transaction from verified Customer Info. Clients cannot read or
+write the provider record; desktop access continues to use the owner-readable
+entitlement ledger. `BILLING_PILOT_UIDS` can add a small, explicit set of
+verified Firebase UIDs to the existing single-UID pilot without enabling all
+accounts; other accounts receive neither document until billing is rolled out.
+
 `functions/` contains Node 22 TypeScript functions in `us-central1`:
 
 - `refreshEntitlement`: authenticated callable; account ID comes from Auth.

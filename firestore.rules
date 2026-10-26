@@ -154,6 +154,12 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // Provider details are written with the entitlement by trusted server code.
+    // Clients use billingEntitlements instead of this console/audit record.
+    match /billing/revenuecat/subscriptions/{uid} {
+      allow read, write: if false;
+    }
+
     match /feedback/{id} {
       allow create: if isAuthenticated()
         && incoming().keys().hasOnly(['uid', 'rating', 'topics', 'message', 'appVersion', 'platform', 'createdAt'])

@@ -26,7 +26,7 @@ function run(command, args, env = process.env) {
 }
 try {
   await run('npm', ['--prefix', 'functions', 'run', 'build']);
-  writeFileSync(localFiles[0], `PROFILE_ROLLOUT_MODE=pilot\nPROFILE_PILOT_UID=${pilotUid}\n`, { flag: 'wx', mode: 0o600 });
+  writeFileSync(localFiles[0], `PROFILE_ROLLOUT_MODE=pilot\nPROFILE_PILOT_UID=${pilotUid}\nBILLING_ROLLOUT_MODE=pilot\nBILLING_PILOT_UID=local-billing-pilot\n`, { flag: 'wx', mode: 0o600 });
   createdFiles.push(localFiles[0]);
   writeFileSync(localFiles[1], 'REVENUECAT_API_KEY=emulator-unused\nREVENUECAT_WEBHOOK_AUTH=Bearer billing-emulator-only\n', { flag: 'wx', mode: 0o600 });
   createdFiles.push(localFiles[1]);

@@ -17,14 +17,20 @@ test('emulator: owner reads, client writes denied, transfers and delayed reconci
   try {
     const active = await reconcileEntitlement('owner', db, async () => customer(), now);
     assert.equal(active.plan, 'pro');
+    const subscriptionRef = db.doc('billing/revenuecat/subscriptions/owner');
+    assert.equal((await subscriptionRef.get()).get('status'), 'active');
+    assert.equal((await subscriptionRef.get()).get('uid'), 'owner');
     await assertSucceeds(getDoc(doc(env.authenticatedContext('owner').firestore(), 'billingEntitlements/owner')));
     await assertFails(getDoc(doc(env.authenticatedContext('other').firestore(), 'billingEntitlements/owner')));
     await assertFails(getDoc(doc(env.unauthenticatedContext().firestore(), 'billingEntitlements/owner')));
     await assertFails(setDoc(doc(env.authenticatedContext('owner').firestore(), 'billingEntitlements/owner'), {plan:'pro'}));
+    await assertFails(getDoc(doc(env.authenticatedContext('owner').firestore(), 'billing/revenuecat/subscriptions/owner')));
+    await assertFails(setDoc(doc(env.authenticatedContext('owner').firestore(), 'billing/revenuecat/subscriptions/owner'), {status:'active'}));
     const refund = {request_date_ms: now + 2, subscriber: {entitlements:{}}};
     await reconcileEntitlement('owner', db, async () => refund, now + 2);
     const delayed = await reconcileEntitlement('owner', db, async () => customer(), now + 3);
     assert.equal(delayed.plan, 'free');
+    assert.equal((await subscriptionRef.get()).get('status'), 'none');
     const transferred = {...customer(), request_date_ms: now + 4};
     await reconcileEntitlement('recipient', db, async () => transferred, now + 4);
     await reconcileEntitlement('recipient', db, async () => transferred, now + 4);

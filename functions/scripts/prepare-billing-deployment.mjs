@@ -13,8 +13,11 @@ const snapshot = JSON.parse(await readFile(resolve(snapshotsRoot, snapshots.at(-
 const env = await readFile(resolve(source, '.env.endcrawl-620c2'), 'utf8');
 const mode = /^BILLING_ROLLOUT_MODE=(.*)$/m.exec(env)?.[1]?.trim();
 const uid = /^BILLING_PILOT_UID=(.*)$/m.exec(env)?.[1]?.trim();
+const additionalUids = /^BILLING_PILOT_UIDS=(.*)$/m.exec(env)?.[1]?.trim() ?? '';
 if (mode !== 'pilot' || snapshot.projectId !== 'endcrawl-620c2' ||
-    snapshot.identity?.email !== 'abdullah234ktk@gmail.com' || uid !== snapshot.identity?.uid) {
+    snapshot.identity?.email !== 'abdullah234ktk@gmail.com' || uid !== snapshot.identity?.uid ||
+    (additionalUids && (additionalUids.split(',').length > 2 ||
+      additionalUids.split(',').some(candidate => !/^[A-Za-z0-9_-]{20,128}$/.test(candidate.trim()))))) {
   throw new Error('Billing packaging requires pilot mode and the resolved designated account UID.');
 }
 await mkdir(resolve(target, 'lib'), { recursive: true, mode: 0o700 });
@@ -28,7 +31,8 @@ for (const name of ['firebase.js', 'billing_rollout.js', 'billing_functions.js',
 }
 try { await symlink(resolve(source, 'node_modules'), resolve(target, 'node_modules'), 'dir'); }
 catch (error) { if (error.code !== 'EEXIST') throw error; }
-await writeFile(resolve(target, '.env.endcrawl-620c2'), `BILLING_ROLLOUT_MODE=pilot\nBILLING_PILOT_UID=${uid}\n`, { mode: 0o600 });
+await writeFile(resolve(target, '.env.endcrawl-620c2'),
+  `BILLING_ROLLOUT_MODE=pilot\nBILLING_PILOT_UID=${uid}\nBILLING_PILOT_UIDS=${additionalUids}\n`, { mode: 0o600 });
 await writeFile(resolve(target, '.firebaseignore'), 'node_modules/\n');
 await writeFile(resolve(output, 'firebase.json'), JSON.stringify({
   functions: { source: 'functions', runtime: 'nodejs22', codebase: 'default' },

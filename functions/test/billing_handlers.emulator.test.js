@@ -23,6 +23,7 @@ test('billing handlers: authenticated identity, rollout isolation, provider fail
   const auth = getAuth();
   await auth.createUser({ uid: pilot, email: 'billing-pilot@example.test' });
   const pilotDoc = db.doc(`billingEntitlements/${pilot}`);
+  const subscriptionDoc = db.doc(`billing/revenuecat/subscriptions/${pilot}`);
   const otherDoc = db.doc(`billingEntitlements/${other}`);
   const workerDoc = db.doc('billingHandlerFixtures/worker');
   await otherDoc.set({ plan: 'pro', untouched: true });
@@ -57,6 +58,7 @@ test('billing handlers: authenticated identity, rollout isolation, provider fail
     assert.equal((await pilotDoc.get()).exists, false);
     const pro = await refreshEntitlement.run({ auth: { uid: pilot }, data: { uid: other, plan: 'pro' } });
     assert.equal(pro.plan, 'pro');
+    assert.equal((await subscriptionDoc.get()).get('status'), 'active');
     assert.deepEqual(calls, [pilot]);
     assert.deepEqual((await otherDoc.get()).data(), { plan: 'pro', untouched: true });
     const savedPro = (await pilotDoc.get()).data();
@@ -74,6 +76,7 @@ test('billing handlers: authenticated identity, rollout isolation, provider fail
     await reconcileBillingEvent.run({ data: await workerDoc.get() });
     assert.deepEqual(calls, [pilot]);
     assert.equal((await pilotDoc.get()).get('plan'), 'free');
+    assert.equal((await subscriptionDoc.get()).get('status'), 'none');
     assert.deepEqual((await otherDoc.get()).data(), { plan: 'pro', untouched: true });
     assert.equal((await workerDoc.get()).get('processed'), true);
     await reconcileBillingEvent.run({ data: await workerDoc.get() });
@@ -95,7 +98,7 @@ test('billing handlers: authenticated identity, rollout isolation, provider fail
     assert.deepEqual((await eventDoc.get()).get('accounts'), [pilot]);
   } finally {
     globalThis.fetch = originalFetch;
-    await Promise.all([pilotDoc.delete(), otherDoc.delete(), workerDoc.delete(), eventDoc.delete()]);
+    await Promise.all([pilotDoc.delete(), subscriptionDoc.delete(), otherDoc.delete(), workerDoc.delete(), eventDoc.delete()]);
     await auth.deleteUser(pilot);
   }
 });
