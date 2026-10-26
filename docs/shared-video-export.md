@@ -1,9 +1,11 @@
 # Shared native video encoder setup
 
-LastReel's native adapter uses `cookoo_video_export` 0.1.0 from
-[`cookoocode/cookoo_video_export`](https://github.com/cookoocode/cookoo_video_export)
-(MIT, copyright COOKOO). TextCrawl uses the same package. LastReel keeps its own
-frame renderer, export controller, destinations and access rules.
+LastReel uses `cookoo_video_export` 0.1.0 from
+[`cookoocode/cookoo_video_export`](https://github.com/cookoocode/cookoo_video_export/tree/f400124cb2540c56151cc3c4939cf36232427b7c)
+(MIT, copyright COOKOO). The Git dependency in `app/pubspec.yaml` pins commit
+`f400124cb2540c56151cc3c4939cf36232427b7c` from the
+`codex/macos-video-export` branch. TextCrawl uses the same package; each app
+keeps its own frame renderer, export controller, destinations and access rules.
 
 ## Setup
 
@@ -13,17 +15,16 @@ From `endcrawl/app`, run:
 flutter pub get
 ```
 
-The Git dependency in `pubspec.yaml` pins a full commit SHA, and `pubspec.lock`
-records the same resolved revision. Flutter fetches the public repository into
-its package cache and registers the plugin on Android and iOS. Local development
-and CI use this same command; no sibling folder, sparse checkout or symlink is
-required.
+The package and its revision are recorded in `app/pubspec.lock`. Flutter fetches
+the public repository into its package cache for local development and CI. No
+sibling folder or symlink is needed.
 
-Requires Flutter 3.44+, iOS 15+ and Android API 24+. Android builds use AGP 9's
-built-in Kotlin. Keep the existing iOS Podfile deployment-target floor.
+The plugin requires Flutter 3.44+, iOS 15+, macOS 12+ or Android API 24+.
+Android builds use AGP 9's built-in Kotlin. The iOS and macOS Apple sources are
+shared through `darwin/`; keep the existing iOS Podfile deployment-target floor.
 
 When updating the encoder, commit and push the plugin first. Update the Git
-`ref` in both LastReel and TextCrawl to the same full commit SHA, run
+`ref` in LastReel and TextCrawl to the same full commit SHA, run
 `flutter pub get` and the export tests, and commit each app's lockfile.
 
 ## Validation
@@ -33,7 +34,8 @@ From `endcrawl/app`:
 ```sh
 dart analyze lib test integration_test tool
 flutter test test/features/export
-flutter run -d DEVICE_ID
+flutter run -d macos
+flutter test --no-pub integration_test/macos_export_test.dart -d macos
 ```
 
 To run the package's contract tests, clone its repository and run
@@ -41,7 +43,7 @@ To run the package's contract tests, clone its repository and run
 `flutter test --no-pub test/encoder_test.dart`. Its standalone example requires
 a newer SDK than the plugin; see the example's `pubspec.yaml`.
 
-LastReel/Endcrawl's real-device export test is
-`app/integration_test/native_export_test.dart`; use a disposable
-QA simulator or an isolated test application ID because Flutter integration
-tests can remove their test installation.
+LastReel's real-device export test is
+`app/integration_test/native_export_test.dart`; use a disposable QA simulator
+or an isolated test application ID because Flutter integration tests can remove
+their test installation.

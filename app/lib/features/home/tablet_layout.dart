@@ -27,7 +27,7 @@ extension TabletLayoutContext on BuildContext {
     if (layoutClass != LayoutClass.medium) return null;
     final size = MediaQuery.sizeOf(this);
     if (size.shortestSide < 600) return null;
-    if (ProviderScope.containerOf(this, listen: false).read(runningOnWebProvider)) return null;
+    if (ProviderScope.containerOf(this, listen: false).read(verifiedWorkspaceProvider)) return null;
     return size.height > size.width ? TabletLayout.portrait : TabletLayout.landscape;
   }
 

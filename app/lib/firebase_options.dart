@@ -26,10 +26,7 @@ class DefaultFirebaseOptions {
       case TargetPlatform.iOS:
         return ios;
       case TargetPlatform.macOS:
-        throw UnsupportedError(
-          'DefaultFirebaseOptions have not been configured for macos - '
-          'you can reconfigure this by running the FlutterFire CLI again.',
-        );
+        return macos;
       case TargetPlatform.windows:
         throw UnsupportedError(
           'DefaultFirebaseOptions have not been configured for windows - '
@@ -80,4 +77,8 @@ class DefaultFirebaseOptions {
         '660045439222-9lmlv92ic5r2351so0au2tdv243t8ale.apps.googleusercontent.com',
     iosBundleId: 'com.lastreel.app',
   );
+
+  // Firebase Apple apps are identified by bundle ID. The macOS target uses
+  // the same registered com.lastreel.app Apple application and backend.
+  static const FirebaseOptions macos = ios;
 }

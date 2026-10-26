@@ -1,4 +1,5 @@
 import 'core/services/clarity.dart';
+import 'core/config/app_platform.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -30,24 +31,22 @@ Future<void> main() async {
     logLevel: LogLevel.None,
   );
 
+  final app = ProviderScope(
+    overrides: [
+      firebaseAuthProvider.overrideWithValue(services.auth),
+      firestoreProvider.overrideWithValue(services.firestore),
+      sessionStoreProvider.overrideWithValue(services.sessionStore),
+      cookooStoreProvider.overrideWithValue(services.cookooStore),
+      reviewPromptStoreProvider.overrideWithValue(services.reviewPromptStore),
+      deskInviteStoreProvider.overrideWithValue(services.deskInviteStore),
+      testerStoreProvider.overrideWithValue(services.testerStore),
+    ],
+    child: const LastReelApp(),
+  );
   runApp(
-    ClarityWidget(
-      clarityConfig: clarityConfig,
-      app: ProviderScope(
-        overrides: [
-          firebaseAuthProvider.overrideWithValue(services.auth),
-          firestoreProvider.overrideWithValue(services.firestore),
-          sessionStoreProvider.overrideWithValue(services.sessionStore),
-          cookooStoreProvider.overrideWithValue(services.cookooStore),
-          reviewPromptStoreProvider.overrideWithValue(
-            services.reviewPromptStore,
-          ),
-          deskInviteStoreProvider.overrideWithValue(services.deskInviteStore),
-          testerStoreProvider.overrideWithValue(services.testerStore),
-        ],
-        child: const LastReelApp(),
-      ),
-    ),
+    AppPlatform.isMobile
+        ? ClarityWidget(clarityConfig: clarityConfig, app: app)
+        : app,
   );
 }
 

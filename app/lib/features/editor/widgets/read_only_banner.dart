@@ -39,7 +39,7 @@ class ReadOnlyBanner extends ConsumerWidget {
         child: EcNotice(
           tone: EcTone.accent,
           icon: Icons.visibility_outlined,
-          title: 'You’re previewing LastReel on the web.',
+          title: workspacePreviewTitle,
           body: 'Open and play any project. Editing, new projects and export unlock with Pro.',
           actions: [
             EcButton(label: 'How to get Pro', size: EcButtonSize.small, onPressed: () => WebAccessScreen.open(context)),

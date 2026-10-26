@@ -1,0 +1,19 @@
+// Application-level settings for the Runner target.
+//
+// This may be replaced with something auto-generated from metadata (e.g., pubspec.yaml) in the
+// future. If not, the values below would default to using the project name when this becomes a
+// 'flutter create' template.
+
+// The application's name. By default this is also the title of the Flutter window.
+PRODUCT_NAME = LastReel
+
+// The application's bundle identifier
+PRODUCT_BUNDLE_IDENTIFIER = com.lastreel.app
+
+// The copyright displayed in application information
+PRODUCT_COPYRIGHT = Copyright © 2026 COOKOO Technologies. All rights reserved.
+
+// Firebase Auth and Google Sign-In use the signed macOS Keychain.
+DEVELOPMENT_TEAM = UA47GB93N8
+CODE_SIGN_IDENTITY = Apple Development
+CODE_SIGN_STYLE = Automatic

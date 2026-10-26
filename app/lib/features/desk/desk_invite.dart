@@ -144,7 +144,7 @@ abstract final class DeskInvite {
           store: store,
           now: now,
           ratedThisSession: container.read(reviewPromptShownThisSessionProvider),
-          web: container.read(runningOnWebProvider),
+          web: container.read(verifiedWorkspaceProvider),
         )) {
       return;
     }

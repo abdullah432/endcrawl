@@ -1,7 +1,9 @@
 # LastReel (Flutter app)
 
-A dedicated end-credits roll editor for phones, tablets and Pro web accounts — see the [repo root](../README.md)
+A dedicated end-credits roll editor for phones, tablets, macOS and Pro web accounts — see the [repo root](../README.md)
 for the product summary and the [design handoff](../design/) this was built from.
+
+For the native desktop app, see [macOS setup and validation](../docs/macos-desktop.md).
 
 See [responsive web setup and validation](../docs/responsive-web.md) for tablet/
 desktop compositions, browser exports, paid-only web access and the required
@@ -14,7 +16,7 @@ required; the encoder is not published on pub.dev.
 
 ## Stack
 
-- **Flutter** (iOS & Android), **Riverpod** (`flutter_riverpod`) for state,
+- **Flutter** (iOS, Android, macOS and web), **Riverpod** (`flutter_riverpod`) for state,
   **Firebase** (Authentication + Cloud Firestore) for the backend.
 - **Layered, with feature-first UI.** Shared domain models and the data layer
   are declared once, centrally; each feature owns only its own screens,
@@ -530,6 +532,8 @@ time a query needs one.
 flutter pub get
 flutter run
 ```
+
+For the desktop app, run `flutter run -d macos` from this directory.
 
 ## Testing
 

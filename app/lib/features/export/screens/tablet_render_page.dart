@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import '../../../core/config/app_platform.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path/path.dart' show basename;
 
@@ -436,12 +437,12 @@ class _DoneCard extends ConsumerWidget {
     // Saving keeps the file on this device: a video goes to Photos, an
     // image sequence (or the web's file) through Files or a download.
     void save() => deliver(
-      kIsWeb
+      (kIsWeb || AppPlatform.isNativeDesktop)
           ? destinations.download(artifact)
           : run.codec == Codec.png
           ? destinations.share(artifact, origin: origin())
           : destinations.saveToPhotos(artifact),
-      done: !kIsWeb && run.codec != Codec.png ? 'Saved to Photos' : null,
+      done: AppPlatform.isMobile && run.codec != Codec.png ? 'Saved to Photos' : null,
     );
     final canShare = destinations.canShare(artifact);
 

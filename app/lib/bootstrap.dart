@@ -13,6 +13,7 @@ import 'core/services/analytics.dart';
 import 'core/services/profile_sync.dart';
 import 'core/services/external_links.dart';
 import 'core/config/billing_config.dart';
+import 'core/config/app_platform.dart';
 import 'data/repositories/revenuecat_entitlement_repository.dart';
 import 'data/repositories/auth_repository.dart';
 import 'data/repositories/entitlement_repository.dart';
@@ -171,7 +172,7 @@ final analyticsPreferenceSyncProvider = Provider<void>((ref) {
 
 /// One SDK owner for the lifetime of the app, with immediate account isolation.
 final entitlementRepositoryProvider = Provider<EntitlementRepository>((ref) {
-  if (kIsWeb) {
+  if (AppPlatform.requiresVerifiedPro) {
     final uid = ref.watch(currentUidProvider);
     if (uid == null) return const FreeEntitlementRepository();
     final repository = WebEntitlementRepository(
@@ -199,7 +200,7 @@ final entitlementRepositoryProvider = Provider<EntitlementRepository>((ref) {
 /// store never makes the cap disappear.
 final entitlementProvider = StreamProvider<Entitlement>((ref) {
   ref.watch(currentUidProvider);
-  if (!ref.watch(runningOnWebProvider) && ref.watch(testerProProvider)) {
+  if (!ref.watch(verifiedWorkspaceProvider) && ref.watch(testerProProvider)) {
     return Stream.value(const Entitlement.pro(period: BillingPeriod.yearly));
   }
   return ref.watch(entitlementRepositoryProvider).watch();

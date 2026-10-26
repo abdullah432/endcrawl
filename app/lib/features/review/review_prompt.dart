@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart' show kIsWeb;
+import '../../core/config/app_platform.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -109,7 +109,7 @@ abstract final class ReviewPrompt {
     final store = container.read(reviewPromptStoreProvider);
     final now = container.read(clockProvider)();
     // The web has no store to rate in.
-    if (kIsWeb || !due(store, now)) return;
+    if (!AppPlatform.isMobile || !due(store, now)) return;
     await store.markAsked(now);
     container.read(reviewPromptShownThisSessionProvider.notifier).mark();
     container.read(analyticsProvider).logEvent('review_prompt_shown');

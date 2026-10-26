@@ -2,6 +2,7 @@ import 'dart:ui' show FlutterView;
 import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'app_platform.dart';
 
 /// The app outside the editor.
 const kPortraitOnly = [DeviceOrientation.portraitUp];
@@ -46,7 +47,7 @@ class _EcOrientationPolicyState extends State<EcOrientationPolicy>
   @override
   void didChangeMetrics() => _apply();
   void _apply() {
-    if (kIsWeb || !mounted) return;
+    if (!AppPlatform.isMobile || !mounted) return;
     final display = _view?.display;
     if (display == null) return;
     final phone = display.size.shortestSide / display.devicePixelRatio < 600;

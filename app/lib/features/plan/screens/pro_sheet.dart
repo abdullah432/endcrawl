@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
+import '../../../core/config/app_platform.dart';
 import '../widgets/mobile_subscription_card.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -37,7 +37,7 @@ class ProSheet extends ConsumerWidget {
     PlanSource source = PlanSource.paywall,
   }) async {
     if (ProviderScope.containerOf(context, listen: false).read(iosFreeLaunchProvider)) return;
-    if (kIsWeb) {
+    if (AppPlatform.requiresVerifiedPro) {
       await MobileSubscriptionCard.show(context);
     } else if (context.isTablet) {
       // T6.3 / P6.3: the whole screen, the black panel beside or above.

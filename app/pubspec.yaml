@@ -13,7 +13,7 @@ dependencies:
   cookoo_video_export:
     git:
       url: https://github.com/cookoocode/cookoo_video_export.git
-      ref: c39be396c4332cef5586483171a8a083d3304cb7
+      ref: f400124cb2540c56151cc3c4939cf36232427b7c
   archive: ^4.3.0
   clarity_flutter: ^1.10.0
   cloud_firestore: ^6.10.0
@@ -54,6 +54,8 @@ flutter_launcher_icons:
   image_path: "assets/icon/app_icon.png"
   min_sdk_android: 24
   remove_alpha_ios: true
+  macos:
+    generate: true
   web:
     generate: true
     background_color: "#F4EEE5"

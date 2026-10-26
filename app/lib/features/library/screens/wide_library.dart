@@ -311,7 +311,7 @@ class _PreviewBanner extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('You’re previewing LastReel on the web.', style: t.titleS.copyWith(fontWeight: FontWeight.w700)),
+                Text(workspacePreviewTitle, style: t.titleS.copyWith(fontWeight: FontWeight.w700)),
                 const SizedBox(height: 2),
                 Text(
                   'Open and play any project. Editing, new projects and export unlock with Pro.',

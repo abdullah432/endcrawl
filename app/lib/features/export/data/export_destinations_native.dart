@@ -1,4 +1,5 @@
-import 'dart:ui';
+import 'dart:io';
+import 'package:flutter/services.dart';
 import 'package:gal/gal.dart';
 import 'package:share_plus/share_plus.dart';
 import '../../../core/result.dart';
@@ -11,7 +12,24 @@ class PlatformExportDestinations implements ExportDestinations {
   @override
   bool canShare(ExportArtifact artifact) => true;
   @override
-  Future<Result<void>> download(ExportArtifact artifact) => share(artifact);
+  Future<Result<void>> download(ExportArtifact artifact) async {
+    if (!Platform.isMacOS) return share(artifact);
+    try {
+      await const MethodChannel(
+        'lastreel/export_destination',
+      ).invokeMethod<bool>('saveExport', {'path': artifact.location});
+      return const Ok(null);
+    } catch (error, stack) {
+      return Err(
+        AppFailure(
+          FailureKind.unknown,
+          'Couldn’t save the export. Choose another destination and try again.',
+          cause: error,
+          stackTrace: stack,
+        ),
+      );
+    }
+  }
 
   @override
   Future<Result<void>> saveToPhotos(ExportArtifact artifact) async {

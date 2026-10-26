@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart';
+import '../../../core/config/app_platform.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../bootstrap.dart';
@@ -33,7 +33,7 @@ class SubscriptionScreen extends ConsumerWidget {
     final count = ref.watch(projectSummariesProvider).value?.length ?? 0;
     final links = ref.read(externalLinksProvider);
     final yearly = entitlement.period == BillingPeriod.yearly;
-    final manageUrl = (kIsWeb
+    final manageUrl = (AppPlatform.requiresVerifiedPro
         ? entitlement.managementUrl
         : entitlement.managementUrl ?? AppLinks.manageSubscriptions);
     final renews = entitlement.renewsAt;
@@ -127,13 +127,15 @@ class SubscriptionScreen extends ConsumerWidget {
                 ),
               if (manageUrl != null)
                 EcGroupRow(
-                  title: kIsWeb
+                  title: AppPlatform.requiresVerifiedPro
                       ? 'Manage mobile subscription'
                       : 'Manage in ${AppLinks.storeName}',
                   onTap: () => links.openUrl(manageUrl),
                 ),
               EcGroupRow(
-                title: kIsWeb ? 'Check access' : 'Restore purchases',
+                title: AppPlatform.requiresVerifiedPro
+                    ? 'Check access'
+                    : 'Restore purchases',
                 onTap: () async {
                   await ref.read(planControllerProvider.notifier).restore();
                   final message = ref.read(planControllerProvider).message;
@@ -148,8 +150,8 @@ class SubscriptionScreen extends ConsumerWidget {
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 6),
             child: Text(
-              kIsWeb
-                  ? 'Manage your subscription in its mobile store. Pro stays active until the paid period ends. When it expires, you can preview the web app; editing and exporting require Pro. Your projects stay saved.'
+              AppPlatform.requiresVerifiedPro
+                  ? 'Manage your subscription in its mobile store. Pro stays active until the paid period ends. When it expires, you can preview the ${AppPlatform.isNativeDesktop ? 'desktop' : 'web'} app; editing and exporting require Pro. Your projects stay saved.'
                   : 'Cancel any time in your store settings. Pro stays on until the paid period ends. After that nothing is '
                         'deleted: you keep every project, ${numberWord(Entitlement.freeProjectLimit)} can be edited, and ads come back.',
               style: t.caption.copyWith(height: 1.5),

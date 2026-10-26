@@ -8,7 +8,6 @@ import 'package:lastreel/features/cookoo/controllers/cookoo_promo_controller.dar
 import 'package:lastreel/features/cookoo/data/cookoo_store.dart';
 import 'package:lastreel/features/export/controllers/export_controller.dart';
 import 'package:lastreel/features/access/controllers/web_access.dart';
-import 'package:lastreel/features/plan/controllers/web_access.dart';
 import 'package:lastreel/features/desk/desk_invite.dart';
 import 'package:lastreel/features/desk/desk_invite_store.dart';
 import 'package:lastreel/features/review/data/feedback_repository.dart';
@@ -148,7 +147,6 @@ class AppHarness {
             profileSyncProvider.overrideWithValue(sync),
           if (iosFreeLaunch case final enabled?)
             iosFreeLaunchFlagProvider.overrideWithValue(enabled),
-          webAccessRequiredProvider.overrideWithValue(web),
           authRepositoryProvider.overrideWithValue(auth),
           projectRepositoryProvider.overrideWithValue(projects),
           sessionStoreProvider.overrideWithValue(session),

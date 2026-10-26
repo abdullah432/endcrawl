@@ -2,11 +2,17 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../bootstrap.dart';
+import '../../../core/config/app_platform.dart';
 import '../../../core/result.dart';
 
 /// Whether this build runs in a browser. A provider rather than a bare
 /// `kIsWeb` so tests can exercise the web rules.
 final runningOnWebProvider = Provider<bool>((ref) => kIsWeb);
+
+/// Native desktops share the same access gate and server entitlement ledger.
+final verifiedWorkspaceProvider = Provider<bool>(
+  (ref) => ref.watch(runningOnWebProvider) || AppPlatform.isNativeDesktop,
+);
 
 /// On the web, LastReel is a Pro workspace: an account without verified
 /// Pro (verified by the entitlement repository) gets a read-only preview — it
@@ -14,7 +20,7 @@ final runningOnWebProvider = Provider<bool>((ref) => kIsWeb);
 /// export anything. Never true in the mobile apps, whose Free/Pro rules
 /// are unchanged.
 final webPreviewProvider = Provider<bool>((ref) {
-  if (!ref.watch(runningOnWebProvider)) return false;
+  if (!ref.watch(verifiedWorkspaceProvider)) return false;
   return !(ref.watch(entitlementProvider).value?.isPro ?? false);
 });
 
@@ -28,13 +34,20 @@ enum LockedAction {
   paste('Pasting into a project in the browser needs Pro.', 'paste'),
   edit('Editing in the browser needs Pro.', 'edit'),
   newProject('Starting projects in the browser needs Pro.', 'start projects'),
-  manage('Managing projects in the browser needs Pro.', 'rename, duplicate or delete projects');
+  manage(
+    'Managing projects in the browser needs Pro.',
+    'rename, duplicate or delete projects',
+  );
 
-  final String title;
+  final String _title;
+
+  String get title => AppPlatform.isNativeDesktop
+      ? _title.replaceAll('browser', 'desktop app')
+      : _title;
 
   /// What was tried, for "To …, edit or add blocks here".
   final String verb;
-  const LockedAction(this.title, this.verb);
+  const LockedAction(this._title, this.verb);
 }
 
 /// Refused by any workspace write while the web is in preview.
@@ -80,4 +93,11 @@ class AccessCheckController extends Notifier<AccessCheck> {
   }
 }
 
-final accessCheckProvider = NotifierProvider<AccessCheckController, AccessCheck>(AccessCheckController.new);
+final accessCheckProvider =
+    NotifierProvider<AccessCheckController, AccessCheck>(
+      AccessCheckController.new,
+    );
+
+String get workspacePreviewTitle => AppPlatform.isNativeDesktop
+    ? 'You’re previewing LastReel on desktop.'
+    : 'You’re previewing LastReel on the web.';

@@ -137,7 +137,7 @@ class SettingsGroups {
 
   /// The plan — on the web, the subscription's status (D15): the web never
   /// sells, so it links out to Google Play and re-checks access instead.
-  Widget plan() => ref.watch(runningOnWebProvider) ? const _WebPlanCard() : const _PlanCard();
+  Widget plan() => ref.watch(verifiedWorkspaceProvider) ? const _WebPlanCard() : const _PlanCard();
 
   Widget desktopWeb() => const DesktopWebCard();
 

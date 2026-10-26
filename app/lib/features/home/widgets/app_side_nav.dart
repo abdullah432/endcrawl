@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../bootstrap.dart';
 import '../../../core/config/app_links.dart';
+import '../../../core/config/app_platform.dart';
 import '../../../core/layout/layout_class.dart';
 import '../../../core/theme/theme_context.dart';
 import '../../../core/utils/formatting.dart';
@@ -178,7 +179,7 @@ class _PlanStatus extends ConsumerWidget {
     final t = context.type;
     final entitlement = ref.watch(entitlementProvider).value ?? const Entitlement.free();
     final count = ref.watch(projectSummariesProvider).value?.length ?? 0;
-    final web = ref.watch(runningOnWebProvider);
+    final web = ref.watch(verifiedWorkspaceProvider);
 
     if (ref.watch(webPreviewProvider)) {
       return EcDashedBorder(
@@ -190,7 +191,7 @@ class _PlanStatus extends ConsumerWidget {
             children: [
               Text('PREVIEW · FREE', style: t.eyebrow),
               const SizedBox(height: 10),
-              Text('Editing on the web needs Pro.', style: t.displayS.copyWith(fontSize: 20, height: 1.1)),
+              Text(AppPlatform.isNativeDesktop ? 'Editing on desktop needs Pro.' : 'Editing on the web needs Pro.', style: t.displayS.copyWith(fontSize: 20, height: 1.1)),
               const SizedBox(height: 10),
               SizedBox(
                 height: 38,

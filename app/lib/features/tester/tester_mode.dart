@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart' show kIsWeb;
+import '../../core/config/app_platform.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -15,7 +15,7 @@ import '../../bootstrap.dart';
 /// admin can write that collection (firestore.rules); the app can only read
 /// its own entry. Never on the web, where Pro is decided by the server.
 final testerAllowedProvider = StreamProvider<bool>((ref) {
-  if (kIsWeb) return Stream.value(false);
+  if (AppPlatform.requiresVerifiedPro) return Stream.value(false);
   final uid = ref.watch(currentUidProvider);
   if (uid == null) return Stream.value(false);
   return ref

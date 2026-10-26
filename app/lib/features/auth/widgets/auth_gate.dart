@@ -47,14 +47,14 @@ class AuthGate extends ConsumerWidget {
           null when ref.watch(accountDeletedProvider) => const AccountDeletedScreen(),
           null => const _AuthFlow(),
           final user when Features.emailVerification && user.needsEmailVerification => VerifyEmailScreen(user: user),
-          _ when ref.watch(runningOnWebProvider) => const _WebHome(),
+          _ when ref.watch(verifiedWorkspaceProvider) => const _WebHome(),
           _ => const LibraryScreen(),
         },
     };
   }
 }
 
-/// Signed-in desktop browsers open the library immediately. Workspace guards
+/// Signed-in desktop browsers and native desktops open the library immediately. Workspace guards
 /// keep it in preview until Pro is verified, including while checks are pending
 /// or fail. Phone browsers show the computer handoff for Free and Pro alike.
 class _WebHome extends ConsumerWidget {
@@ -62,7 +62,7 @@ class _WebHome extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    if (MediaQuery.sizeOf(context).width < Breakpoints.medium) return const BiggerScreensPage();
+    if (ref.watch(runningOnWebProvider) && MediaQuery.sizeOf(context).width < Breakpoints.medium) return const BiggerScreensPage();
     return const LibraryScreen();
   }
 }

@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import '../config/app_platform.dart';
 
 enum EcLayout { compact, spacious, tablet, desktop }
 
@@ -11,7 +12,7 @@ EcLayout layoutForWidth(double width) => switch (width) {
 };
 
 bool isNativePhone(BuildContext context) {
-  if (kIsWeb) return false;
+  if (kIsWeb || AppPlatform.isNativeDesktop) return false;
   final display = View.of(context).display;
   final size = display.size / display.devicePixelRatio;
   if (size.shortestSide >= 600) return false;

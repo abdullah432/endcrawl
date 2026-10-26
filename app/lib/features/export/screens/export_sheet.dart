@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/config/app_platform.dart';
 import 'package:flutter/foundation.dart';
 import '../models/export_artifact.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -1453,16 +1454,20 @@ class _Ready extends ConsumerWidget {
           EcGroup(
             children: [
               EcGroupRow(
-                title: kIsWeb ? 'Download' : 'Save to Files',
+                title: kIsWeb
+                    ? 'Download'
+                    : AppPlatform.isNativeDesktop
+                    ? 'Save to Mac'
+                    : 'Save to Files',
                 subtitle: basename(path),
                 onTap: () => deliver(
-                  kIsWeb
+                  (kIsWeb || AppPlatform.isNativeDesktop)
                       ? destinations.download(artifact)
                       : destinations.share(artifact, origin: origin()),
                 ),
               ),
               // Photos holds video; an image sequence goes to Files.
-              if (!kIsWeb && run.codec != Codec.png)
+              if (AppPlatform.isMobile && run.codec != Codec.png)
                 EcGroupRow(
                   title: 'Save to Photos',
                   onTap: () => deliver(
@@ -1470,7 +1475,7 @@ class _Ready extends ConsumerWidget {
                     done: 'Saved to Photos',
                   ),
                 ),
-              if (!kIsWeb)
+              if (AppPlatform.isMobile)
                 EcGroupRow(
                   title: 'Send to Frame.io',
                   chevron: false,

@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
 import '../../../bootstrap.dart';
+import '../../../core/config/app_platform.dart';
 import '../../../core/config/app_links.dart';
 import '../../../core/layout/layout_class.dart';
 import '../../../core/theme/theme_context.dart';
@@ -119,7 +120,7 @@ class _TopBar extends ConsumerWidget {
                 border: Border.all(color: p.line2),
                 borderRadius: BorderRadius.circular(999),
               ),
-              child: Text('WEB', style: t.eyebrow.copyWith(fontSize: 10, letterSpacing: 1.2)),
+              child: Text(AppPlatform.isNativeDesktop ? 'DESKTOP' : 'WEB', style: t.eyebrow.copyWith(fontSize: 10, letterSpacing: 1.2)),
             ),
             const Spacer(),
             if (showPreview)
@@ -173,7 +174,7 @@ class _Pitch extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('LASTREEL PRO · ON THE WEB', style: t.eyebrow.copyWith(fontSize: 11, letterSpacing: 2, color: p.accent)),
+        Text(AppPlatform.isNativeDesktop ? 'LASTREEL PRO · DESKTOP' : 'LASTREEL PRO · ON THE WEB', style: t.eyebrow.copyWith(fontSize: 11, letterSpacing: 2, color: p.accent)),
         const SizedBox(height: 26),
         Semantics(
           header: true,
@@ -194,7 +195,7 @@ class _Pitch extends StatelessWidget {
         ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 600),
           child: Text(
-            'The web app is part of LastReel Pro. Subscribe once in the mobile app and this account opens '
+            '${AppPlatform.isNativeDesktop ? 'The desktop app' : 'The web app'} is part of LastReel Pro. Subscribe once in the mobile app and this account opens '
             'the full desk editor here, with the projects you already made.',
             style: t.bodyL.copyWith(fontSize: wide ? 17 : 15.5, height: 1.55, color: p.ink2),
           ),
