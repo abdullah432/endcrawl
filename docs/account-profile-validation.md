@@ -154,3 +154,44 @@ loads it directly into memory from Firebase Secret Manager.
 
 The pre-existing edits in `app/pubspec.yaml` and `app/pubspec.lock` were preserved;
 Flutter checks used `--no-pub`.
+
+## Android Chrome custom-domain redirect repair (2026-10-24)
+
+The phone opened `https://app.lastreel.cookoo.dev/`, while the deployed build's
+`FIREBASE_AUTH_DOMAIN` selected `endcrawl-620c2.web.app`. Its Google redirect
+returned to the custom domain without a restored session; the user also observed
+Firebase's missing-initial-state page. The custom domain is active on the app's
+Firebase Hosting site and was already a Firebase Auth authorized domain, but was
+missing from the Google web OAuth client's origins and callback URLs.
+
+Added the custom origin and `/__/auth/handler` callback to the existing Google
+web client. The web Firebase options now select the current hostname from an
+explicit list of the app's three verified Hosting domains. Local and unknown
+hosts retain the configured fallback. This prevents build overrides from moving
+a production login across origins. Native Firebase options and native Google
+sign-in remain unchanged.
+
+Focused domain/authentication/phone-handoff tests: 37 passed, 2 existing skips.
+Flutter analysis passed. Live phone verification is recorded in
+`output/android-auth-check/` after deployment. Account synchronization and billing
+rollout controls remain unchanged.
+
+Live verification: selected the designated existing Google account on the custom
+app domain, returned to the signed-in library with four projects, and reloaded
+successfully without losing the session. Saved proof:
+`output/android-auth-check/custom-domain-login-success.jpg`.
+The connected Samsung phone reproduced the old cross-domain redirect and return
+to welcome, but disconnected before the post-deployment test. Android Chrome
+verification remains pending reconnection; the native installed app was 0.0.8 (13)
+and its Google login was not exercised during this browser repair.
+
+Android Chrome follow-up: the Samsung phone was reconnected and the app's
+"Preview on the web" handoff was exercised. A Google request initially displayed
+`redirect_uri_mismatch`. Starting a fresh request from the deployed release URL
+subsequently reached the Google account chooser and completed login with the
+account selected on the phone. The browser reached the signed-in bigger-screen
+handoff and retained that session after reloading the app URL. No further
+configuration changes were needed. The phone's selected account differed from
+the designated desktop pilot; profile/billing rollout controls were not changed.
+No link email was sent and no project was modified. Proof:
+`output/android-auth-check/android-chrome-login-restored.png`.
