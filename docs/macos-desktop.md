@@ -27,6 +27,15 @@ first time it builds. The Runner target uses bundle ID `com.lastreel.app` and
 the COOKOO team. Its sandbox permits network access, Apple and Google sign-in,
 and saving exports to a file the user chooses.
 
+## Firebase
+
+The macOS target connects to the existing `endcrawl-620c2` Firebase project.
+It uses the registered Apple app for bundle ID `com.lastreel.app`, the same
+Firebase options as iOS, and `macos/Runner/GoogleService-Info.plist` bundled
+in the Runner target. Keep that plist in the built `.app` Resources directory;
+native Google sign-in reads it there. The sandbox's network and keychain
+entitlements allow Firebase Auth and Firestore to work on macOS.
+
 ## Access and exports
 
 - Sign in with the same LastReel account used on mobile. Desktop editing and
