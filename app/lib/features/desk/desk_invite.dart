@@ -22,6 +22,7 @@ import '../plan/controllers/release_policy.dart';
 import '../plan/screens/pro_sheet.dart';
 import '../review/review_prompt.dart';
 import '../tester/tester_mode.dart';
+import '../tracking/tracking_prompt.dart';
 import 'desk_invite_store.dart';
 
 /// Overridden in `main` with the SharedPreferences-backed store, and in
@@ -140,6 +141,7 @@ abstract final class DeskInvite {
     final now = container.read(clockProvider)();
     if (container.read(deskInviteShownThisSessionProvider) ||
         container.read(deskInviteOpenProvider) ||
+        container.read(trackingPromptThisSessionProvider) ||
         !due(
           store: store,
           now: now,

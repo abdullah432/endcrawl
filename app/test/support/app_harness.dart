@@ -10,6 +10,9 @@ import 'package:lastreel/features/export/controllers/export_controller.dart';
 import 'package:lastreel/features/access/controllers/web_access.dart';
 import 'package:lastreel/features/desk/desk_invite.dart';
 import 'package:lastreel/features/desk/desk_invite_store.dart';
+import 'package:lastreel/features/tracking/tracking_authorization.dart';
+import 'package:lastreel/features/tracking/tracking_prompt.dart';
+import 'package:lastreel/features/tracking/tracking_store.dart';
 import 'package:lastreel/features/review/data/feedback_repository.dart';
 import 'package:lastreel/features/tester/tester_mode.dart';
 import 'package:lastreel/features/review/review_prompt.dart';
@@ -27,6 +30,7 @@ import 'fake_export.dart';
 import 'fake_external_links.dart';
 import 'fake_feedback_repository.dart';
 import 'fake_project_repository.dart';
+import 'fake_tracking_authorization.dart';
 import 'fake_user_profile_repository.dart';
 
 /// The whole app, wired to in-memory fakes through the same providers
@@ -51,6 +55,11 @@ class AppHarness {
   FakeCookooContactClient contact;
   FakeFeedbackRepository feedback;
   InMemoryDeskInviteStore desk;
+
+  /// No first launch recorded by default, so the tracking pre-prompt
+  /// doesn't cover the library in tests about something else.
+  InMemoryTrackingStore tracking;
+  FakeTrackingAuthorization trackingAuthorization;
 
   /// The desk invite's roll ("by chance"): a sure thing unless a test says.
   bool deskChance;
@@ -79,6 +88,7 @@ class AppHarness {
     InMemoryCookooStore? cookoo,
     InMemoryReviewPromptStore? review,
     InMemoryDeskInviteStore? desk,
+    InMemoryTrackingStore? tracking,
     DateTime? now,
     this.web = false,
     this.iosFreeLaunch,
@@ -105,6 +115,8 @@ class AppHarness {
        // Off by default, so the desk invite doesn't cover the library in
        // tests about something else.
        desk = desk ?? InMemoryDeskInviteStore(turnedOff: true),
+       tracking = tracking ?? InMemoryTrackingStore(),
+       trackingAuthorization = FakeTrackingAuthorization(),
        testerMode = InMemoryTesterStore(),
        now = now ?? DateTime.utc(2026, 9, 23, 12);
 
@@ -166,6 +178,8 @@ class AppHarness {
           cookooContactClientProvider.overrideWithValue(contact),
           feedbackRepositoryProvider.overrideWithValue(feedback),
           deskInviteStoreProvider.overrideWithValue(desk),
+          trackingStoreProvider.overrideWithValue(tracking),
+          trackingAuthorizationProvider.overrideWithValue(trackingAuthorization),
           deskInviteChanceProvider.overrideWithValue(() => deskChance),
           testerStoreProvider.overrideWithValue(testerMode),
           testerAllowedProvider.overrideWith(

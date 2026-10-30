@@ -31,6 +31,7 @@ import 'features/access/controllers/web_access.dart';
 import 'features/review/review_prompt_store.dart';
 import 'features/desk/desk_invite_store.dart';
 import 'features/tester/tester_mode.dart';
+import 'features/tracking/tracking_store.dart';
 import 'firebase_options.dart';
 
 /// The app's dependency-injection seams.
@@ -215,6 +216,7 @@ class AppServices {
   final ReviewPromptStore reviewPromptStore;
   final DeskInviteStore deskInviteStore;
   final TesterStore testerStore;
+  final TrackingStore trackingStore;
 
   const AppServices({
     required this.auth,
@@ -224,6 +226,7 @@ class AppServices {
     required this.reviewPromptStore,
     required this.deskInviteStore,
     required this.testerStore,
+    required this.trackingStore,
   });
 }
 
@@ -253,6 +256,10 @@ Future<AppServices> bootstrap() async {
 
   final deskInviteStore = PreferencesDeskInviteStore(preferences);
   await deskInviteStore.countSession();
+  // The tracking pre-prompt waits three days from here (the install, or
+  // the update that brought it).
+  final trackingStore = PreferencesTrackingStore(preferences);
+  await trackingStore.recordFirstSeen(DateTime.now());
   pilotStartup('services ready');
 
   return AppServices(
@@ -263,5 +270,6 @@ Future<AppServices> bootstrap() async {
     reviewPromptStore: PreferencesReviewPromptStore(preferences),
     deskInviteStore: deskInviteStore,
     testerStore: PreferencesTesterStore(preferences),
+    trackingStore: trackingStore,
   );
 }

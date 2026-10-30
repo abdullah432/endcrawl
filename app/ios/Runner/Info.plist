@@ -41,6 +41,8 @@
 	<string>LastReel saves the credit rolls you render to your photo library.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>LastReel needs photo library access to export and save your credit roll videos.</string>
+	<key>NSUserTrackingUsageDescription</key>
+	<string>LastReel shows a few ads to stay free. Allowing tracking makes those ads more relevant to you. It doesn’t add more ads.</string>
 	<key>SKAdNetworkItems</key>
 	<array>
 		<dict>

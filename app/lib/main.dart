@@ -16,6 +16,7 @@ import 'features/plan/controllers/trial_analytics.dart';
 import 'features/review/review_prompt.dart';
 import 'features/desk/desk_invite.dart';
 import 'features/tester/tester_mode.dart';
+import 'features/tracking/tracking_prompt.dart';
 import 'features/auth/widgets/auth_gate.dart';
 
 Future<void> main() async {
@@ -40,6 +41,7 @@ Future<void> main() async {
       reviewPromptStoreProvider.overrideWithValue(services.reviewPromptStore),
       deskInviteStoreProvider.overrideWithValue(services.deskInviteStore),
       testerStoreProvider.overrideWithValue(services.testerStore),
+      trackingStoreProvider.overrideWithValue(services.trackingStore),
     ],
     child: const LastReelApp(),
   );
