@@ -17,6 +17,7 @@ import '../../paste/screens/paste_sheet.dart';
 import '../../project/controllers/project_controller.dart';
 import '../../timing/screens/timing_sheet.dart';
 import '../controllers/editor_ui_controller.dart';
+import '../../home/tablet_layout.dart';
 import 'block_list.dart';
 import 'editor_dock.dart';
 import 'editor_timeline.dart';
@@ -151,7 +152,7 @@ class _AdaptiveEditorState extends ConsumerState<AdaptiveEditor> {
                 body: LandscapeMonitor(),
               );
             }
-            final desktop = layout == EcLayout.desktop;
+            final desktop = layout == EcLayout.desktop && !context.isTablet;
             if (!wide) {
               return Stack(
                 children: [

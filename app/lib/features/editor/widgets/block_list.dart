@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
 
-import '../../../core/layout/layout_class.dart';
 import '../../../core/theme/ec_type.dart';
 import '../../../core/theme/theme_context.dart';
 import '../../../core/utils/formatting.dart';
@@ -37,7 +36,7 @@ class BlockList extends ConsumerWidget {
     final controller = ref.read(projectControllerProvider.notifier);
 
     // The desktop's dense index runs closer to the pane's edges (D11).
-    final side = context.layoutClass == LayoutClass.expanded ? 8.0 : 16.0;
+    final side = context.isDesktopLayout ? 8.0 : 16.0;
     // The tablet (T3.1, P3.1) adds the roll's runtime: "14 blocks · 02:41".
     final runtime = context.isTablet
         ? ' · ${formatRuntime(ref.watch(projectControllerProvider.select((s) => s.runtime)))}'

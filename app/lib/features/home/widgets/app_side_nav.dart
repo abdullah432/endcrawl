@@ -4,7 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../bootstrap.dart';
 import '../../../core/config/app_links.dart';
 import '../../../core/config/app_platform.dart';
-import '../../../core/layout/layout_class.dart';
 import '../../../core/theme/theme_context.dart';
 import '../../../core/utils/formatting.dart';
 import '../../../core/widgets/ec_dashed_border.dart';
@@ -33,7 +32,7 @@ class AppSideNav extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final p = context.palette;
-    final desktop = context.layoutClass == LayoutClass.expanded;
+    final desktop = context.isDesktopLayout;
     final user = ref.watch(authStateProvider).value;
     // The tablet rail (T1.1): icons beside the labels, and the account
     // chip at its foot in place of the plan status.

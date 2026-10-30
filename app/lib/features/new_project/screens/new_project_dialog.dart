@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../bootstrap.dart';
-import '../../../core/layout/layout_class.dart';
 import '../../../core/theme/ec_type.dart';
 import '../../../core/theme/theme_context.dart';
 import '../../../core/utils/formatting.dart';
@@ -211,7 +210,7 @@ class _NewProjectDialogState extends ConsumerState<NewProjectDialog> {
   @override
   Widget build(BuildContext context) {
     final t = context.type;
-    final desktop = context.layoutClass == LayoutClass.expanded;
+    final desktop = context.isDesktopLayout;
     final recovery = ref.watch(recoveryCandidateProvider).value;
     final screen = MediaQuery.sizeOf(context);
 
