@@ -38,6 +38,27 @@ class ScrubBar extends ConsumerWidget {
   }
 }
 
+/// Each block's tick on the track: its id and where on the roll (0–1) it
+/// comes on screen.
+List<(String, double)> blockMarks(ProjectState project) {
+  final e = project.engine;
+  return [
+    for (final b in project.activeBlocks)
+      if (b is! SpacerBlock && project.measurements.blockY[b.id] != null)
+        (
+          b.id,
+          (frameForY(e, project.measurements.blockY[b.id]! + (b is HoldBlock ? project.geometry.h : 0)) / e.totalFrames)
+              .clamp(0.0, 1.0),
+        ),
+  ];
+}
+
+/// The focused block's stretch of the roll, from its tick to the next.
+(double, double)? shadedRange(List<(String, double)> marks, String? focusedId) {
+  final at = marks.indexWhere((m) => m.$1 == focusedId);
+  return at < 0 ? null : (marks[at].$2, at + 1 < marks.length ? marks[at + 1].$2 : 1.0);
+}
+
 /// The draggable track itself — shared by the editor and, [onBlack], the
 /// landscape monitor (3.4).
 class ScrubTrack extends ConsumerWidget {
@@ -52,25 +73,13 @@ class ScrubTrack extends ConsumerWidget {
     final frame = ref.watch(playbackControllerProvider.select((s) => s.frame));
     final progress = e.totalFrames == 0 ? 0.0 : (frame / e.totalFrames).clamp(0.0, 1.0);
 
-    final marks = onBlack
-        ? const <(String, double)>[]
-        : [
-            for (final b in project.activeBlocks)
-              if (b is! SpacerBlock && project.measurements.blockY[b.id] != null)
-                (
-                  b.id,
-                  (frameForY(e, project.measurements.blockY[b.id]! + (b is HoldBlock ? project.geometry.h : 0)) /
-                          e.totalFrames)
-                      .clamp(0.0, 1.0),
-                ),
-          ];
+    final marks = onBlack ? const <(String, double)>[] : blockMarks(project);
     final ticks = [for (final m in marks) m.$2];
 
     // T3.1 — on a tablet the selected block's stretch of the roll is shaded,
     // from its tick to the next one.
     final focusedId = context.layoutClass.isWide ? ref.watch(editorUiControllerProvider.select((s) => s.focusedId)) : null;
-    final at = marks.indexWhere((m) => m.$1 == focusedId);
-    final shade = at < 0 ? null : (marks[at].$2, at + 1 < marks.length ? marks[at + 1].$2 : 1.0);
+    final shade = shadedRange(marks, focusedId);
 
     void scrub(Offset local, double width) =>
         ref.read(playbackControllerProvider.notifier).scrubToFraction((local.dx / width).clamp(0.0, 1.0));

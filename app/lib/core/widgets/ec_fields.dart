@@ -432,6 +432,12 @@ class EcTextArea extends StatefulWidget {
   /// Lines (0-based, counting blank ones) to mark as needing a look.
   final Set<int> flaggedLines;
 
+  /// Lets the owner put the caret on a line — "Edit line" on T4.2.
+  final FocusNode? focusNode;
+
+  /// The text size; the tablet's paste editors set it larger (T4.2, P4.2).
+  final double? fontSize;
+
   const EcTextArea({
     super.key,
     required this.controller,
@@ -444,6 +450,8 @@ class EcTextArea extends StatefulWidget {
     this.onChanged,
     this.lineNumbers = false,
     this.flaggedLines = const {},
+    this.focusNode,
+    this.fontSize,
   });
 
   @override
@@ -452,8 +460,10 @@ class EcTextArea extends StatefulWidget {
 
 class _EcTextAreaState extends State<EcTextArea> {
   static const _gutter = 30.0;
-  final _focus = FocusNode();
+  FocusNode? _ownFocus;
   final _scroll = ScrollController();
+
+  FocusNode get _focus => widget.focusNode ?? (_ownFocus ??= FocusNode());
 
   @override
   void initState() {
@@ -461,12 +471,21 @@ class _EcTextAreaState extends State<EcTextArea> {
     _focus.addListener(_onFocus);
   }
 
+  @override
+  void didUpdateWidget(EcTextArea oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.focusNode != widget.focusNode) {
+      (oldWidget.focusNode ?? _ownFocus)?.removeListener(_onFocus);
+      _focus.addListener(_onFocus);
+    }
+  }
+
   void _onFocus() => setState(() {});
 
   @override
   void dispose() {
     _focus.removeListener(_onFocus);
-    _focus.dispose();
+    _ownFocus?.dispose();
     _scroll.dispose();
     super.dispose();
   }
@@ -476,7 +495,9 @@ class _EcTextAreaState extends State<EcTextArea> {
     final p = context.palette;
     final t = context.type;
     final focused = _focus.hasFocus;
-    final style = widget.mono ? t.mono.copyWith(fontSize: 10.5, height: 1.6, color: p.ink2) : t.body.copyWith(color: p.ink, height: 1.5);
+    final style = widget.mono
+        ? t.mono.copyWith(fontSize: widget.fontSize ?? 10.5, height: 1.6, color: p.ink2)
+        : t.body.copyWith(fontSize: widget.fontSize, color: p.ink, height: 1.5);
 
     final box = AnimatedContainer(
       duration: EcMotion.fast,

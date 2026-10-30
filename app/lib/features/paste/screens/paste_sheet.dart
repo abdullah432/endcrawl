@@ -56,11 +56,36 @@ class PasteSheet extends ConsumerStatefulWidget {
 
 class _PasteSheetState extends ConsumerState<PasteSheet> {
   final _raw = TextEditingController();
+  final _rawFocus = FocusNode();
 
   @override
   void dispose() {
     _raw.dispose();
+    _rawFocus.dispose();
     super.dispose();
+  }
+
+  /// Raw lines (0-based, counting blank ones) behind the parser's
+  /// numbering, which skips blank lines — the gutter shows the raw ones.
+  Map<int, int> _rawLines() {
+    final map = <int, int>{};
+    var ordinal = 0;
+    for (final (i, line) in _raw.text.split('\n').indexed) {
+      if (line.trim().isEmpty) continue;
+      map[ordinal++] = i;
+    }
+    return map;
+  }
+
+  /// "Edit line" (T4.2): the caret goes to the flagged line in the raw
+  /// text, selected, so it can be retyped with a separator.
+  void _editLine(int index) {
+    final line = _rawLines()[index];
+    if (line == null) return;
+    final lines = _raw.text.split('\n');
+    final start = lines.take(line).fold<int>(0, (sum, l) => sum + l.length + 1);
+    _raw.selection = TextSelection(baseOffset: start, extentOffset: start + lines[line].length);
+    _rawFocus.requestFocus();
   }
 
   @override
@@ -72,14 +97,11 @@ class _PasteSheetState extends ConsumerState<PasteSheet> {
     final target = controller.target;
 
     if (EcSheetPresentation.isDialog(context)) return _wide(context, state, controller);
+    if (context.tabletLayout == TabletLayout.portrait) return _portrait(context, state, controller);
 
-    final tablet = context.isTablet;
     return EcSheet(
-      title: tablet ? 'Paste & split' : 'Bulk entry',
-      eyebrow: tablet
-          ? (target == null ? 'Bulk entry · new cast block' : 'Bulk entry · into ${describeBlock(target).title}')
-          : null,
-      maxHeightFraction: tablet ? 0.97 : 0.92,
+      title: 'Bulk entry',
+      maxHeightFraction: 0.92,
       footer: importing
           ? null
           : Padding(
@@ -152,16 +174,12 @@ class _PasteSheetState extends ConsumerState<PasteSheet> {
     final rows = state.rows;
     final importing = state.mode == PasteMode.file;
     final lines = _raw.text.split('\n').where((l) => l.trim().isNotEmpty).length;
-    final fullScreen = context.isTablet;
+    final tablet = context.isTablet;
+    final fullScreen = tablet;
     final height = (MediaQuery.sizeOf(context).height - 48).clamp(420.0, 760.0);
     // The parser counts only non-blank lines; the gutter counts them all.
-    final flaggedRaw = <int>{};
-    var ordinal = 0;
-    for (final (i, line) in _raw.text.split('\n').indexed) {
-      if (line.trim().isEmpty) continue;
-      if (unparsedLines.contains(ordinal)) flaggedRaw.add(i);
-      ordinal++;
-    }
+    final rawLines = _rawLines();
+    final flaggedRaw = {for (final i in unparsedLines) ?rawLines[i]};
 
     return Container(
       height: fullScreen ? null : height,
@@ -185,9 +203,16 @@ class _PasteSheetState extends ConsumerState<PasteSheet> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        EcEyebrow(target == null ? 'Bulk entry · new cast block' : 'Bulk entry · into ${describeBlock(target).title}'),
+                        EcEyebrow(
+                          target == null
+                              ? 'Bulk entry · new cast block'
+                              : 'Bulk entry · into ${describeBlock(target).title}',
+                        ),
                         const SizedBox(height: 6),
-                        Semantics(header: true, child: Text('Paste & split', style: t.displayL.copyWith(fontSize: 36))),
+                        Semantics(
+                          header: true,
+                          child: Text('Paste & split', style: t.displayL.copyWith(fontSize: tablet ? 44 : 36)),
+                        ),
                       ],
                     ),
                   ),
@@ -236,9 +261,11 @@ class _PasteSheetState extends ConsumerState<PasteSheet> {
                                 Expanded(
                                   child: EcTextArea(
                                     controller: _raw,
+                                    focusNode: _rawFocus,
                                     mono: true,
                                     expands: true,
                                     lineNumbers: true,
+                                    fontSize: tablet ? 14 : null,
                                     flaggedLines: flaggedRaw,
                                     hint: 'Renny — Sofia Alvarez\nMarcus — Idris Oyelaran',
                                     onChanged: controller.setRaw,
@@ -255,12 +282,16 @@ class _PasteSheetState extends ConsumerState<PasteSheet> {
                                 Row(
                                   children: [
                                     Expanded(
-                                      child: Text(caps('Structured · ${plural(parsed.length - unparsed.length, 'row')}'),
-                                          style: t.section),
+                                      child: Text(
+                                        caps('Structured · ${plural(parsed.length - unparsed.length, 'row')}'),
+                                        style: t.section,
+                                      ),
                                     ),
                                     if (unparsed.isNotEmpty)
-                                      Text(caps('${plural(unparsed.length, 'line')} needs a look'),
-                                          style: t.section.copyWith(color: p.warn)),
+                                      Text(
+                                        caps('${unparsed.length} needs a look'),
+                                        style: t.section.copyWith(color: p.warn),
+                                      ),
                                   ],
                                 ),
                                 const SizedBox(height: 8),
@@ -274,12 +305,25 @@ class _PasteSheetState extends ConsumerState<PasteSheet> {
                                     child: parsed.isEmpty
                                         ? Center(child: Text('Split rows appear here as you paste.', style: t.caption))
                                         : ListView(
-                                            padding: const EdgeInsets.all(8),
+                                            padding: EdgeInsets.all(tablet ? 12 : 8),
                                             children: [
-                                              for (final r in parsed)
-                                                unparsedLines.contains(r.index)
-                                                    ? _UnparsedRow(row: r, state: state, controller: controller)
-                                                    : _ParsedRow(row: r),
+                                              // T4.2: the rows, then each line that
+                                              // won't split as its own alert.
+                                              if (tablet) ...[
+                                                for (final r in parsed)
+                                                  if (r.ok) _ParsedRow(row: r, large: true),
+                                                for (final r in unparsed)
+                                                  _FlagAlert(
+                                                    row: r,
+                                                    onEdit: () => _editLine(r.index),
+                                                    onSkip: () => controller.skip(r.index),
+                                                  ),
+                                              ] else
+                                                for (final r in parsed)
+                                                  if (unparsedLines.contains(r.index))
+                                                    _UnparsedRow(row: r, state: state, controller: controller)
+                                                  else if (r.ok)
+                                                    _ParsedRow(row: r),
                                             ],
                                           ),
                                   ),
@@ -294,7 +338,9 @@ class _PasteSheetState extends ConsumerState<PasteSheet> {
             if (!importing)
               Container(
                 padding: const EdgeInsets.fromLTRB(28, 14, 22, 18),
-                decoration: BoxDecoration(border: Border(top: BorderSide(color: p.line))),
+                decoration: BoxDecoration(
+                  border: Border(top: BorderSide(color: p.line)),
+                ),
                 child: Row(
                   children: [
                     Text('Split on', style: t.bodyS.copyWith(color: p.ink2)),
@@ -304,11 +350,11 @@ class _PasteSheetState extends ConsumerState<PasteSheet> {
                         spacing: 6,
                         runSpacing: 6,
                         children: [
-                          for (final d in kDelimiters)
+                          for (final d in _rules(state))
                             EcChip(
                               label: '${d.label} · ${state.counts[d.id]}',
-                              mono: true,
-                              height: 32,
+                              mono: !tablet,
+                              height: tablet ? 44 : 32,
                               selected: state.rule.id == d.id,
                               onTap: () => controller.pickRule(d.id),
                             ),
@@ -317,7 +363,7 @@ class _PasteSheetState extends ConsumerState<PasteSheet> {
                     ),
                     const SizedBox(width: 12),
                     EcButton.secondary(
-                      label: 'Swap columns',
+                      label: tablet ? 'Swap' : 'Swap columns',
                       leading: const Icon(Icons.swap_horiz_rounded, size: 18),
                       expand: false,
                       size: EcButtonSize.medium,
@@ -339,6 +385,182 @@ class _PasteSheetState extends ConsumerState<PasteSheet> {
     );
   }
 
+  /// The split rules offered: "2+ spaces" only when it would split
+  /// something, as the design's four chips.
+  List<DelimiterOption> _rules(PasteState state) => [
+    for (final d in kDelimiters)
+      if (d.id != 'spaces' || state.counts[d.id]! > 0 || state.rule.id == d.id) d,
+  ];
+
+  /// P4.2 — the portrait tablet: raw on top, structured under it, read in
+  /// the order the split happens; the flagged line gets its own alert next
+  /// to the result, and Add sits at the bottom edge.
+  Widget _portrait(BuildContext context, PasteState state, PasteController controller) {
+    final p = context.palette;
+    final t = context.type;
+    final target = controller.target;
+    final parsed = state.parsed;
+    final unparsed = state.unparsed;
+    final rows = state.rows;
+    final importing = state.mode == PasteMode.file;
+    final rawLines = _rawLines();
+    final flaggedRaw = {for (final r in unparsed) ?rawLines[r.index]};
+    final lines = rawLines.length;
+    final ok = parsed.where((r) => r.ok).toList();
+    final keyboard = MediaQuery.viewInsetsOf(context).bottom;
+
+    return Padding(
+      padding: EdgeInsets.fromLTRB(16, 8, 16, 16 + keyboard),
+      child: Container(
+        clipBehavior: Clip.antiAlias,
+        decoration: BoxDecoration(color: p.sheet, borderRadius: BorderRadius.circular(36), boxShadow: EcDialog.shadow),
+        child: Material(
+          type: MaterialType.transparency,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(28, 28, 26, 0),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          EcEyebrow(
+                            target == null
+                                ? 'Bulk entry · new cast block'
+                                : 'Bulk entry · into ${describeBlock(target).title}',
+                          ),
+                          const SizedBox(height: 6),
+                          Semantics(
+                            header: true,
+                            child: Text('Paste & split', style: t.displayL.copyWith(fontSize: 38)),
+                          ),
+                        ],
+                      ),
+                    ),
+                    EcCircleButton.surface(
+                      icon: Icons.close_rounded,
+                      tooltip: 'Close',
+                      onPressed: () => Navigator.of(context).maybePop(),
+                    ),
+                  ],
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(28, 16, 28, 0),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: SizedBox(
+                    width: 300,
+                    child: EcSegmented(
+                      labels: const ['Paste', 'Import file'],
+                      selectedIndex: state.mode.index,
+                      onChanged: (i) => controller.setMode(PasteMode.values[i]),
+                    ),
+                  ),
+                ),
+              ),
+              Expanded(
+                child: ListView(
+                  padding: const EdgeInsets.fromLTRB(28, 18, 28, 18),
+                  children: importing
+                      ? const [
+                          EcNotice(
+                            tone: EcTone.neutral,
+                            icon: Icons.upload_file_rounded,
+                            title: 'Import from a file is coming soon',
+                            body: 'Until then, copy the list from your call sheet or spreadsheet and paste it here.',
+                          ),
+                        ]
+                      : [
+                          Text(caps('Raw · ${plural(lines, 'line')}'), style: t.section),
+                          const SizedBox(height: 8),
+                          EcTextArea(
+                            controller: _raw,
+                            focusNode: _rawFocus,
+                            mono: true,
+                            lineNumbers: true,
+                            fontSize: 13,
+                            minLines: 6,
+                            maxLines: 12,
+                            flaggedLines: flaggedRaw,
+                            hint: 'Renny — Sofia Alvarez\nMarcus — Idris Oyelaran',
+                            onChanged: controller.setRaw,
+                          ),
+                          const SizedBox(height: 18),
+                          Row(
+                            children: [
+                              Expanded(child: Text(caps('Structured · ${plural(ok.length, 'row')}'), style: t.section)),
+                              if (unparsed.isNotEmpty)
+                                Text(caps('${unparsed.length} needs a look'), style: t.section.copyWith(color: p.warn)),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          _StructuredTable(rows: ok),
+                          for (final r in unparsed)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 14),
+                              child: _FlagAlert(
+                                row: r,
+                                onEdit: () => _editLine(r.index),
+                                onSkip: () => controller.skip(r.index),
+                              ),
+                            ),
+                          const SizedBox(height: 16),
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            crossAxisAlignment: WrapCrossAlignment.center,
+                            children: [
+                              Padding(
+                                padding: const EdgeInsets.only(right: 4),
+                                child: Text('Split on', style: t.bodyS.copyWith(color: p.ink2)),
+                              ),
+                              for (final d in _rules(state))
+                                EcChip(
+                                  label: '${d.label} · ${state.counts[d.id]}',
+                                  ink: true,
+                                  selected: state.rule.id == d.id,
+                                  onTap: () => controller.pickRule(d.id),
+                                ),
+                            ],
+                          ),
+                        ],
+                ),
+              ),
+              if (!importing)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(28, 4, 28, 26),
+                  child: Row(
+                    children: [
+                      EcButton.secondary(
+                        label: 'Swap',
+                        leading: const Icon(Icons.swap_horiz_rounded, size: 18),
+                        expand: false,
+                        size: EcButtonSize.large,
+                        onPressed: controller.toggleSwap,
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: EcButton(
+                          label: rows.isEmpty ? 'Add rows' : 'Add ${plural(rows.length, 'row')}',
+                          size: EcButtonSize.large,
+                          onPressed: rows.isEmpty ? null : () => Navigator.of(context).pop(controller.apply()),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   List<Widget> _pasteBody(BuildContext context, PasteState state, PasteController controller) {
     final p = context.palette;
     final t = context.type;
@@ -348,74 +570,68 @@ class _PasteSheetState extends ConsumerState<PasteSheet> {
     final structuredLabel = parsed.isEmpty
         ? 'Structured'
         : unparsed.isEmpty
-            ? 'Structured · ${plural(parsed.length, 'row')}'
-            : 'Structured · ${parsed.length - unparsed.length} of ${parsed.length}';
+        ? 'Structured · ${plural(parsed.length, 'row')}'
+        : 'Structured · ${parsed.length - unparsed.length} of ${parsed.length}';
 
     final rawColumn = Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Text(caps('Raw'), style: t.section),
-                  const SizedBox(height: 6),
-                  Expanded(
-                    child: EcTextArea(
-                      controller: _raw,
-                      mono: true,
-                      expands: true,
-                      hint: 'Renny — Sofia Alvarez\nMarcus — Idris Oyelaran',
-                      onChanged: controller.setRaw,
-                    ),
-                  ),
-                ],
-              );
-    final structuredColumn = Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Text(caps(structuredLabel), style: t.section.copyWith(color: p.accent)),
-                  const SizedBox(height: 6),
-                  Expanded(
-                    child: Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: p.accentWash,
-                        borderRadius: BorderRadius.circular(EcRadius.field),
-                        border: Border.all(color: p.accentLine),
-                      ),
-                      child: parsed.isEmpty
-                          ? Text('Split rows appear here as you paste.', style: t.caption)
-                          : ListView(
-                              padding: EdgeInsets.zero,
-                              children: [for (final r in parsed) _StructuredLine(row: r)],
-                            ),
-                    ),
-                  ),
-                ],
-              );
-    return [
-      // P4.2: raw on top, structured under it, read in the order the split
-      // happens; side by side on the phone.
-      if (context.tabletLayout == TabletLayout.portrait) ...[
-        SizedBox(height: 210, child: rawColumn),
-        const SizedBox(height: 14),
-        SizedBox(height: 240, child: structuredColumn),
-      ] else
-        SizedBox(
-          height: 190,
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Expanded(child: rawColumn),
-              const SizedBox(width: 8),
-              Expanded(child: structuredColumn),
-            ],
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(caps('Raw'), style: t.section),
+        const SizedBox(height: 6),
+        Expanded(
+          child: EcTextArea(
+            controller: _raw,
+            mono: true,
+            expands: true,
+            hint: 'Renny — Sofia Alvarez\nMarcus — Idris Oyelaran',
+            onChanged: controller.setRaw,
           ),
         ),
+      ],
+    );
+    final structuredColumn = Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(caps(structuredLabel), style: t.section.copyWith(color: p.accent)),
+        const SizedBox(height: 6),
+        Expanded(
+          child: Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: p.accentWash,
+              borderRadius: BorderRadius.circular(EcRadius.field),
+              border: Border.all(color: p.accentLine),
+            ),
+            child: parsed.isEmpty
+                ? Text('Split rows appear here as you paste.', style: t.caption)
+                : ListView(
+                    padding: EdgeInsets.zero,
+                    children: [for (final r in parsed) _StructuredLine(row: r)],
+                  ),
+          ),
+        ),
+      ],
+    );
+    return [
+      // Side by side on the phone; the portrait tablet stacks them (P4.2).
+      SizedBox(
+        height: 190,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Expanded(child: rawColumn),
+            const SizedBox(width: 8),
+            Expanded(child: structuredColumn),
+          ],
+        ),
+      ),
       const SizedBox(height: 14),
       EcSectionLabel('Split on · lines matched'),
       Wrap(
         spacing: 8,
         runSpacing: 8,
         children: [
-          for (final d in kDelimiters)
+          for (final d in _rules(state))
             EcChip(
               label: d.label,
               mono: true,
@@ -482,31 +698,45 @@ class _PasteSheetState extends ConsumerState<PasteSheet> {
 /// roll will set them.
 class _ParsedRow extends StatelessWidget {
   final ParsedRow row;
-  const _ParsedRow({required this.row});
+
+  /// The tablet's field-sized cells (T4.2).
+  final bool large;
+  const _ParsedRow({required this.row, this.large = false});
 
   @override
   Widget build(BuildContext context) {
     final p = context.palette;
     final t = context.type;
     Widget cell(String text, {bool end = false, bool strong = false}) => Expanded(
-          child: Container(
-            height: 34,
-            padding: const EdgeInsets.symmetric(horizontal: 10),
-            alignment: end ? Alignment.centerRight : Alignment.centerLeft,
-            decoration: BoxDecoration(
-              color: p.sheet,
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: p.line),
-            ),
-            child: Text(text,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: t.bodyS.copyWith(color: strong ? p.ink : p.muted, fontWeight: strong ? FontWeight.w600 : null)),
+      child: Container(
+        height: large ? 44 : 34,
+        padding: EdgeInsets.symmetric(horizontal: large ? 14 : 10),
+        alignment: end ? Alignment.centerRight : Alignment.centerLeft,
+        decoration: BoxDecoration(
+          color: p.sheet,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: p.line),
+        ),
+        child: Text(
+          text,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: (large ? t.body.copyWith(fontSize: 14.5) : t.bodyS).copyWith(
+            color: strong ? p.ink : p.muted,
+            fontWeight: strong ? FontWeight.w500 : null,
           ),
-        );
+        ),
+      ),
+    );
     return Padding(
-      padding: const EdgeInsets.only(bottom: 6),
-      child: Row(children: [cell(row.left, end: true), const SizedBox(width: 6), cell(row.right, strong: true)]),
+      padding: EdgeInsets.only(bottom: large ? 8 : 6),
+      child: Row(
+        children: [
+          cell(row.left, end: true),
+          SizedBox(width: large ? 8 : 6),
+          cell(row.right, strong: true),
+        ],
+      ),
     );
   }
 }
@@ -534,10 +764,15 @@ class _UnparsedRow extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text.rich(
-            TextSpan(children: [
-              TextSpan(text: 'Line ${row.index + 1}', style: TextStyle(color: p.warn, fontWeight: FontWeight.w700)),
-              TextSpan(text: ' has no separator. Split it here:'),
-            ]),
+            TextSpan(
+              children: [
+                TextSpan(
+                  text: 'Line ${row.index + 1}',
+                  style: TextStyle(color: p.warn, fontWeight: FontWeight.w700),
+                ),
+                TextSpan(text: ' has no separator. Split it here:'),
+              ],
+            ),
             style: t.bodyS,
           ),
           const SizedBox(height: 8),
@@ -582,17 +817,129 @@ class _StructuredLine extends StatelessWidget {
     return Row(
       children: [
         Expanded(
-          child: Text(left,
-              textAlign: TextAlign.end,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: base.copyWith(color: row.ok ? p.muted : p.warn)),
+          child: Text(
+            left,
+            textAlign: TextAlign.end,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: base.copyWith(color: row.ok ? p.muted : p.warn),
+          ),
         ),
         const SizedBox(width: 5),
         Expanded(
-          child: Text(right, maxLines: 1, overflow: TextOverflow.ellipsis, style: base.copyWith(color: row.ok ? p.ink : p.warn)),
+          child: Text(
+            right,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: base.copyWith(color: row.ok ? p.ink : p.warn),
+          ),
         ),
       ],
+    );
+  }
+}
+
+/// P4.2's parsed rows: one divided table, the role right-aligned and
+/// muted, the name bold — as the roll will set them.
+class _StructuredTable extends StatelessWidget {
+  final List<ParsedRow> rows;
+  const _StructuredTable({required this.rows});
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.palette;
+    final t = context.type;
+    return Container(
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        color: p.surface,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: p.line),
+      ),
+      child: rows.isEmpty
+          ? Padding(
+              padding: const EdgeInsets.all(16),
+              child: Text('Split rows appear here as you paste.', style: t.caption),
+            )
+          : Column(
+              children: [
+                for (final (i, r) in rows.indexed)
+                  Container(
+                    height: 44,
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    decoration: BoxDecoration(
+                      border: i == 0 ? null : Border(top: BorderSide(color: p.line)),
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            r.left,
+                            textAlign: TextAlign.end,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: t.body.copyWith(fontSize: 14, color: p.muted),
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Text(
+                            r.right,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: t.body.copyWith(fontSize: 14, color: p.ink, fontWeight: FontWeight.w600),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
+    );
+  }
+}
+
+/// A line no rule could split (T4.2, P4.2): flagged, never fixed silently.
+/// Edit line puts the caret on it in the raw text; Skip leaves it out.
+class _FlagAlert extends StatelessWidget {
+  final ParsedRow row;
+  final VoidCallback onEdit;
+  final VoidCallback onSkip;
+  const _FlagAlert({required this.row, required this.onEdit, required this.onSkip});
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.palette;
+    final t = context.type;
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 10, 10, 10),
+      decoration: BoxDecoration(
+        color: p.warnWash,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: p.warnLine),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text.rich(
+              TextSpan(
+                children: [
+                  TextSpan(
+                    text: 'Line ${row.index + 1}',
+                    style: TextStyle(color: p.warn, fontWeight: FontWeight.w700),
+                  ),
+                  const TextSpan(text: ' has no separator.'),
+                ],
+              ),
+              style: t.body.copyWith(fontSize: 14),
+            ),
+          ),
+          const SizedBox(width: 8),
+          EcButton.secondary(label: 'Edit line', expand: false, size: EcButtonSize.small, onPressed: onEdit),
+          const SizedBox(width: 4),
+          EcButton.text(label: 'Skip', expand: false, size: EcButtonSize.small, onPressed: onSkip),
+        ],
+      ),
     );
   }
 }
