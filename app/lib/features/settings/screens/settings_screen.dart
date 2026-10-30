@@ -27,7 +27,6 @@ import '../../plan/screens/pro_sheet.dart';
 import '../../plan/widgets/plan_meter.dart';
 import '../controllers/settings_controller.dart';
 import '../models/legal_document.dart';
-import '../widgets/settings_tablet_ad.dart';
 import 'delete_account_screen.dart';
 import 'legal_document_screen.dart';
 import 'privacy_screen.dart';
@@ -36,6 +35,7 @@ import 'subscription_screen.dart';
 import '../../../core/layout/layout_class.dart';
 import '../../access/controllers/web_access.dart';
 import '../../access/screens/web_access_screen.dart';
+import '../../home/tablet_layout.dart';
 import '../../home/widgets/app_side_nav.dart';
 import '../../review/review_prompt.dart';
 import '../../tester/tester_mode.dart';
@@ -58,7 +58,7 @@ class SettingsScreen extends ConsumerWidget {
     final t = context.type;
     final groups = SettingsGroups(context, ref);
 
-    switch (context.layoutClass) {
+    switch (context.screenClass) {
       case LayoutClass.expanded:
         return _DesktopSettings(groups: groups, user: user, version: version);
       case LayoutClass.medium:
@@ -97,7 +97,6 @@ class SettingsScreen extends ConsumerWidget {
               const SizedBox(height: 22),
               if (groups.hasOtherApps) ...[groups.otherApps(), const SizedBox(height: 22)],
               groups.legal(),
-              const SettingsTabletAd(),
             ]),
             const CookooPromoBlock(),
             _Gutter(children: [
@@ -502,7 +501,6 @@ class _SplitSettingsState extends State<_SplitSettings> {
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       KeyedSubtree(key: ValueKey(selected), child: selected.body(widget.groups)),
-                      const SettingsTabletAd(),
                     ],
                   ),
                 ),
@@ -586,7 +584,6 @@ class _DesktopSettings extends StatelessWidget {
                           ),
                         ],
                       ),
-                      const SettingsTabletAd(),
                     ],
                   ),
                 ),

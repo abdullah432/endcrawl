@@ -5,6 +5,7 @@ import '../../../bootstrap.dart';
 import '../../../core/config/app_links.dart';
 import '../../../core/theme/theme_context.dart';
 import '../../../core/theme/tokens.dart';
+import '../../home/tablet_layout.dart';
 import '../controllers/cookoo_promo_controller.dart';
 import '../models/cookoo_content.dart';
 import '../screens/cookoo_contact_screen.dart';
@@ -16,7 +17,9 @@ import 'cookoo_style.dart';
 /// rest of the session. Lays itself out edge to edge, so the next slide can
 /// peek in from the right.
 class CookooPromoBlock extends ConsumerWidget {
-  const CookooPromoBlock({super.key});
+  /// "1 of 4" beside the label, and the leads tagged as the tablet's (T9.1).
+  final bool counter;
+  const CookooPromoBlock({super.key, this.counter = false});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -26,7 +29,7 @@ class CookooPromoBlock extends ConsumerWidget {
       curve: EcMotion.easeOut,
       alignment: Alignment.topCenter,
       child: switch (state) {
-        CookooPromoState(hidden: false) => const CookooSwiper(),
+        CookooPromoState(hidden: false) => CookooSwiper(counter: counter),
         CookooPromoState(undoable: true) => const Padding(
           padding: EdgeInsets.fromLTRB(16, 22, 16, 0),
           child: _HiddenRow(),
@@ -83,7 +86,11 @@ class _HiddenRow extends ConsumerWidget {
 /// Label row, the four slides and their dots. No auto-play; always opens
 /// on the first slide.
 class CookooSwiper extends ConsumerStatefulWidget {
-  const CookooSwiper({super.key});
+  /// The tablet's Settings section (T9.1): "1 of 4" opposite the label,
+  /// the first tile flush with the section, and leads tagged
+  /// `lastreel-tablet` with the orientation.
+  final bool counter;
+  const CookooSwiper({super.key, this.counter = false});
 
   @override
   ConsumerState<CookooSwiper> createState() => _CookooSwiperState();
@@ -91,7 +98,7 @@ class CookooSwiper extends ConsumerStatefulWidget {
 
 class _CookooSwiperState extends ConsumerState<CookooSwiper> {
   static const _gap = 10.0;
-  static const _leadingInset = 16.0 - _gap / 2;
+  double get _leadingInset => widget.counter ? 0 : 16.0 - _gap / 2;
 
   PageController? _pages;
   double _slideWidth = CookooPromoCard.width;
@@ -167,7 +174,13 @@ class _CookooSwiperState extends ConsumerState<CookooSwiper> {
 
   void _tellUs(CookooSlide slide) {
     _promo.ctaTapped(slide.id);
-    CookooContactScreen.open(context, source: slide.id, need: slide.need);
+    final tablet = context.tabletLayout;
+    CookooContactScreen.open(
+      context,
+      source: slide.id,
+      need: slide.need,
+      surface: tablet == null ? null : 'lastreel-tablet · ${tablet.name}',
+    );
   }
 
   void _openCase(CookooSlide slide) {
@@ -185,7 +198,7 @@ class _CookooSwiperState extends ConsumerState<CookooSwiper> {
         // The label keeps the 44-tall row the (hidden) Hide button gave it,
         // plus the gap above that separates it from the group before.
         Padding(
-          padding: const EdgeInsets.fromLTRB(20, 22, 8, 0),
+          padding: widget.counter ? EdgeInsets.zero : const EdgeInsets.fromLTRB(20, 22, 8, 0),
           child: SizedBox(
             height: 44,
             child: Row(
@@ -198,6 +211,8 @@ class _CookooSwiperState extends ConsumerState<CookooSwiper> {
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
+                if (widget.counter)
+                  Text('${_index + 1} of ${cookooSlides.length}', style: context.cookooMono(11, tracking: 1)),
                 // Hidden for now: the "Hide" button.
                 //               Semantics(
                 //                 button: true,
@@ -233,7 +248,7 @@ class _CookooSwiperState extends ConsumerState<CookooSwiper> {
               return Padding(
                 // Keep the first card aligned with the Settings groups rather
                 // than centering it in the available tablet or desktop width.
-                padding: const EdgeInsetsDirectional.only(start: _leadingInset),
+                padding: EdgeInsetsDirectional.only(start: _leadingInset),
                 child: PageView.builder(
                   controller: _pages,
                   padEnds: false,
@@ -245,7 +260,11 @@ class _CookooSwiperState extends ConsumerState<CookooSwiper> {
                       container: true,
                       label: 'Slide ${i + 1} of ${cookooSlides.length}',
                       child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: _gap / 2),
+                        // Flush with the section on a tablet: the gap all
+                        // goes after the tile.
+                        padding: widget.counter
+                            ? const EdgeInsetsDirectional.only(end: _gap)
+                            : const EdgeInsets.symmetric(horizontal: _gap / 2),
                         child: CookooPromoCard(
                           slide: slide,
                           onTellUs: () => _tellUs(slide),

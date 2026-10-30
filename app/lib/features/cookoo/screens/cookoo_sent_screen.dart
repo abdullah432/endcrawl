@@ -8,7 +8,9 @@ import '../../../core/config/app_links.dart';
 import '../../../core/services/clarity.dart';
 import '../../../core/theme/theme_context.dart';
 import '../../../core/widgets/ec_scaffold.dart';
+import '../../home/tablet_layout.dart';
 import '../controllers/cookoo_promo_controller.dart';
+import '../widgets/cookoo_proof_panel.dart';
 import '../widgets/cookoo_style.dart';
 
 /// After "Send my idea": who has the idea, when they'll hear back, and the
@@ -29,10 +31,17 @@ class CookooSentScreen extends ConsumerWidget {
     'A scope and estimate before you commit to a build.',
   ];
 
+  void _openSite(WidgetRef ref) {
+    ref.read(cookooPromoProvider.notifier).siteOpened('sent');
+    ref.read(externalLinksProvider).openUrl(AppLinks.cookooCases);
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final p = context.palette;
     final foot = math.max(28 - MediaQuery.paddingOf(context).bottom, 8.0);
+    final tablet = context.tabletLayout;
+    if (tablet != null) return _tablet(context, ref, portrait: tablet == TabletLayout.portrait);
 
     return EcScaffold(
       scrollable: false,
@@ -111,16 +120,107 @@ class CookooSentScreen extends ConsumerWidget {
           children: [
             _Pill(label: 'Back to LastReel', filled: true, onTap: () => Navigator.of(context).pop()),
             const SizedBox(height: 8),
-            _Pill(
-              label: 'See our work on cookoo.dev',
-              icon: Icons.arrow_outward,
-              onTap: () {
-                ref.read(cookooPromoProvider.notifier).siteOpened('sent');
-                ref.read(externalLinksProvider).openUrl(AppLinks.cookooCases);
-              },
-            ),
+            _Pill(label: 'See our work on cookoo.dev', icon: Icons.arrow_outward, onTap: () => _openSite(ref)),
           ],
         ),
+      ),
+    );
+  }
+}
+
+extension on CookooSentScreen {
+  /// T9.3 — the same split as the form, so the confirmation doesn't jump:
+  /// who has the idea and when they'll reply, the three steps, then Back to
+  /// Settings and the site.
+  Widget _tablet(BuildContext context, WidgetRef ref, {required bool portrait}) {
+    final p = context.palette;
+    return CookooTabletFrame(
+      portrait: portrait,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(36, 36, 36, 20),
+              child: ClarityMask(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      width: 46,
+                      height: 46,
+                      decoration: BoxDecoration(color: p.ok, shape: BoxShape.circle),
+                      child: Icon(Icons.check, size: 22, color: p.onInk),
+                    ),
+                    const SizedBox(height: 18),
+                    Semantics(
+                      header: true,
+                      child: Text.rich(
+                        TextSpan(
+                          children: [
+                            const TextSpan(text: 'Got it, '),
+                            TextSpan(
+                              text: '$name.',
+                              style: context.cookooSerif(44, color: p.accent),
+                            ),
+                          ],
+                        ),
+                        style: context.type.displayL.copyWith(fontSize: 44, height: 1.05),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      'Your idea is with the COOKOO team. We’ll reply to $email within 24 hours.',
+                      style: context.cookooUi(15, height: 1.55, color: p.ink2),
+                    ),
+                    if (queued) ...[
+                      const SizedBox(height: 8),
+                      Text(
+                        'You’re offline. It sends when you’re back online.',
+                        style: context.cookooUi(13, color: p.muted, height: 1.4),
+                      ),
+                    ],
+                    const SizedBox(height: 22),
+                    Divider(height: 1, color: p.line),
+                    for (final (i, step) in CookooSentScreen._steps.indexed) ...[
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            SizedBox(width: 34, child: Text('0${i + 1}', style: context.cookooMono(11, tracking: 0))),
+                            Expanded(child: Text(step, style: context.cookooUi(14.5, height: 1.35))),
+                          ],
+                        ),
+                      ),
+                      Divider(height: 1, color: p.line),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(36, 12, 36, 22),
+            child: Row(
+              children: [
+                SizedBox(
+                  width: 200,
+                  child: _Pill(label: 'Back to Settings', filled: true, onTap: () => Navigator.of(context).pop()),
+                ),
+                const SizedBox(width: 10),
+                SizedBox(
+                  width: 260,
+                  child: _Pill(
+                    label: 'See our work on cookoo.dev',
+                    icon: Icons.arrow_outward,
+                    onTap: () => _openSite(ref),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
