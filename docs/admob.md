@@ -8,7 +8,8 @@ App ID: `ca-app-pub-6644211975790806~5643195524`.
 | Placement | Format | Production ad unit |
 | --- | --- | --- |
 | Library | Native advanced | `ca-app-pub-6644211975790806/6465497619` |
-| Tablet Settings | Native advanced | `ca-app-pub-6644211975790806/2251596457` |
+| Editor (`editor_screen_native_ad`) | Native advanced | `ca-app-pub-6644211975790806/6890805343` |
+| Timing & Look (`timing_look_screen_native_ad`) | Native advanced | `ca-app-pub-6644211975790806/2251596457` |
 | Render the roll (tablet settings) | Native advanced | `ca-app-pub-6644211975790806/7487430088` |
 | Rendering | Native advanced | `ca-app-pub-6644211975790806/7706337805` |
 | Export ready | Native advanced | `ca-app-pub-6644211975790806/4888602772` |
@@ -23,7 +24,8 @@ App ID supplied for LastReel iOS: `ca-app-pub-6644211975790806~3747523873`.
 | Placement | Format | Production ad unit |
 | --- | --- | --- |
 | Library | Native advanced | `ca-app-pub-6644211975790806/7231930165` |
-| iPad Settings (hidden for now) | Native advanced | `ca-app-pub-6644211975790806/9235632198` |
+| Editor (`editor_screen_native_ad`) | Native advanced | `ca-app-pub-6644211975790806/1830050359` |
+| Timing & Look (`timing_look_screen_native_ad`) | Native advanced | `ca-app-pub-6644211975790806/9235632198` |
 | Render the roll (tablet settings) | Native advanced | `ca-app-pub-6644211975790806/8861677778` |
 | Rendering | Native advanced | `ca-app-pub-6644211975790806/8683033622` |
 | Export ready | Native advanced | `ca-app-pub-6644211975790806/2333072682` |
@@ -39,22 +41,26 @@ builds have no AdMob units. These identifiers are public, not secrets.
 
 ## Tablet slots
 
-Native tablets (shortest side ≥ 600, medium layout) follow tablet handoff A.
-Ad slot names in analytics are `library_foot`, `settings_list` (the Settings
-unit), `export_settings_foot`, `render_wait` and `rewarded_pro_render`.
+Native tablets (the iOS and Android apps, shortest side ≥ 600, at any width —
+a 13" iPad in landscape included) follow tablet handoff A.
+Ad slot names in analytics are `library_foot`, `export_settings_foot`, `render_wait`, `editor_foot`,
+`timing_look_foot` and `rewarded_pro_render`.
 
-| Slot | Where | Unit | Layout (Android) |
+| Slot | Where | Unit | Layout |
 | --- | --- | --- | --- |
 | `library_foot` | Foot of the Projects tab, at 0, 1 and 2 of 2 | Library | `strip` / `stripPortrait` |
-| `settings_list` | Below the Settings content: under the detail in landscape, under the page or the section in portrait (Android only for now) | Settings | `strip` / `stripPortrait` |
 | `export_settings_foot` | Bottom of the “Render the roll” settings page, before rendering, in both tablet orientations | Render the roll | `strip` / `stripPortrait` |
 | `render_wait` | Under the progress card on the render page (T6.2, P6.2), only while the render runs | Rendering | `strip` / `stripPortrait` |
+| `editor_foot` | Its own card under the editor's block list, apart from + Block and Paste (T3.1); at the bottom edge upright (P3.1). Hidden while the keyboard is up | Editor | `compact` / `stripPortrait` |
+| `timing_look_foot` | Under the Timing & Look panel, in the same place on both tabs (T5.1, T5.2); at the bottom edge upright (P5.1, P5.2) | Timing & Look | `compact` / `stripPortrait` |
 
-`SettingsTabletAd` is the one Settings slot for every layout; outside the
-tablet's Settings tab (a split-view window, a desktop-width tablet) it is the
-phone row, and on iPad it is hidden for now. The Android factory (`NativeAdFactory.kt`) draws the tablet shapes
-from `customOptions["layout"]`, and the Dart card around them adds "Remove ads";
-iOS keeps the phone row until iPad ships. Each slot reserves its height while
+Settings carries no ads at all (T8.3): the old tablet Settings units now
+serve Timing & Look.
+
+Both native factories
+(`NativeAdFactory.kt`, `NativeAdFactory.swift`) draw the tablet shapes from
+`customOptions["layout"]`, and the Dart card around them adds "Remove ads".
+Each slot reserves its height while
 loading and closes up if nothing fills it. Only the visible tab requests its
 ad, and the tablet shows no native ad once a render is ready.
 
@@ -72,15 +78,10 @@ Debug/profile builds continue to use test IDs.
 
 ## When an ad is visible
 
-- Free accounts show native ads in the library, tablet export settings, rendering and ready views.
+- Free accounts show native ads in the library, the tablet editor and Timing & Look, tablet export settings, rendering and ready views.
   A full Free library intentionally replaces its ad with the upgrade card.
 - Pro, trials and the native tester Pro override show no ads.
-- Settings has a native placement on Free Android tablets only, below the
-  detail content, using the existing native factory and consent flow. It is
-  hidden on iPad for now (the iOS unit stays configured for when it returns).
-  Tablet detection uses the display's shortest side (600 logical pixels) so a
-  tablet keeps the placement in a narrow split-view window. Phones, desktop
-  apps and web do not request it; no fill leaves no blank frame.
+- Settings shows no ads, on any device or plan.
 - On Android and iOS Free, the interstitial is preloaded when the editor opens
   (and again when a render starts) and shown once a render finishes
   successfully, with its file already on the ready screen — whether the
@@ -160,3 +161,23 @@ consent and inventory. Existing Pro/consent gates are unchanged.
 The current iOS AdMob app's approval, consent messages and production fill
 must be checked in its own AdMob console; the IDs alone do not verify those
 settings. Debug simulator checks use sample inventory.
+
+## App Tracking Transparency (iOS)
+
+Free iOS users see a short pre-prompt ("Keep LastReel free, with ads that
+fit.", `lib/features/tracking/`) before Apple's tracking alert. It shows once:
+on the first app open at least three days after the first launch on the device
+(recorded in `install_first_seen_at`; a device updating to this build counts
+from the update), over the library, never mid-edit and never in the same
+session as the desk invite or the rating prompt. Pro is never asked. If iOS has
+already decided, it never shows. Its one action, Continue, opens the system
+alert, whose purpose string is `NSUserTrackingUsageDescription` in
+`Info.plist`.
+
+On iOS, personalised ads follow the ATT answer, and Privacy & data shows it as
+a status row that opens iOS Settings (or asks, if iOS hasn't yet). Android keeps
+the Personalised ads switch. Analytics: `att_preprompt_shown`,
+`att_preprompt_continue`, `att_result{status}`.
+
+Before shipping, check that the promises hold: the number of ads doesn't change
+with the tracking answer, and project text is never sent to the ad SDK.

@@ -1,15 +1,20 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../bootstrap.dart';
+import '../tracking/tracking_authorization.dart';
 import 'data/ad_service.dart';
 import 'data/admob_ad_service.dart';
 
 /// AdMob in the app; tests override it with a fake.
 final adServiceProvider = Provider<AdService>((ref) {
   final service = AdMobAdService(
-    () =>
-        ref.read(userProfileProvider).value?.preferences.personalisedAds ??
-        false,
+    // On iOS the choice is App Tracking Transparency's (A3); elsewhere it
+    // is the Privacy switch. Off until either says yes.
+    () => defaultTargetPlatform == TargetPlatform.iOS
+        ? ref.read(trackingStatusProvider).value?.allowed ?? false
+        : ref.read(userProfileProvider).value?.preferences.personalisedAds ??
+              false,
     enabled: () => ref.read(entitlementProvider).value?.showsAds ?? false,
   );
   ref.onDispose(service.dispose);

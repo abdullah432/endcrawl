@@ -17,6 +17,8 @@ import '../../../domain/models/block_catalog.dart';
 import '../../../domain/models/credit_block.dart';
 import '../../access/controllers/web_access.dart';
 import '../../access/widgets/locked_dialog.dart';
+import '../../ads/data/ad_service.dart';
+import '../../ads/widgets/edge_ad_slot.dart';
 import '../../library/controllers/library_controller.dart';
 import '../../blocks/screens/add_block_sheet.dart';
 import '../../blocks/widgets/block_inspector.dart';
@@ -54,7 +56,7 @@ class WideEditor extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final desktop = context.layoutClass == LayoutClass.expanded;
+    final desktop = context.isDesktopLayout;
     return _EditorShortcuts(
       child: Scaffold(
         backgroundColor: Colors.transparent,
@@ -637,9 +639,17 @@ class _TabletPanes extends ConsumerWidget {
             ),
           ),
           const SizedBox(width: 16),
+          // T3.1: on Free one ad card sits under the list, apart from + Block
+          // and Paste.
           const SizedBox(
             width: 372,
-            child: _Panel(child: _ListPane(actionsOnTop: false)),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(child: _Panel(child: _ListPane(actionsOnTop: false))),
+                EdgeAdSlot(AdPlacement.editor, column: true),
+              ],
+            ),
           ),
         ],
       ),
@@ -677,6 +687,8 @@ class _TabletPortraitPanes extends ConsumerWidget {
             const Expanded(
               child: _Panel(child: _ListPane(actionsOnTop: false)),
             ),
+            // P3.1: the ad anchored to the bottom edge, apart from the dock.
+            const EdgeAdSlot(AdPlacement.editor, column: false),
           ],
         ),
       ),
@@ -765,7 +777,7 @@ class _MonitorCard extends ConsumerWidget {
     final project = ref.watch(projectControllerProvider);
     final e = project.engine;
     final healthy = rollHealth(project) == RollHealth.clean;
-    final desktop = context.layoutClass == LayoutClass.expanded;
+    final desktop = context.isDesktopLayout;
     final status = [
       formatFps(project.settings.fps),
       '${formatPpf(e.ppf)} px/frame',
@@ -926,12 +938,50 @@ class _MonitorChipButton extends StatelessWidget {
   }
 }
 
-/// The phone's transport, plus the selected block's range in words.
+/// The phone's transport, plus the selected block's range in words —
+/// "Shaded · Cast 0:15 → 1:03" (T3.1, P3.1), the stretch the track shades.
 class _TransportRow extends ConsumerWidget {
   const _TransportRow();
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) => const TransportBar();
+  Widget build(BuildContext context, WidgetRef ref) {
+    final p = context.palette;
+    final t = context.type;
+    final project = ref.watch(projectControllerProvider);
+    final focusedId = ref.watch(editorUiControllerProvider.select((s) => s.focusedId));
+    final shade = shadedRange(blockMarks(project), focusedId);
+    final block = project.blocks.where((b) => b.id == focusedId).firstOrNull;
+    final seconds = project.engine.totalFrames / project.engine.fps;
+    final range = shade == null || block == null
+        ? null
+        : 'Shaded · ${describeBlock(block).title.split(' · ').first.split(' — ').first} '
+              '${formatClock(shade.$1 * seconds)} → ${formatClock(shade.$2 * seconds)}';
+    return Stack(
+      alignment: Alignment.center,
+      children: [
+        const TransportBar(),
+        if (range != null)
+          IgnorePointer(
+            child: Padding(
+              // Clear of the transport buttons on the left and the look
+              // pills on the right.
+              padding: const EdgeInsets.symmetric(horizontal: 250),
+              child: LayoutBuilder(
+                builder: (context, constraints) => constraints.maxWidth < 120
+                    ? const SizedBox.shrink()
+                    : Text(
+                        range,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.center,
+                        style: t.mono.copyWith(fontSize: 11, color: p.muted),
+                      ),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
 }
 
 class _DesktopTransport extends ConsumerWidget {
@@ -978,7 +1028,7 @@ class _InspectorOrNotices extends ConsumerWidget {
     // On the desktop the bar's "Preview · read-only" pill already says it.
     final previewOnDesktop =
         ref.watch(webPreviewProvider) &&
-        context.layoutClass == LayoutClass.expanded;
+        context.isDesktopLayout;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -989,8 +1039,8 @@ class _InspectorOrNotices extends ConsumerWidget {
           child: context.isTablet && ref.watch(editorUiControllerProvider.select((s) => s.selectMode))
               ? const _SelectionSummary()
               : BlockInspector(
-                  fastEntry: context.layoutClass == LayoutClass.expanded,
-                  castColumns: context.layoutClass == LayoutClass.medium ? 2 : 1,
+                  fastEntry: context.isDesktopLayout,
+                  castColumns: context.screenClass == LayoutClass.medium ? 2 : 1,
                 ),
         ),
       ],

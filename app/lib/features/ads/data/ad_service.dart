@@ -4,8 +4,9 @@ import '../../../core/widgets/ec_ad_slot.dart';
 import '../widgets/tablet_ad.dart';
 
 /// Where a native ad sits. The free plan has exactly these, plus the
-/// opt-in rewarded ad on 6.1a and an interstitial once a render succeeds — never
-/// the editor, the monitor, the template picker, a failed render, or the file.
+/// opt-in rewarded ad on 6.1a and an interstitial once a render succeeds —
+/// one per screen, at its edge: never over the roll, the monitor, the
+/// scrubber or a field, nor the template picker, a failed render or the file.
 enum AdPlacement {
   /// The foot of the library (1.1, 1.2).
   library(
@@ -13,8 +14,14 @@ enum AdPlacement {
     'Stock footage for indie cuts.',
   ),
 
-  /// Below the Settings detail on native tablets.
-  settings('Musicbed — Songs cleared for festival cuts', 'Music licensing for filmmakers'),
+
+  /// Its own card under the block list, apart from the dock (T3.1, P3.1).
+  /// Hidden while the keyboard is up.
+  editor('Filmsupply — 60% off first licence', 'Stock footage for indie cuts.'),
+
+  /// Under the Timing & Look panel, in the same place on both tabs so
+  /// switching moves nothing (T5.1, T5.2, P5.1, P5.2).
+  timingLook('Musicbed — Songs cleared for festival cuts', 'Music licensing for filmmakers'),
 
   /// At the foot of tablet export settings (6.1).
   exportSettings('Artlist — royalty-free score', 'Music licensing for filmmakers'),

@@ -18,6 +18,8 @@ import '../../project/controllers/project_controller.dart';
 import 'background_sheet.dart';
 import 'look_sheet.dart';
 import 'timing_sheet.dart';
+import '../../ads/data/ad_service.dart';
+import '../../ads/widgets/edge_ad_slot.dart';
 import '../../home/tablet_layout.dart';
 
 enum TimingLookTab { timing, look }
@@ -45,7 +47,7 @@ class _TimingLookScreenState extends ConsumerState<TimingLookScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final desktop = context.layoutClass == LayoutClass.expanded;
+    final desktop = context.isDesktopLayout;
     // This route can remain open while a foldable switches to its cover
     // display. Its tablet columns must collapse with the available width.
     final portrait = context.tabletLayout == TabletLayout.portrait || context.layoutClass == LayoutClass.compact;
@@ -217,7 +219,7 @@ class _PortraitBody extends StatelessWidget {
       ),
       child: child,
     );
-    return SingleChildScrollView(
+    final body = SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -243,6 +245,18 @@ class _PortraitBody extends StatelessWidget {
             ),
         ],
       ),
+    );
+    // P5.2: the spare space at the foot holds the ad, at the same bottom
+    // edge as the editor's, on both tabs.
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Expanded(child: body),
+        const Padding(
+          padding: EdgeInsets.fromLTRB(20, 0, 20, 20),
+          child: EdgeAdSlot(AdPlacement.timingLook, column: false, gap: 0),
+        ),
+      ],
     );
   }
 }
@@ -374,19 +388,28 @@ class _TabletBody extends StatelessWidget {
           const SizedBox(width: 16),
           SizedBox(
             width: 372,
-            child: _Panel(
-              child: timing
-                  ? const TimingControls()
-                  : const Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        LookControls(),
-                        SizedBox(height: 18),
-                        BackgroundControls(),
-                        SizedBox(height: 14),
-                        _GuidesNote(),
-                      ],
-                    ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(
+                  child: _Panel(
+                    child: timing
+                        ? const TimingControls()
+                        : const Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              LookControls(),
+                              SizedBox(height: 18),
+                              BackgroundControls(),
+                              SizedBox(height: 14),
+                              _GuidesNote(),
+                            ],
+                          ),
+                  ),
+                ),
+                // T5.2: under the panel on both tabs, where the editor has it.
+                const EdgeAdSlot(AdPlacement.timingLook, column: true),
+              ],
             ),
           ),
         ],
