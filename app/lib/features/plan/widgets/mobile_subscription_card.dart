@@ -9,6 +9,7 @@ import '../../../core/widgets/ec_button.dart';
 import '../../../core/widgets/ec_sheet.dart';
 import '../../../core/widgets/ec_surfaces.dart';
 import '../../../domain/models/entitlement.dart';
+import '../../home/tablet_layout.dart';
 
 /// Store handoff isolated from the native paywall and future browser checkout.
 class MobileSubscriptionCard extends ConsumerStatefulWidget {
@@ -81,7 +82,7 @@ class _MobileSubscriptionCardState
           style: context.type.bodyS,
         ),
         const SizedBox(height: 16),
-        if (MediaQuery.sizeOf(context).width >= 1280)
+        if (context.isDesktopLayout)
           Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [

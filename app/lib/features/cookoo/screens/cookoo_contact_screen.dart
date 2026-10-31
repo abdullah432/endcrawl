@@ -15,6 +15,8 @@ import '../controllers/cookoo_contact_controller.dart';
 import '../controllers/cookoo_promo_controller.dart';
 import '../data/cookoo_contact_client.dart';
 import '../models/cookoo_content.dart';
+import '../../home/tablet_layout.dart';
+import '../widgets/cookoo_proof_panel.dart';
 import '../widgets/cookoo_style.dart';
 import 'cookoo_sent_screen.dart';
 
@@ -26,14 +28,22 @@ class CookooContactScreen extends ConsumerStatefulWidget {
   final String source;
   final CookooNeed need;
 
-  const CookooContactScreen({super.key, required this.source, this.need = CookooNeed.newApp});
+  /// Where the tile was: `lastreel-tablet · landscape` on a tablet (T9.4),
+  /// so tablet leads show up apart from the phone's.
+  final String? surface;
 
-  static Future<void> open(BuildContext context, {required String source, CookooNeed need = CookooNeed.newApp}) =>
-      Navigator.of(context).push(
-        MaterialPageRoute<void>(
-          builder: (_) => CookooContactScreen(source: source, need: need),
-        ),
-      );
+  const CookooContactScreen({super.key, required this.source, this.need = CookooNeed.newApp, this.surface});
+
+  static Future<void> open(
+    BuildContext context, {
+    required String source,
+    CookooNeed need = CookooNeed.newApp,
+    String? surface,
+  }) => Navigator.of(context).push(
+    MaterialPageRoute<void>(
+      builder: (_) => CookooContactScreen(source: source, need: need, surface: surface),
+    ),
+  );
 
   @override
   ConsumerState<CookooContactScreen> createState() => _CookooContactScreenState();
@@ -61,6 +71,22 @@ class _CookooContactScreenState extends ConsumerState<CookooContactScreen> {
   }
 
   void _changed() => setState(() {});
+  void _pickNeed(CookooNeed need) => setState(() => _need = need);
+  void _pickBudget(CookooBudget budget) => setState(() => _budget = budget);
+
+  bool _prefilled = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // T9.2: on a tablet the name and email come from the account.
+    if (_prefilled || !context.isTablet) return;
+    _prefilled = true;
+    final user = ref.read(authStateProvider).value;
+    if (user == null) return;
+    if (_name.text.isEmpty && (user.displayName?.trim().isNotEmpty ?? false)) _name.text = user.displayName!.trim();
+    if (_email.text.isEmpty && (user.email?.isNotEmpty ?? false)) _email.text = user.email!;
+  }
 
   @override
   void dispose() {
@@ -89,6 +115,7 @@ class _CookooContactScreenState extends ConsumerState<CookooContactScreen> {
             idea: idea,
             budget: _budget,
             source: widget.source,
+            surface: widget.surface,
           ),
         );
     if (!mounted) return;
@@ -99,7 +126,12 @@ class _CookooContactScreenState extends ConsumerState<CookooContactScreen> {
     }
     Navigator.of(context).pushReplacement(
       MaterialPageRoute<void>(
-        builder: (_) => CookooSentScreen(name: name, email: email, queued: result == CookooDelivery.retry),
+        builder: (_) => CookooSentScreen(
+          // "Got it, Maya." on a tablet, whose name came from the account.
+          name: context.isTablet ? name.split(' ').first : name,
+          email: email,
+          queued: result == CookooDelivery.retry,
+        ),
       ),
     );
   }
@@ -116,6 +148,8 @@ class _CookooContactScreenState extends ConsumerState<CookooContactScreen> {
     final emailError = _emailTouched && !looksLikeEmail(_email.text) && !_emailFocus.hasFocus;
     // The bar's 24 px foot includes the home indicator where there is one.
     final foot = math.max(24 - MediaQuery.paddingOf(context).bottom, 8.0);
+    final tablet = context.tabletLayout;
+    if (tablet != null) return _tablet(context, portrait: tablet == TabletLayout.portrait, emailError: emailError);
 
     return EcScaffold(
       topBar: const EcTopBar(),
@@ -200,6 +234,176 @@ class _CookooContactScreenState extends ConsumerState<CookooContactScreen> {
             CookooTextLink(label: 'See our work on cookoo.dev', onTap: _openSite),
           ],
         ),
+      ),
+    );
+  }
+}
+
+extension on _CookooContactScreenState {
+  /// T9.2 — the form beside the proof (above it in portrait): need, then
+  /// name and email side by side, the idea, and the budget in one row.
+  Widget _tablet(BuildContext context, {required bool portrait, required bool emailError}) {
+    final p = context.palette;
+    return CookooTabletFrame(
+      portrait: portrait,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(32, 26, 26, 20),
+              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+              child: ClarityMask(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('WORK WITH COOKOO', style: context.cookooMono(10, tracking: 1.5)),
+                              const SizedBox(height: 8),
+                              Semantics(
+                                header: true,
+                                child: Text.rich(
+                                  TextSpan(
+                                    children: [
+                                      const TextSpan(text: 'Tell us '),
+                                      TextSpan(
+                                        text: 'your idea.',
+                                        style: context.cookooSerif(40, color: p.accent),
+                                      ),
+                                    ],
+                                  ),
+                                  style: context.type.displayL.copyWith(fontSize: 40, height: 1.05),
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                'We reply within 24 hours. Name and email come from your LastReel account.',
+                                style: context.cookooUi(14, height: 1.45, color: p.ink2),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Semantics(
+                          button: true,
+                          label: 'Close',
+                          excludeSemantics: true,
+                          child: Material(
+                            color: p.tint,
+                            shape: const CircleBorder(),
+                            clipBehavior: Clip.antiAlias,
+                            child: InkWell(
+                              onTap: () => Navigator.of(context).maybePop(),
+                              child: SizedBox.square(
+                                dimension: 44,
+                                child: Icon(Icons.close_rounded, size: 20, color: p.ink),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 22),
+                    _Labelled(
+                      label: 'WHAT DO YOU NEED?',
+                      gap: 10,
+                      child: _Choices<CookooNeed>(
+                        values: CookooNeed.values,
+                        selected: _need,
+                        label: (n) => n.label,
+                        onSelected: _pickNeed,
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: _Labelled(
+                            label: 'NAME',
+                            child: _Field(
+                              controller: _name,
+                              autofillHints: const [AutofillHints.name],
+                              textCapitalization: TextCapitalization.words,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _Labelled(
+                            label: 'EMAIL',
+                            child: _Field(
+                              controller: _email,
+                              focusNode: _emailFocus,
+                              keyboardType: TextInputType.emailAddress,
+                              autofillHints: const [AutofillHints.email],
+                              error: emailError ? 'Enter a valid email address.' : null,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+                    _Labelled(
+                      label: 'WHAT WOULD YOU LIKE TO BUILD?',
+                      child: _Field(
+                        controller: _idea,
+                        multiline: true,
+                        textCapitalization: TextCapitalization.sentences,
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    _Labelled(
+                      label: 'BUDGET RANGE · OPTIONAL, USD',
+                      gap: 10,
+                      child: _Choices<CookooBudget>(
+                        values: CookooBudget.values,
+                        selected: _budget,
+                        label: (b) => b.label,
+                        onSelected: _pickBudget,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'It helps us suggest the right scope. We agree on an estimate before any work starts.',
+                      style: context.cookooUi(12.5, color: p.muted, height: 1.4),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.fromLTRB(32, 14, 26, 18),
+            decoration: BoxDecoration(
+              border: Border(top: BorderSide(color: p.line)),
+            ),
+            child: Row(
+              children: [
+                SizedBox(
+                  width: 220,
+                  child: CookooInkButton(
+                    label: 'Send my idea',
+                    icon: Icons.arrow_forward,
+                    height: 50,
+                    fontSize: 21,
+                    busy: _sending,
+                    onPressed: _complete ? _send : null,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Text('Free to ask. No obligation.', style: context.cookooUi(13, color: p.muted)),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -78,21 +77,17 @@ class TabletAdSlot extends ConsumerWidget {
   /// The slot's analytics name.
   static String slotName(AdPlacement placement) => switch (placement) {
     AdPlacement.library => 'library_foot',
-    AdPlacement.settings => 'settings_list',
     AdPlacement.exportSettings => 'export_settings_foot',
     AdPlacement.rendering => 'render_wait',
     AdPlacement.exportComplete => 'export_ready',
+    AdPlacement.editor => 'editor_foot',
+    AdPlacement.timingLook => 'timing_look_foot',
   };
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final showsAds = ref.watch(entitlementProvider).value?.showsAds ?? false;
     if (!showsAds) return const SizedBox.shrink();
-    // Only Android's native factory draws the tablet shapes; elsewhere (an
-    // iPad, until it ships) the slot is the phone's row.
-    if (defaultTargetPlatform != TargetPlatform.android) {
-      return SponsoredSlot(placement, hideLabel: 'Remove ads', gap: gap);
-    }
     final freeLaunch = ref.watch(iosFreeLaunchProvider);
     final analytics = ref.read(analyticsProvider);
     void log(String event) => analytics.logEvent(event, {'slot': slotName(placement)});

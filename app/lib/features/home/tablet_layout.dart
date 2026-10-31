@@ -16,15 +16,17 @@ import 'widgets/app_side_nav.dart';
 enum TabletLayout { landscape, portrait }
 
 extension TabletLayoutContext on BuildContext {
-  /// The tablet layout, or null for the phone, the web build and a
-  /// desktop-width window — none of which this layout changes.
+  /// The tablet layout, or null for the phone, the web build and the
+  /// native desktop app — none of which this layout changes.
   ///
-  /// A tablet is a window whose shortest side is at least 600 (Android's
-  /// `sw600dp`) on the medium layout class. Rotating switches between the
-  /// two orientations over the same providers, so the open project, the
-  /// selection and the Settings section survive it.
+  /// A tablet is a window of the iOS or Android app whose shortest side is
+  /// at least 600 (Android's `sw600dp`), however wide: a 13" iPad in
+  /// landscape (1366 or 1376 wide) is past the desktop breakpoint but still
+  /// gets the T-screens, not the browser's D-screens. Rotating switches
+  /// between the two orientations over the same providers, so the open
+  /// project, the selection and the Settings section survive it.
   TabletLayout? get tabletLayout {
-    if (layoutClass != LayoutClass.medium) return null;
+    if (layoutClass == LayoutClass.compact) return null;
     final size = MediaQuery.sizeOf(this);
     if (size.shortestSide < 600) return null;
     if (ProviderScope.containerOf(this, listen: false).read(verifiedWorkspaceProvider)) return null;
@@ -32,6 +34,13 @@ extension TabletLayoutContext on BuildContext {
   }
 
   bool get isTablet => tabletLayout != null;
+
+  /// The layout class the screens draw: a native tablet is always medium
+  /// (the T- and P-screens), whatever its width.
+  LayoutClass get screenClass => isTablet ? LayoutClass.medium : layoutClass;
+
+  /// The desktop browser's (or the desktop app's) D-screens.
+  bool get isDesktopLayout => screenClass == LayoutClass.expanded;
 }
 
 /// The Settings sections of the tablet's Settings tab (T7.1, P7.1).
@@ -40,6 +49,10 @@ enum SettingsSection {
   defaults('defaults', 'Defaults'),
   app('app', 'App'),
   support('support', 'Support'),
+
+  /// T9.1: the COOKOO tile and the team's other apps — after Support,
+  /// before the privacy and legal sections, never first.
+  makers('makers', 'From the makers'),
   privacy('privacy', 'Privacy & data'),
   legal('legal', 'Legal');
 

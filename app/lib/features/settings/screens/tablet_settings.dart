@@ -20,7 +20,6 @@ import '../../plan/screens/pro_sheet.dart';
 import '../../plan/widgets/plan_meter.dart';
 import '../../plan/controllers/release_policy.dart';
 import '../controllers/settings_controller.dart';
-import '../widgets/settings_tablet_ad.dart';
 import 'delete_account_screen.dart';
 import 'privacy_screen.dart';
 import 'profile_screen.dart';
@@ -35,8 +34,8 @@ import 'subscription_screen.dart';
 /// plan, then the sections, Sign out and Delete — and a section opens one
 /// level deeper with "‹ Settings".
 ///
-/// On Free one ad ([SettingsTabletAd]) sits below the Settings content —
-/// under the detail in landscape, under the page or the section in portrait.
+/// Settings carries no ads (T8.3), so nothing competes with the COOKOO
+/// tile in From the makers.
 ///
 /// The open section lives in [settingsSectionProvider], so it survives
 /// rotation and is remembered for the session; in portrait, Plan is the
@@ -66,6 +65,7 @@ String _subtitle(SettingsSection section) => switch (section) {
   SettingsSection.defaults => 'For every new project.',
   SettingsSection.app => 'Appearance, haptics, notifications.',
   SettingsSection.support => 'Help, contact, rate LastReel.',
+  SettingsSection.makers => 'COOKOO, the team behind LastReel.',
   SettingsSection.privacy => 'What we keep, and what you control.',
   SettingsSection.legal => 'Terms, privacy policy, licences.',
 };
@@ -88,12 +88,15 @@ Widget _body(SettingsGroups groups, SettingsSection section) {
     ),
     SettingsSection.support => Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [groups.support(), const _Version()],
+    ),
+    // T9.1: one COOKOO tile at a time, the next peeking, then the team's
+    // other apps. Shown on Free and Pro; it is a paid service, not an ad.
+    SettingsSection.makers => Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        groups.support(),
-        if (groups.hasOtherApps) ...[gap, groups.otherApps()],
-        gap,
-        const CookooPromoBlock(),
-        const _Version(),
+        const CookooPromoBlock(counter: true),
+        if (groups.hasOtherApps) ...[const SizedBox(height: 22), groups.otherApps()],
       ],
     ),
     SettingsSection.privacy => const PrivacyDetail(),
@@ -195,7 +198,6 @@ class _LandscapeSettings extends ConsumerWidget {
                     child: _Heading(section: section, size: 34),
                   ),
                 KeyedSubtree(key: ValueKey(section), child: _body(groups, section)),
-                const SettingsTabletAd(),
               ],
             ),
           ),
@@ -264,6 +266,7 @@ class _PortraitRoot extends ConsumerWidget {
       (SettingsSection.defaults, 'Defaults for new projects', groups.defaultsSummary()),
       (SettingsSection.app, 'App', 'Appearance, haptics, notifications'),
       (SettingsSection.support, 'Support', 'Help, contact, rate LastReel'),
+      (SettingsSection.makers, 'From the makers', 'COOKOO, the team behind LastReel'),
       (SettingsSection.privacy, 'Privacy & data', 'Analytics, ads, download your data'),
       (SettingsSection.legal, 'Legal', 'Terms, privacy policy, licences'),
     ];
@@ -342,7 +345,6 @@ class _PortraitRoot extends ConsumerWidget {
                   row(title: 'Sign out', onTap: groups.signOut),
                   row(title: 'Delete account', destructive: true, onTap: () => DeleteAccountScreen.open(context)),
                 ]),
-                const SettingsTabletAd(),
               ],
             ),
           ),
@@ -401,7 +403,6 @@ class _PortraitSection extends ConsumerWidget {
           _Heading(section: section, size: 42),
           const SizedBox(height: 14),
           _body(groups, section),
-          const SettingsTabletAd(),
         ],
       ),
     );

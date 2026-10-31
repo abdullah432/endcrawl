@@ -11,12 +11,18 @@ import 'package:flutter/foundation.dart';
 /// manifest placeholder in android/app/build.gradle.kts.
 class AdUnits {
   final String libraryNative;
-  final String settingsNative;
 
   /// Tablet “Render the roll” settings footer (render_the_rool_screen_native).
   final String exportSettingsNative;
   final String renderingNative;
   final String exportReadyNative;
+
+  /// Under the editor's block list (T3.1, P3.1) — editor_screen_native_ad.
+  final String editorNative;
+
+  /// Under the Timing & Look panel (T5.1, T5.2) —
+  /// timing_look_screen_native_ad.
+  final String timingLookNative;
 
   /// "Watch ad · render once" (6.1a) — a rewarded interstitial.
   final String proRenderRewarded;
@@ -29,10 +35,11 @@ class AdUnits {
 
   const AdUnits({
     required this.libraryNative,
-    required this.settingsNative,
     this.exportSettingsNative = 'ca-app-pub-3940256099942544/3986624511',
     required this.renderingNative,
     required this.exportReadyNative,
+    required this.editorNative,
+    required this.timingLookNative,
     required this.proRenderRewarded,
     required this.appOpenResume,
     this.exportSuccessInterstitial,
@@ -58,7 +65,8 @@ class AdUnits {
   static const _androidRelease = AdUnits(
     libraryNative: 'ca-app-pub-6644211975790806/6465497619',
     exportSettingsNative: 'ca-app-pub-6644211975790806/7487430088',
-    settingsNative: 'ca-app-pub-6644211975790806/2251596457',
+    editorNative: 'ca-app-pub-6644211975790806/6890805343',
+    timingLookNative: 'ca-app-pub-6644211975790806/2251596457',
     renderingNative: 'ca-app-pub-6644211975790806/7706337805',
     exportReadyNative: 'ca-app-pub-6644211975790806/4888602772',
     proRenderRewarded: 'ca-app-pub-6644211975790806/1799405002',
@@ -71,7 +79,8 @@ class AdUnits {
   static const _iosRelease = AdUnits(
     libraryNative: 'ca-app-pub-6644211975790806/7231930165',
     exportSettingsNative: 'ca-app-pub-6644211975790806/8861677778',
-    settingsNative: 'ca-app-pub-6644211975790806/9235632198',
+    editorNative: 'ca-app-pub-6644211975790806/1830050359',
+    timingLookNative: 'ca-app-pub-6644211975790806/9235632198',
     renderingNative: 'ca-app-pub-6644211975790806/8683033622',
     exportReadyNative: 'ca-app-pub-6644211975790806/2333072682',
     proRenderRewarded: 'ca-app-pub-6644211975790806/9584876749',
@@ -82,9 +91,10 @@ class AdUnits {
   // Google's published sample units: always test ads, safe to click.
   static const _iosTest = AdUnits(
     libraryNative: 'ca-app-pub-3940256099942544/3986624511',
-    settingsNative: 'ca-app-pub-3940256099942544/3986624511',
     renderingNative: 'ca-app-pub-3940256099942544/3986624511',
     exportReadyNative: 'ca-app-pub-3940256099942544/3986624511',
+    editorNative: 'ca-app-pub-3940256099942544/3986624511',
+    timingLookNative: 'ca-app-pub-3940256099942544/3986624511',
     proRenderRewarded: 'ca-app-pub-3940256099942544/6978759866',
     appOpenResume: 'ca-app-pub-3940256099942544/5575463023',
     exportSuccessInterstitial: 'ca-app-pub-3940256099942544/4411468910',
@@ -93,9 +103,10 @@ class AdUnits {
   static const _androidTest = AdUnits(
     libraryNative: 'ca-app-pub-3940256099942544/2247696110',
     exportSettingsNative: 'ca-app-pub-3940256099942544/2247696110',
-    settingsNative: 'ca-app-pub-3940256099942544/2247696110',
     renderingNative: 'ca-app-pub-3940256099942544/2247696110',
     exportReadyNative: 'ca-app-pub-3940256099942544/2247696110',
+    editorNative: 'ca-app-pub-3940256099942544/2247696110',
+    timingLookNative: 'ca-app-pub-3940256099942544/2247696110',
     proRenderRewarded: 'ca-app-pub-3940256099942544/5354046379',
     appOpenResume: 'ca-app-pub-3940256099942544/9257395921',
     exportSuccessInterstitial: 'ca-app-pub-3940256099942544/1033173712',

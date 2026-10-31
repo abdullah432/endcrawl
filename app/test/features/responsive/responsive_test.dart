@@ -34,6 +34,9 @@ void main() {
   }
 
   Future<void> openEditor(WidgetTester tester, AppHarness app, Size size) async {
+    // The desktop D-screens are the browser's: a native app at this width
+    // is a big tablet, which keeps the T-screens.
+    if (size == desktop) app.web = true;
     await app.pump(tester, size: size);
     await tester.tap(find.text('The Long Way Down').first);
     await tester.pumpAndSettle();
@@ -194,6 +197,29 @@ void main() {
         expect(tester.takeException(), isNull);
       });
     }
+  });
+
+  group('13" iPad', () {
+    for (final size in [const Size(1366, 1024), const Size(1376, 1032), const Size(1024, 1366)]) {
+      testWidgets('a native tablet at $size gets the tablet editor, not the desktop one', (tester) async {
+        final app = pro();
+        await openEditor(tester, app, size);
+        // T3.1's bar has the Projects pill or the chevron; D11's has the
+        // logo and a breadcrumb, and a timeline under the monitor.
+        expect(find.text('Fit'), findsNothing);
+        expect(find.textContaining('total'), findsNothing);
+        expect(find.bySemanticsLabel('Settings and account'), findsOneWidget);
+        expect(tester.takeException(), isNull);
+      });
+    }
+
+    testWidgets('the browser at the same width keeps the desktop editor', (tester) async {
+      final app = pro()..web = true;
+      await app.pump(tester, size: const Size(1366, 1024));
+      await tester.tap(find.text('The Long Way Down').first);
+      await tester.pumpAndSettle();
+      expect(find.text('Fit'), findsOneWidget);
+    });
   });
 
   group('wide settings', () {

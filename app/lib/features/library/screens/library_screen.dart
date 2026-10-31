@@ -22,6 +22,7 @@ import '../../plan/widgets/trial_offer_card.dart';
 import '../../project/project_navigation.dart';
 import '../../settings/screens/settings_screen.dart';
 import '../../desk/desk_invite.dart';
+import '../../tracking/tracking_prompt.dart';
 import '../../tester/tester_mode.dart';
 import '../controllers/library_controller.dart';
 import '../../editor/controllers/editor_ui_controller.dart';
@@ -52,6 +53,10 @@ class LibraryScreen extends ConsumerWidget {
     // 1.8 — now and then, LastReel on a computer. Watching the tester
     // check too, so the invite gets another look once it has answered.
     ref.watch(testerAllowedProvider);
+    // iOS on Free, three days after install: the tracking pre-prompt, before
+    // the desk invite gets its look.
+    ref.watch(entitlementProvider);
+    TrackingPrompt.check(context, view.value);
     DeskInvite.check(context, view.value);
     // T1.1 / P1.1: a tablet gets the Projects and Settings tabs.
     if (context.isTablet) return const TabletHome();

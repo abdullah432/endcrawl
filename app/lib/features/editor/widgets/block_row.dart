@@ -83,7 +83,7 @@ class BlockRow extends ConsumerWidget {
     // D11 — the desktop's list is an index: number, code, title, time. The
     // whole row drags to reorder; Duplicate and Delete live in the block's
     // "…" menu, since a pointer can't swipe.
-    if (context.layoutClass == LayoutClass.expanded) {
+    if (context.isDesktopLayout) {
       final dense = AnimatedContainer(
         duration: EcMotion.fast,
         decoration: BoxDecoration(

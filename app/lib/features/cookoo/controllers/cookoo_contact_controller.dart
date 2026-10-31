@@ -34,6 +34,9 @@ class CookooContactRequest {
   /// The slide the form was opened from — `s1`…`s4`.
   final String source;
 
+  /// The device and orientation, on a tablet: `lastreel-tablet · portrait`.
+  final String? surface;
+
   const CookooContactRequest({
     required this.need,
     required this.name,
@@ -41,6 +44,7 @@ class CookooContactRequest {
     required this.idea,
     required this.budget,
     required this.source,
+    this.surface,
   });
 }
 
@@ -64,6 +68,7 @@ class CookooContactController {
       'need': request.need.wire,
       'budget': request.budget.wire,
       'source': request.source,
+      if (request.surface != null) 'surface': request.surface!,
     });
     final payload = _payload(request);
     final result = await _ref.read(cookooContactClientProvider).send(payload);
@@ -133,7 +138,7 @@ class CookooContactController {
     // the message for whoever reads it.
     final context = [
       'Need: ${request.need.label}',
-      'Sent from the LastReel app${version == null ? '' : ' $version'} (Settings, slide ${request.source})',
+      'Sent from the LastReel app${version == null ? '' : ' $version'} (Settings, slide ${request.source}${request.surface == null ? '' : ' · ${request.surface}'})',
     ].join('\n');
     return {
       'name': request.name,

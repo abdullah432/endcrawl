@@ -133,27 +133,17 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('Stored with your account'.toUpperCase()), findsOneWidget);
       expect(logged(app, 'settings_section_opened', {'section': 'privacy'}), isTrue);
-      // The ad sits below the detail, not in the section list.
-      expect(ad(AdPlacement.settings), findsOneWidget);
-      expect(
-        tester.getTopLeft(ad(AdPlacement.settings)).dx,
-        greaterThan(tester.getTopRight(find.text('Delete account').first).dx),
-      );
-      expect(
-        tester.getTopLeft(ad(AdPlacement.settings)).dy,
-        greaterThan(tester.getBottomLeft(find.text('Delete…')).dy),
-      );
+      // T8.3: Settings carries no ads.
+      expect(find.byType(TabletAdCard), findsNothing);
 
       tester.view.physicalSize = portrait;
       await tester.pumpAndSettle();
       expect(find.text('What we keep, and what you control.'), findsOneWidget);
-      // Below the section's content in portrait too.
-      expect(ad(AdPlacement.settings), findsOneWidget);
 
       await tester.tap(find.bySemanticsLabel('Back to Settings'));
       await tester.pumpAndSettle();
       expect(find.text('Defaults for new projects'), findsOneWidget);
-      expect(ad(AdPlacement.settings), findsOneWidget);
+      expect(find.byType(TabletAdCard), findsNothing);
     });
 
     testWidgets('Pro shows no ad in Settings', (tester) async {
@@ -181,9 +171,9 @@ void main() {
       // The hidden tab asks for no ad of its own.
       await tester.tap(find.text('Settings').first);
       await tester.pumpAndSettle();
-      expect(find.byType(TabletAdCard), findsOneWidget);
-      expect(ad(AdPlacement.settings), findsOneWidget);
-      expect(app.ads.requested.map((r) => r.$1).toSet(), {AdPlacement.library, AdPlacement.settings});
+      // Settings has none (T8.3).
+      expect(find.byType(TabletAdCard), findsNothing);
+      expect(app.ads.requested.map((r) => r.$1).toSet(), {AdPlacement.library});
 
       await pro().pump(tester, size: portrait);
       expect(find.byType(TabletAdCard), findsNothing);

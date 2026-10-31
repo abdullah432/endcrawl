@@ -25,7 +25,7 @@ class AuthSplit extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final layout = context.layoutClass;
+    final layout = context.screenClass;
     // T0.1 / P0.1: on a tablet the form is 520 wide beside the monitor, or
     // sits under it when the monitor becomes a band across the top.
     switch (context.tabletLayout) {

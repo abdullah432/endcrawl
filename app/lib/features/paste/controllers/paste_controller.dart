@@ -26,21 +26,33 @@ class PasteState {
   final bool swapColumns;
   final Map<int, PasteFix> fixes;
 
+  /// Lines left out of the result — "Skip" on a flagged line (T4.2).
+  final Set<int> skipped;
+
   const PasteState({
     this.mode = PasteMode.paste,
     this.raw = '',
     this.pickedRuleId,
     this.swapColumns = false,
     this.fixes = const {},
+    this.skipped = const {},
   });
 
-  PasteState copyWith({PasteMode? mode, String? raw, String? pickedRuleId, bool? swapColumns, Map<int, PasteFix>? fixes}) {
+  PasteState copyWith({
+    PasteMode? mode,
+    String? raw,
+    String? pickedRuleId,
+    bool? swapColumns,
+    Map<int, PasteFix>? fixes,
+    Set<int>? skipped,
+  }) {
     return PasteState(
       mode: mode ?? this.mode,
       raw: raw ?? this.raw,
       pickedRuleId: pickedRuleId ?? this.pickedRuleId,
       swapColumns: swapColumns ?? this.swapColumns,
       fixes: fixes ?? this.fixes,
+      skipped: skipped ?? this.skipped,
     );
   }
 
@@ -56,7 +68,9 @@ class PasteState {
   }
 
   List<ParsedRow> get parsed => parsePastedText(raw, rule, swapColumns);
-  List<ParsedRow> get unparsed => parsed.where((r) => !r.ok).toList();
+
+  /// Lines no rule split that still need a look: skipped ones are out.
+  List<ParsedRow> get unparsed => parsed.where((r) => !r.ok && !skipped.contains(r.index)).toList();
 
   /// The rows "Add" will insert: every parsed line, plus unparsed ones
   /// fixed with both a role and a name.
@@ -64,7 +78,8 @@ class PasteState {
         for (final r in parsed)
           if (r.ok)
             PairCastRow(role: r.left, actor: r.right)
-          else if (_fixed(r) case (final role, final name))
+          else if (!skipped.contains(r.index))
+            if (_fixed(r) case (final role, final name))
             PairCastRow(role: role, actor: name),
       ];
 
@@ -89,6 +104,9 @@ class PasteController extends Notifier<PasteState> {
 
   void pickRule(String id) => state = state.copyWith(pickedRuleId: id);
   void toggleSwap() => state = state.copyWith(swapColumns: !state.swapColumns);
+
+  /// Leaves a flagged line out of the rows Add inserts.
+  void skip(int index) => state = state.copyWith(skipped: {...state.skipped, index});
 
   void fixRole(int index, String v) => _fix(index, (f) => f.copyWith(role: v));
   void fixName(int index, String v) => _fix(index, (f) => f.copyWith(name: v));

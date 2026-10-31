@@ -1,7 +1,5 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart'
-    show TargetPlatform, defaultTargetPlatform;
 import 'package:flutter/material.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 
@@ -121,10 +119,11 @@ class AdMobAdService implements AdService {
 
   String _nativeUnit(AdPlacement placement) => switch (placement) {
     AdPlacement.library => _units!.libraryNative,
-    AdPlacement.settings => _units!.settingsNative,
     AdPlacement.exportSettings => _units!.exportSettingsNative,
     AdPlacement.rendering => _units!.renderingNative,
     AdPlacement.exportComplete => _units!.exportReadyNative,
+    AdPlacement.editor => _units!.editorNative,
+    AdPlacement.timingLook => _units!.timingLookNative,
   };
 
   @override
@@ -134,13 +133,14 @@ class AdMobAdService implements AdService {
     AdSlotStyle style = const AdSlotStyle(),
   }) {
     if (_units == null) return const SizedBox.shrink();
+    final unit = _nativeUnit(placement);
     return _NativeAdView(
       key: ValueKey((placement, style.layout, style.portrait)),
       style: style,
       load: (colours, listener) async {
         if (!await _ensureReady()) return null;
         final ad = NativeAd(
-          adUnitId: _nativeUnit(placement),
+          adUnitId: unit,
           factoryId: nativeCardFactoryId,
           customOptions: colours,
           request: _request,
@@ -484,13 +484,9 @@ Map<String, Object> nativeCardColours(EcPalette p) {
 }
 
 /// Which of the card's layouts the platform factory draws. The phone row
-/// is the factory's default. Only Android draws the tablet shapes; iOS
-/// keeps its row until iPad ships (§1).
+/// is the factory's default; both factories draw the tablet shapes.
 Map<String, Object> nativeCardLayout(AdSlotStyle style, EcPalette p) {
-  if (style.layout == AdLayout.row ||
-      defaultTargetPlatform != TargetPlatform.android) {
-    return const {};
-  }
+  if (style.layout == AdLayout.row) return const {};
   // "#AARRGGBB": the "Ad" tag's ink and the still's translucent strong line.
   String argb(Color c) =>
       '#${c.toARGB32().toRadixString(16).padLeft(8, '0').toUpperCase()}';
@@ -642,9 +638,7 @@ class _NativeAdViewState extends State<_NativeAdView> {
     }
     // The tablet shapes fill the card the slot draws around them; the
     // phone row draws its own rounded corners natively.
-    final creative =
-        widget.style.layout == AdLayout.row ||
-            defaultTargetPlatform != TargetPlatform.android
+    final creative = widget.style.layout == AdLayout.row
         ? SizedBox(height: 76, child: AdWidget(ad: ad))
         : AdWidget(ad: ad);
     return widget.framed(creative);

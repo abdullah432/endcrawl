@@ -133,12 +133,12 @@ void main() {
 
   for (final platform in [TargetPlatform.iOS, TargetPlatform.android]) {
     testWidgets(
-      'Settings requests its own native unit on $platform',
+      'the editor and Timing & Look request their own native units on $platform',
       (tester) async {
         final units = AdUnits.forBuild(platform: platform, releaseMode: true)!;
-        await mount(tester, placement: AdPlacement.settings, units: units);
+        await mount(tester, placement: AdPlacement.timingLook, units: units);
         final request = named('loadNativeAd').single.arguments as Map;
-        expect(request['adUnitId'], units.settingsNative);
+        expect(request['adUnitId'], units.timingLookNative);
         expect(request['factoryId'], nativeCardFactoryId);
         expect(find.text('Loaded creative'), findsNothing);
         await event(tester, request['adId'] as int, 'onAdLoaded');

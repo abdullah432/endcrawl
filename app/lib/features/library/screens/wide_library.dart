@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../bootstrap.dart';
-import '../../../core/layout/layout_class.dart';
 import '../../../core/result.dart';
 import '../../../core/theme/theme_context.dart';
 import '../../../core/utils/formatting.dart';
@@ -29,6 +28,7 @@ import '../../settings/screens/settings_screen.dart';
 import '../controllers/library_controller.dart';
 import '../widgets/project_actions_sheet.dart';
 import '../widgets/project_tile.dart';
+import '../../home/tablet_layout.dart';
 import 'library_screen.dart';
 
 /// T1.1 / T1.2 / D7 / D9 — the library on a tablet or a desktop browser: a
@@ -63,7 +63,7 @@ class _WideLibraryState extends ConsumerState<WideLibrary> {
 
   @override
   Widget build(BuildContext context) {
-    final desktop = context.layoutClass == LayoutClass.expanded;
+    final desktop = context.isDesktopLayout;
     final view = ref.watch(libraryViewProvider);
     final preview = ref.watch(webPreviewProvider);
 

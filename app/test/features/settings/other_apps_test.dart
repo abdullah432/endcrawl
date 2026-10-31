@@ -26,14 +26,20 @@ void main() {
     expect(app.links.opened, [AppLinks.textCrawlListing, AppLinks.aksListing]);
   });
 
-  testWidgets('on a tablet they sit with Support', (tester) async {
+  testWidgets('on a tablet they sit under the COOKOO tile, in From the makers', (tester) async {
     final app = AppHarness();
     await app.pump(tester, size: const Size(1194, 834));
     await tester.tap(find.text('Settings').first);
     await tester.pumpAndSettle();
     await tester.tap(find.text('Support'));
     await tester.pumpAndSettle();
-    expect(find.text('TextCrawl'), findsOneWidget);
     expect(find.text('Help centre'), findsOneWidget);
+    expect(find.text('TextCrawl'), findsNothing);
+
+    await tester.tap(find.text('From the makers'));
+    await tester.pumpAndSettle();
+    expect(find.text('FROM THE MAKERS OF LASTREEL'), findsOneWidget);
+    expect(find.text('1 of 4'), findsOneWidget);
+    expect(find.text('TextCrawl'), findsOneWidget);
   });
 }

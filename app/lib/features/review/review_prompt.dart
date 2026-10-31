@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../bootstrap.dart';
+import '../tracking/tracking_prompt.dart';
 import '../../core/root_navigator.dart';
 import '../../core/theme/theme_context.dart';
 import '../../core/theme/ec_type.dart';
@@ -108,8 +109,9 @@ abstract final class ReviewPrompt {
     final container = ProviderScope.containerOf(context, listen: false);
     final store = container.read(reviewPromptStoreProvider);
     final now = container.read(clockProvider)();
-    // The web has no store to rate in.
-    if (!AppPlatform.isMobile || !due(store, now)) return;
+    // The web has no store to rate in; and one ask per session — not in the
+    // one the tracking pre-prompt had.
+    if (!AppPlatform.isMobile || !due(store, now) || container.read(trackingPromptThisSessionProvider)) return;
     await store.markAsked(now);
     container.read(reviewPromptShownThisSessionProvider.notifier).mark();
     container.read(analyticsProvider).logEvent('review_prompt_shown');

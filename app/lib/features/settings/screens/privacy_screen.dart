@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -11,6 +12,7 @@ import '../../../core/widgets/ec_settings.dart';
 import '../../../core/widgets/ec_toast.dart';
 import '../../../domain/models/user_profile.dart';
 import '../../ads/ads_providers.dart';
+import '../../tracking/tracking_status_row.dart';
 import '../controllers/settings_controller.dart';
 import 'delete_account_screen.dart';
 
@@ -89,13 +91,17 @@ class PrivacyScreen extends ConsumerWidget {
                 value: prefs.usageAnalytics,
                 onChanged: (v) => update((p) => p.copyWith(usageAnalytics: v)),
               ),
-              EcGroupRow.toggle(
-                title: 'Personalised ads',
-                subtitle:
-                    'Free still shows ads, just not based on your activity',
-                value: prefs.personalisedAds,
-                onChanged: (v) => update((p) => p.copyWith(personalisedAds: v)),
-              ),
+              // A3: on iOS, App Tracking Transparency has the say.
+              if (defaultTargetPlatform == TargetPlatform.iOS)
+                const TrackingStatusRow()
+              else
+                EcGroupRow.toggle(
+                  title: 'Personalised ads',
+                  subtitle:
+                      'Free still shows ads, just not based on your activity',
+                  value: prefs.personalisedAds,
+                  onChanged: (v) => update((p) => p.copyWith(personalisedAds: v)),
+                ),
               // Where the law asks for it (EEA, UK), the consent choices made
               // on first ad can be revisited here.
               if (ref.watch(adPrivacyOptionsRequiredProvider).value ?? false)
@@ -208,12 +214,15 @@ class PrivacyDetail extends ConsumerWidget {
               value: prefs.usageAnalytics,
               onChanged: (v) => update((p) => p.copyWith(usageAnalytics: v)),
             ),
-            EcGroupRow.toggle(
-              title: 'Personalised ads',
-              subtitle: 'Free still shows ads, just not based on your activity',
-              value: prefs.personalisedAds,
-              onChanged: (v) => update((p) => p.copyWith(personalisedAds: v)),
-            ),
+            if (defaultTargetPlatform == TargetPlatform.iOS)
+              const TrackingStatusRow()
+            else
+              EcGroupRow.toggle(
+                title: 'Personalised ads',
+                subtitle: 'Free still shows ads, just not based on your activity',
+                value: prefs.personalisedAds,
+                onChanged: (v) => update((p) => p.copyWith(personalisedAds: v)),
+              ),
             if (ref.watch(adPrivacyOptionsRequiredProvider).value ?? false)
               EcGroupRow(
                 title: 'Ad privacy choices',
