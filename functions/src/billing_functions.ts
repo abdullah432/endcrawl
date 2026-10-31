@@ -15,8 +15,9 @@ const apiKey = defineSecret('REVENUECAT_API_KEY');
 const webhookAuth = defineSecret('REVENUECAT_WEBHOOK_AUTH');
 const billingMode = defineString('BILLING_ROLLOUT_MODE', { default: 'off' });
 const billingPilotUid = defineString('BILLING_PILOT_UID', { default: '' });
+const billingPilotUids = defineString('BILLING_PILOT_UIDS', { default: '' });
 const enabled = (uid: string) => billingEnabled(uid, {
-  mode: billingMode.value(), pilotUid: billingPilotUid.value(),
+  mode: billingMode.value(), pilotUid: billingPilotUid.value(), pilotUids: billingPilotUids.value(),
 });
 
 async function reconcile(uid: string) {

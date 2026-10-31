@@ -37,6 +37,7 @@ class CookooProofPanel extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.only(bottom: 14),
             child: Row(
+              mainAxisSize: MainAxisSize.min,
               children: [
                 ClipRRect(
                   borderRadius: BorderRadius.circular(8),
@@ -103,6 +104,7 @@ class CookooProofPanel extends StatelessWidget {
       child: portrait
           ? Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
+              mainAxisSize: MainAxisSize.min,
               children: [
                 header,
                 const SizedBox(height: 22),
@@ -111,7 +113,7 @@ class CookooProofPanel extends StatelessWidget {
                   children: [
                     Expanded(child: headline),
                     const SizedBox(width: 24),
-                    apps,
+                    Flexible(child: apps),
                   ],
                 ),
                 const SizedBox(height: 8),

@@ -18,6 +18,7 @@ export const site = {
     "Build your end credits on your phone. Time them to the frame. Export a master your editor won’t send back.",
   url: siteUrl,
   year: 2026,
+  clarityProjectId: process.env.NEXT_PUBLIC_CLARITY_PROJECT_ID ?? "z6hm6z53lz",
 } as const;
 
 export const links = {

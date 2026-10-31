@@ -294,7 +294,9 @@ final class LastReelNativeAdFactory: NSObject, FLTNativeAdFactory {
     NSLayoutConstraint.activate([
       root.leadingAnchor.constraint(equalTo: adView.leadingAnchor),
       root.trailingAnchor.constraint(equalTo: adView.trailingAnchor),
-      root.centerYAnchor.constraint(equalTo: adView.centerYAnchor),
+      compact
+        ? root.topAnchor.constraint(equalTo: adView.topAnchor)
+        : root.centerYAnchor.constraint(equalTo: adView.centerYAnchor),
       root.topAnchor.constraint(greaterThanOrEqualTo: adView.topAnchor),
       choices.trailingAnchor.constraint(equalTo: adView.trailingAnchor),
       compact
@@ -314,6 +316,7 @@ final class LastReelNativeAdFactory: NSObject, FLTNativeAdFactory {
     label.textColor = colour
     label.numberOfLines = 1
     label.lineBreakMode = .byTruncatingTail
+    label.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
     return label
   }
 }

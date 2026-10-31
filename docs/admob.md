@@ -49,7 +49,7 @@ Ad slot names in analytics are `library_foot`, `export_settings_foot`, `render_w
 | Slot | Where | Unit | Layout |
 | --- | --- | --- | --- |
 | `library_foot` | Foot of the Projects tab, at 0, 1 and 2 of 2 | Library | `strip` / `stripPortrait` |
-| `export_settings_foot` | Bottom of the “Render the roll” settings page, before rendering, in both tablet orientations | Render the roll | `strip` / `stripPortrait` |
+| `export_settings_foot` | Right-hand column under Motion blur in landscape; bottom of “Render the roll” settings in portrait | Render the roll | `compact` / `stripPortrait` |
 | `render_wait` | Under the progress card on the render page (T6.2, P6.2), only while the render runs | Rendering | `strip` / `stripPortrait` |
 | `editor_foot` | Its own card under the editor's block list, apart from + Block and Paste (T3.1); at the bottom edge upright (P3.1). Hidden while the keyboard is up | Editor | `compact` / `stripPortrait` |
 | `timing_look_foot` | Under the Timing & Look panel, in the same place on both tabs (T5.1, T5.2); at the bottom edge upright (P5.1, P5.2) | Timing & Look | `compact` / `stripPortrait` |

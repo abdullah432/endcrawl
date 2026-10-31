@@ -45,6 +45,35 @@ export function affectedAccounts(event: RecordValue): string[] {
     .filter((id): id is string => typeof id === 'string' && id.length > 0 && !id.startsWith('$RCAnonymousID:') && !id.includes('/')))];
 }
 
+/** A provider-specific, server-owned record for the Firebase console. */
+export function subscriptionSnapshot(uid: string, body: RecordValue, entitlement: BillingEntitlement, now: number) {
+  const subscriptions = body.subscriber?.subscriptions;
+  const entries = subscriptions && typeof subscriptions === 'object' && !Array.isArray(subscriptions)
+    ? Object.entries(subscriptions).filter((entry): entry is [string, RecordValue] =>
+      !!entry[1] && typeof entry[1] === 'object' && !Array.isArray(entry[1])) : [];
+  const entitledProduct = body.subscriber?.entitlements?.pro?.product_identifier;
+  const selected = entries.find(([product]) => product === entitledProduct) ??
+    entries.sort((a, b) => (time(b[1].expires_date) ?? 0) - (time(a[1].expires_date) ?? 0))[0];
+  const [productId, subscription] = selected ?? [null, null];
+  const periodEnd = time(subscription?.expires_date);
+  const graceEnd = time(subscription?.grace_period_expires_date);
+  const status = entitlement.plan === 'pro'
+    ? subscription?.period_type === 'trial' ? 'trialing'
+      : graceEnd != null && (periodEnd == null || graceEnd > periodEnd) && graceEnd > now ? 'grace'
+        : 'active'
+    : subscription?.refunded_at ? 'refunded'
+      : subscription ? periodEnd != null && periodEnd <= now ? 'expired' : 'inactive'
+        : 'none';
+  return {
+    schemaVersion: 1, uid, provider: 'revenuecat', status,
+    currentPeriodEnd: periodEnd == null ? null : new Date(periodEnd),
+    subKey: productId == null ? null : `revenuecat:${productId}`,
+    productId, store: typeof subscription?.store === 'string' ? subscription.store : null,
+    isSandbox: typeof subscription?.is_sandbox === 'boolean' ? subscription.is_sandbox : null,
+    updatedAt: new Date(now), sourceUpdatedAtMs: entitlement.sourceUpdatedAtMs,
+  };
+}
+
 export function shouldReplace(current: RecordValue | undefined, next: BillingEntitlement): boolean {
   return !current || next.sourceUpdatedAtMs >= (current.sourceUpdatedAtMs ?? 0);
 }

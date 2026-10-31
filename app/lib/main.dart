@@ -58,6 +58,7 @@ class LastReelApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     ref.watch(analyticsPreferenceSyncProvider);
+    ref.watch(clarityUserSyncProvider);
     ref.watch(profileSessionSyncProvider);
     ref.watch(trialAnalyticsProvider);
     ref.watch(cookooContactSyncProvider);

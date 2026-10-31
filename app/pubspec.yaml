@@ -2,9 +2,9 @@ name: lastreel
 description: "LastReel — an end-credits roll editor for phones."
 publish_to: "none"
 # # # Android (Play Store):
-version: 1.0.0+17
-# # iOS (App Store, first build):
-# version: 1.0.1+1
+# version: 1.0.0+17
+# # iOS (App Store):
+version: 1.0.1+2
 
 environment:
   sdk: ">=3.12.0 <4.0.0"

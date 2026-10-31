@@ -10,6 +10,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'core/services/analytics.dart';
+import 'core/services/clarity.dart';
 import 'core/services/profile_sync.dart';
 import 'core/services/external_links.dart';
 import 'core/config/billing_config.dart';
@@ -165,6 +166,39 @@ final analyticsPreferenceSyncProvider = Provider<void>((ref) {
     (_, enabled) {
       if (enabled != null) {
         ref.read(analyticsProvider).setCollectionEnabled(enabled);
+      }
+    },
+    fireImmediately: true,
+  );
+});
+
+/// Links the active Microsoft Clarity session to [uid] via
+/// `Clarity.setCustomUserId(uid)`, or starts a fresh session when [uid] is
+/// null (sign-out). Overridden in tests that inspect Clarity user linking.
+final clarityUserIdSetterProvider = Provider<bool Function(String?)>((ref) {
+  return (uid) {
+    final trimmed = uid?.trim();
+    if (trimmed != null && trimmed.isNotEmpty) {
+      return Clarity.setCustomUserId(trimmed);
+    }
+    return Clarity.startNewSession((_) {});
+  };
+});
+
+/// Syncs the signed-in Firebase UID (`currentUidProvider`) into Microsoft
+/// Clarity on mobile (`yoywe4jl9e`) and web (`z6hm6z53lz`). Watched from the
+/// app root.
+final clarityUserSyncProvider = Provider<void>((ref) {
+  final setUserId = ref.watch(clarityUserIdSetterProvider);
+  ref.listen<String?>(
+    currentUidProvider,
+    (previous, next) {
+      final nextUid = next?.trim();
+      final prevUid = previous?.trim();
+      if (nextUid != null && nextUid.isNotEmpty) {
+        setUserId(nextUid);
+      } else if (prevUid != null && prevUid.isNotEmpty) {
+        setUserId(null);
       }
     },
     fireImmediately: true,

@@ -6,9 +6,8 @@ ads, with the App Tracking Transparency pre-prompt three days after install.
 
 ## Version
 
-`pubspec.yaml` is `1.0.0+17`. App Store Connect already has 1.0.0 (build 6),
-so this uploads as 1.0.0 build 17; Android gets versionCode 17. Every later
-upload needs a higher build number.
+`pubspec.yaml` is `1.0.1+2` (version `1.0.1`, build `2`). Every later upload
+needs a higher build number.
 
 ```sh
 flutter build ipa --release --export-options-plist=ios/ExportOptions.plist

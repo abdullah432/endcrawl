@@ -228,5 +228,29 @@ void main() {
         ),
       ]);
     });
+
+    testWidgets('T9.2 / T9.3: opens and sends cleanly on a tablet in both portrait and landscape', (tester) async {
+      await app.pump(tester, size: const Size(834, 1194));
+      await tester.tap(find.text('Settings').first);
+      await tester.pumpAndSettle();
+
+      final page = find.byWidgetPredicate((w) => w is Scrollable && w.axisDirection == AxisDirection.down).first;
+      await tester.scrollUntilVisible(find.text('Tell us your idea').first, 200, scrollable: page);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Tell us your idea').hitTestable().first);
+      await tester.pumpAndSettle();
+      expect(find.byType(CookooContactScreen), findsOneWidget);
+
+      await fillForm(tester);
+      await tapText(tester, 'Send my idea');
+      expect(find.byType(CookooSentScreen), findsOneWidget);
+      expect(app.contact.sent.single['message'], contains('lastreel-tablet · portrait'));
+
+      // Rotate to landscape on the confirmation screen, then return to Settings.
+      await tester.binding.setSurfaceSize(const Size(1194, 834));
+      await tester.pumpAndSettle();
+      await tapText(tester, 'Back to Settings');
+      expect(find.byType(CookooSentScreen), findsNothing);
+    });
   });
 }
