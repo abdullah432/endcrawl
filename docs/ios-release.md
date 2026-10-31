@@ -60,9 +60,8 @@ On a real iPad (both orientations) and an iPhone, Free account:
       Privacy & data then shows "Ad personalisation · On/Off".
 - [ ] No "See LastReel Pro", plan card, trial or "Remove ads" anywhere.
 
-## Still to do
+## SKAdNetwork
 
-- **SKAdNetwork IDs**: `Info.plist` lists only Google's own
-  (`cstr6suwn9.skadnetwork`). Add Google's full partner list from
-  https://developers.google.com/admob/ios/3p-skadnetworks to raise ad revenue
-  from users who allow tracking. Not required for review.
+`Info.plist` lists Google's 50 SKAdNetwork IDs, from
+https://developers.google.com/admob/ios/3p-skadnetworks (fetched 2026-10-31).
+Google adds partners now and then; refresh the list before a release.
