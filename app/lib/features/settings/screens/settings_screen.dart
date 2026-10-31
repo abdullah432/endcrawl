@@ -254,6 +254,11 @@ class SettingsGroups {
   /// App Store build must not send people to another store.
   bool get hasOtherApps => defaultTargetPlatform != TargetPlatform.iOS;
 
+  String? get _surface => switch (context.tabletLayout) {
+    null => null,
+    final layout => 'tablet_${layout.name}',
+  };
+
   /// "Explore our other apps · by COOKOO": one honest line per app, and
   /// Get opens its Google Play page.
   Widget otherApps() {
@@ -266,13 +271,19 @@ class SettingsGroups {
           icon: 'assets/images/apps/textcrawl.png',
           name: 'TextCrawl',
           line: 'Make sci-fi style opening crawls with 3D text and music, then export in HD.',
-          onGet: () => links.openUrl(AppLinks.textCrawlListing),
+          onGet: () {
+            ref.read(cookooPromoProvider.notifier).otherAppTapped('textcrawl', surface: _surface);
+            links.openUrl(AppLinks.textCrawlListing);
+          },
         ),
         _AppRow(
           icon: 'assets/images/apps/aks.png',
           name: 'AKS',
           line: 'Record your screen, camera or voice and share it as a link your team can comment on.',
-          onGet: () => links.openUrl(AppLinks.aksListing),
+          onGet: () {
+            ref.read(cookooPromoProvider.notifier).otherAppTapped('aks', surface: _surface);
+            links.openUrl(AppLinks.aksListing);
+          },
         ),
       ],
     );

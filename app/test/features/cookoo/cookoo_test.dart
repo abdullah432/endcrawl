@@ -101,7 +101,14 @@ void main() {
       await openSettings(tester);
       await swipeNext(tester);
       await tapText(tester, 'SEE THE FULL STORY · COOKOO.DEV/CASES');
-      expect(app.links.opened, [Uri.parse('https://cookoo.dev/cases/planformer?from=lastreel')]);
+      expect(app.links.opened, [
+        Uri.parse(
+          'https://cookoo.dev/cases/planformer?from=lastreel&utm_source=lastreel&utm_medium=app'
+          '&utm_campaign=from_the_makers&utm_content=s2',
+        ),
+      ]);
+      // Counted as a promotion click for Google Analytics, too.
+      expect(app.analytics.names, contains('select_promotion'));
       expect(app.analytics.names, contains('cookoo_site_open'));
     });
 
@@ -214,7 +221,12 @@ void main() {
       await openSettings(tester);
       await tapText(tester, 'Tell us your idea');
       await tapText(tester, 'See our work on cookoo.dev');
-      expect(app.links.opened, [Uri.parse('https://cookoo.dev/cases?from=lastreel')]);
+      expect(app.links.opened, [
+        Uri.parse(
+          'https://cookoo.dev/cases?from=lastreel&utm_source=lastreel&utm_medium=app'
+          '&utm_campaign=from_the_makers&utm_content=contact',
+        ),
+      ]);
     });
   });
 }

@@ -126,7 +126,7 @@ class _CookooSwiperState extends ConsumerState<CookooSwiper> {
     if (top + half < MediaQuery.sizeOf(context).height && top + half > 0) {
       _seen = true;
       _scroll?.removeListener(_checkSeen);
-      _promo.viewed(_index);
+      _promo.viewed(_index, surface: _surface);
     }
   }
 
@@ -144,6 +144,9 @@ class _CookooSwiperState extends ConsumerState<CookooSwiper> {
 
   /// Sizes the pages for the width the swiper actually has — the screen on
   /// a phone, a pane in Settings on a tablet or desktop.
+  /// The pager's own width, once laid out — what the counter reads.
+  double? _width;
+
   void _sizeFor(double width) {
     // 358 wide with 16 at each side; narrow widths keep the 16 and shrink
     // the card. Each page carries half the 10 px gap on either side.
@@ -165,15 +168,30 @@ class _CookooSwiperState extends ConsumerState<CookooSwiper> {
     super.dispose();
   }
 
+  /// "1 of 4", or "1–2 of 4" while two tiles fit across (P7.1).
+  String get _counter {
+    final width = _width;
+    final across = width != null && width - _leadingInset >= 2 * (_slideWidth + _gap) ? 2 : 1;
+    final last = (_index + across).clamp(1, cookooSlides.length);
+    final shown = last > _index + 1 ? '${_index + 1}–$last' : '${_index + 1}';
+    return '$shown of ${cookooSlides.length}';
+  }
+
   void _onPage(int index) {
     setState(() => _index = index);
     _promo
       ..swiped(index)
-      ..viewed(index);
+      ..viewed(index, surface: _surface);
   }
 
+  /// Where the card is, for the promotion reports.
+  String? get _surface => switch (context.tabletLayout) {
+    null => null,
+    final layout => 'tablet_${layout.name}',
+  };
+
   void _tellUs(CookooSlide slide) {
-    _promo.ctaTapped(slide.id);
+    _promo.ctaTapped(slide.id, surface: _surface);
     final tablet = context.tabletLayout;
     CookooContactScreen.open(
       context,
@@ -184,8 +202,8 @@ class _CookooSwiperState extends ConsumerState<CookooSwiper> {
   }
 
   void _openCase(CookooSlide slide) {
-    _promo.siteOpened(slide.id);
-    ref.read(externalLinksProvider).openUrl(AppLinks.cookooCase(slide.caseSlug!));
+    _promo.siteOpened(slide.id, surface: _surface);
+    ref.read(externalLinksProvider).openUrl(AppLinks.cookooCase(slide.caseSlug!, content: slide.id));
   }
 
   @override
@@ -212,7 +230,7 @@ class _CookooSwiperState extends ConsumerState<CookooSwiper> {
                   ),
                 ),
                 if (widget.counter)
-                  Text('${_index + 1} of ${cookooSlides.length}', style: context.cookooMono(11, tracking: 1)),
+                  Text(_counter, style: context.cookooMono(11, tracking: 1)),
                 // Hidden for now: the "Hide" button.
                 //               Semantics(
                 //                 button: true,
@@ -245,6 +263,13 @@ class _CookooSwiperState extends ConsumerState<CookooSwiper> {
           child: LayoutBuilder(
             builder: (context, constraints) {
               _sizeFor(constraints.maxWidth);
+              if (widget.counter && _width != constraints.maxWidth) {
+                _width = constraints.maxWidth;
+                // The counter sits above, already built for this frame.
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  if (mounted) setState(() {});
+                });
+              }
               return Padding(
                 // Keep the first card aligned with the Settings groups rather
                 // than centering it in the available tablet or desktop width.

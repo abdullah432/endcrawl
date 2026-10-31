@@ -20,13 +20,26 @@ abstract final class AppLinks {
     'utm_content': 'settings_footer',
   });
 
-  /// COOKOO's case studies, tagged so the site knows the visit came from
-  /// the studio card in Settings.
-  static final cookooCases = Uri.https('cookoo.dev', '/cases', {
+  /// COOKOO's case studies, tagged so cookoo.dev's own analytics credit the
+  /// visit to the From the makers card in LastReel, and which part of it.
+  static final cookooCases = cookooSite('/cases', content: 'contact');
+  static Uri cookooCase(String slug, {String content = 'card'}) => cookooSite('/cases/$slug', content: content);
+
+  /// A cookoo.dev page with LastReel's campaign tags.
+  static Uri cookooSite(String path, {required String content}) => Uri.https('cookoo.dev', path, {
     'from': 'lastreel',
+    'utm_source': 'lastreel',
+    'utm_medium': 'app',
+    'utm_campaign': 'from_the_makers',
+    'utm_content': content,
   });
-  static Uri cookooCase(String slug) =>
-      Uri.https('cookoo.dev', '/cases/$slug', {'from': 'lastreel'});
+
+  /// A Google Play listing with an install referrer, so the other app's
+  /// Play Console credits installs to LastReel.
+  static Uri playListing(String id) => Uri.https('play.google.com', '/store/apps/details', {
+    'id': id,
+    'referrer': 'utm_source=lastreel&utm_medium=app&utm_campaign=from_the_makers',
+  });
 
   /// Same backend as the contact form on cookoo.dev.
   // TODO: confirm the endpoint with the website before release.
@@ -45,12 +58,8 @@ abstract final class AppLinks {
   static final webApp = Uri.parse('https://app.lastreel.cookoo.dev');
 
   /// COOKOO's other apps on Google Play — Settings → Explore our other apps.
-  static final textCrawlListing = Uri.parse(
-    'https://play.google.com/store/apps/details?id=com.kukustudio.textcrawler',
-  );
-  static final aksListing = Uri.parse(
-    'https://play.google.com/store/apps/details?id=com.cookoo.aks',
-  );
+  static final textCrawlListing = playListing('com.kukustudio.textcrawler');
+  static final aksListing = playListing('com.cookoo.aks');
 
   /// LastReel on Google Play — where the web sends people to subscribe
   /// (D2's button and QR code).

@@ -42,4 +42,26 @@ void main() {
     expect(find.text('1 of 4'), findsOneWidget);
     expect(find.text('TextCrawl'), findsOneWidget);
   });
+
+  testWidgets('P7.1: upright, From the makers sits on the Settings page, two tiles across', (tester) async {
+    final app = AppHarness();
+    await app.pump(tester, size: const Size(834, 1194));
+    await tester.tap(find.text('Settings').first);
+    await tester.pumpAndSettle();
+    // No section row for it: the tiles are on the page.
+    expect(find.text('From the makers'), findsNothing);
+    final page = find.byWidgetPredicate((w) => w is Scrollable && w.axisDirection == AxisDirection.down).first;
+    await tester.scrollUntilVisible(find.text('FROM THE MAKERS OF LASTREEL'), 200, scrollable: page);
+    await tester.pumpAndSettle();
+    expect(find.text('1–2 of 4'), findsOneWidget);
+    // An impression, for Google Analytics' Promotions report too.
+    expect(app.analytics.names, containsAll(['cookoo_card_view', 'view_promotion']));
+    final promo = app.analytics.events.firstWhere((e) => e.$1 == 'view_promotion').$2;
+    expect(promo['location_id'], 'tablet_portrait');
+
+    await tester.scrollUntilVisible(find.text('TextCrawl'), 200, scrollable: page);
+    await tester.tap(find.bySemanticsLabel('Get TextCrawl on Google Play'));
+    expect(app.analytics.names, contains('cookoo_other_app_tap'));
+    expect(app.links.opened.single.queryParameters['referrer'], contains('utm_source=lastreel'));
+  });
 }

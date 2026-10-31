@@ -754,13 +754,14 @@ class _TabletSettings extends ConsumerWidget {
                     resolutionBlock,
                     const SizedBox(height: 16),
                     ...extras,
+                    // Right under Motion blur, apart from the render action.
+                    TabletAdSlot(AdPlacement.exportSettings, layout: AdLayout.strip, portrait: portrait, gap: 4),
                   ],
                 ),
               ),
             ),
             const SizedBox(height: 12),
             action,
-            TabletAdSlot(AdPlacement.exportSettings, layout: AdLayout.strip, portrait: portrait, gap: 20),
           ],
         ),
       );
@@ -792,13 +793,14 @@ class _TabletSettings extends ConsumerWidget {
                       Text(note, style: t.caption.copyWith(fontSize: 12, height: 1.45)),
                       const SizedBox(height: 16),
                       ...extras,
+                      // Right under Motion blur, apart from the render action.
+                      TabletAdSlot(AdPlacement.exportSettings, layout: AdLayout.compact, gap: 4),
                     ],
                   ),
                 ),
               ],
             ),
           ),
-          TabletAdSlot(AdPlacement.exportSettings, layout: AdLayout.strip, portrait: portrait, gap: 20),
         ],
       ),
     );

@@ -266,7 +266,6 @@ class _PortraitRoot extends ConsumerWidget {
       (SettingsSection.defaults, 'Defaults for new projects', groups.defaultsSummary()),
       (SettingsSection.app, 'App', 'Appearance, haptics, notifications'),
       (SettingsSection.support, 'Support', 'Help, contact, rate LastReel'),
-      (SettingsSection.makers, 'From the makers', 'COOKOO, the team behind LastReel'),
       (SettingsSection.privacy, 'Privacy & data', 'Analytics, ads, download your data'),
       (SettingsSection.legal, 'Legal', 'Terms, privacy policy, licences'),
     ];
@@ -340,6 +339,11 @@ class _PortraitRoot extends ConsumerWidget {
                   for (final (section, title, subtitle) in sections)
                     row(title: title, subtitle: subtitle, onTap: () => _open(ref, section)),
                 ]),
+                // P7.1: From the makers sits on the page itself, two tiles
+                // across, with the other apps under it (P9.1).
+                const SizedBox(height: 4),
+                const CookooPromoBlock(counter: true),
+                if (groups.hasOtherApps) ...[const SizedBox(height: 18), groups.otherApps()],
                 const SizedBox(height: 14),
                 card([
                   row(title: 'Sign out', onTap: groups.signOut),
