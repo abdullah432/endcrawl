@@ -101,7 +101,7 @@ number for a later replacement build:
 ```sh
 cd app
 flutter pub get
-flutter build ipa --build-name=1.0.0 --build-number=6 --export-options-plist=ios/ExportOptions.plist
+flutter build ipa --build-name=1.0.0 --build-number=17 --export-options-plist=ios/ExportOptions.plist
 ```
 
 The provisioning profile must have been regenerated after enabling the Apple
