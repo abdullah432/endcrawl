@@ -55,6 +55,8 @@ class ExportSheet extends ConsumerWidget {
     final presentation = container.read(_exportPresentationProvider);
     if (presentation.open) return;
     presentation.open = true;
+    container.read(exportControllerProvider.notifier)
+        .configureExportPresentation(tablet: context.isTablet);
     try {
       if (context.isTablet) {
         // T6.1 / P6.1: the whole screen, every phase drawn on the page.
@@ -1497,10 +1499,14 @@ class _Ready extends ConsumerWidget {
           ),
           // The file has saved by the time this shows; the ad sits below
           // every destination and never stands between the user and them.
-          // The tablet's one export ad is the wait's (§5): none once done.
           RateSlot(
             ad: context.isTablet
-                ? const SizedBox.shrink()
+                ? TabletAdSlot(
+                    AdPlacement.exportComplete,
+                    layout: AdLayout.strip,
+                    portrait: context.tabletLayout == TabletLayout.portrait,
+                    gap: 20,
+                  )
                 : const SponsoredSlot(
                     AdPlacement.exportComplete,
                     hideLabel: 'Remove ads',

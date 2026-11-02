@@ -37,6 +37,8 @@ void main() {
 
   Finder renderAd() =>
       find.byWidgetPredicate((w) => w is TabletAdPlaceholder && w.placement == AdPlacement.rendering);
+  Finder readyAd() =>
+      find.byWidgetPredicate((w) => w is TabletAdPlaceholder && w.placement == AdPlacement.exportComplete);
 
   Future<void> tap(WidgetTester tester, String text) async {
     await tester.ensureVisible(find.text(text).last);
@@ -110,8 +112,9 @@ void main() {
 
     await finish(tester);
     expect(find.text('Rendered.'), findsOneWidget);
-    // The ad is the wait's: gone once the render ends.
+    // The wait's creative is replaced by the separate Ready placement.
     expect(renderAd(), findsNothing);
+    expect(readyAd(), findsOneWidget);
     await tap(tester, 'Save to device');
     expect(app.destinations.savedToPhotos, hasLength(1));
     await tap(tester, 'Share');
@@ -141,6 +144,7 @@ void main() {
     expect(find.text('Stopped at frame 12 · not enough storage'), findsOneWidget);
     expect(find.textContaining('Nothing in the project changed.'), findsOneWidget);
     expect(renderAd(), findsNothing);
+    expect(readyAd(), findsNothing);
     await tap(tester, 'Retry render');
     expect(app.encoder.started, hasLength(2));
     await finish(tester);
@@ -156,6 +160,7 @@ void main() {
       greaterThan(tester.getBottomLeft(find.text('Keep working · renders in background')).dy),
     );
     await finish(tester);
+    expect(readyAd(), findsOneWidget);
     await tap(tester, 'Save');
     expect(app.destinations.savedToPhotos, hasLength(1));
     expect(tester.takeException(), isNull);
@@ -168,6 +173,7 @@ void main() {
     expect(find.byType(TabletAdCard), findsNothing);
     expect(renderAd(), findsNothing);
     await finish(tester);
+    expect(readyAd(), findsNothing);
   });
 
   testWidgets('a cancelled render goes back to the settings', (tester) async {

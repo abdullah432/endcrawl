@@ -64,33 +64,28 @@ final class LastReelNativeAdFactory: NSObject, FLTNativeAdFactory {
     icon.image = nativeAd.icon?.image
     icon.isHidden = nativeAd.icon == nil
     NSLayoutConstraint.activate([
-      icon.widthAnchor.constraint(equalToConstant: 44),
-      icon.heightAnchor.constraint(equalToConstant: 44),
+      icon.widthAnchor.constraint(equalToConstant: 24),
+      icon.heightAnchor.constraint(equalToConstant: 24),
     ])
 
     let headline = Self.label(size: 14, weight: .semibold, colour: ink)
     headline.text = nativeAd.headline
+    headline.numberOfLines = 2
 
     let badge = Self.label(size: 10, weight: .bold, colour: muted)
     badge.text = " Ad "
     badge.layer.borderColor = muted.cgColor
     badge.layer.borderWidth = 1
     badge.layer.cornerRadius = 3
+    badge.heightAnchor.constraint(greaterThanOrEqualToConstant: 15).isActive = true
+    badge.widthAnchor.constraint(greaterThanOrEqualToConstant: 15).isActive = true
     badge.setContentHuggingPriority(.required, for: .horizontal)
     badge.setContentCompressionResistancePriority(.required, for: .horizontal)
 
-    let body = Self.label(size: 12, weight: .regular, colour: muted)
+    let body = Self.label(size: 11, weight: .regular, colour: muted)
     body.text = nativeAd.body
+    body.numberOfLines = 3
     body.isHidden = (nativeAd.body ?? "").isEmpty
-
-    let meta = UIStackView(arrangedSubviews: [badge, body])
-    meta.axis = .horizontal
-    meta.spacing = 6
-    meta.alignment = .center
-
-    let words = UIStackView(arrangedSubviews: [headline, meta])
-    words.axis = .vertical
-    words.spacing = 3
 
     let cta = UIButton(type: .custom)
     cta.setTitle(nativeAd.callToAction, for: .normal)
@@ -105,7 +100,18 @@ final class LastReelNativeAdFactory: NSObject, FLTNativeAdFactory {
     cta.setContentHuggingPriority(.required, for: .horizontal)
     cta.setContentCompressionResistancePriority(.required, for: .horizontal)
 
-    let row = UIStackView(arrangedSubviews: [icon, words, cta])
+    let title = UIStackView(arrangedSubviews: [icon, headline])
+    title.axis = .horizontal
+    title.spacing = 6
+    title.alignment = .center
+    let actions = UIStackView(arrangedSubviews: [badge, UIView(), cta])
+    actions.axis = .horizontal
+    actions.spacing = 6
+    actions.alignment = .center
+    let words = UIStackView(arrangedSubviews: [title, body, actions])
+    words.axis = .vertical
+    words.spacing = 6
+    let row = UIStackView(arrangedSubviews: [media, words])
     row.axis = .horizontal
     row.spacing = 12
     row.alignment = .center
@@ -123,12 +129,9 @@ final class LastReelNativeAdFactory: NSObject, FLTNativeAdFactory {
       card.bottomAnchor.constraint(equalTo: adView.bottomAnchor),
       row.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 12),
       row.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -12),
-      media.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 12),
-      media.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -12),
-      media.topAnchor.constraint(equalTo: card.topAnchor, constant: 12),
-      media.heightAnchor.constraint(equalToConstant: 160),
-      row.topAnchor.constraint(equalTo: media.bottomAnchor, constant: 12),
-      row.heightAnchor.constraint(equalToConstant: 64),
+      media.widthAnchor.constraint(equalToConstant: 120),
+      media.heightAnchor.constraint(equalToConstant: 120),
+      row.topAnchor.constraint(equalTo: card.topAnchor, constant: 12),
       row.bottomAnchor.constraint(equalTo: card.bottomAnchor, constant: -12),
       choices.topAnchor.constraint(equalTo: adView.topAnchor, constant: 6),
       choices.trailingAnchor.constraint(equalTo: adView.trailingAnchor, constant: -6),
@@ -153,7 +156,7 @@ final class LastReelNativeAdFactory: NSObject, FLTNativeAdFactory {
   ///   with the link's space under the action.
   /// - stripPortrait: the same, with the link's space under the headline in
   ///   place of the body.
-  /// - compact: "AD" on top (the link opposite), then a 72 × 56 still and
+  /// - compact: "AD" on top (the link opposite), then 128 × 128 media and
   ///   the headline.
   private func createTabletAd(
     _ nativeAd: NativeAd,
@@ -173,8 +176,8 @@ final class LastReelNativeAdFactory: NSObject, FLTNativeAdFactory {
     adView.backgroundColor = .clear
 
     let stillSize: CGSize = compact
-      ? CGSize(width: 72, height: 56)
-      : portrait ? CGSize(width: 168, height: 96) : CGSize(width: 184, height: 104)
+      ? CGSize(width: 128, height: 128)
+      : portrait ? CGSize(width: 168, height: 128) : CGSize(width: 184, height: 128)
     func framed(_ view: UIView, radius: CGFloat) {
       view.backgroundColor = tint
       view.layer.cornerRadius = radius
@@ -206,19 +209,48 @@ final class LastReelNativeAdFactory: NSObject, FLTNativeAdFactory {
     headline.text = nativeAd.headline
     adView.headlineView = headline
 
+    let appIcon = UIImageView()
+    appIcon.contentMode = .scaleAspectFit
+    appIcon.image = nativeAd.icon?.image
+    appIcon.isHidden = nativeAd.icon == nil
+    appIcon.translatesAutoresizingMaskIntoConstraints = false
+    NSLayoutConstraint.activate([
+      appIcon.widthAnchor.constraint(equalToConstant: 24),
+      appIcon.heightAnchor.constraint(equalToConstant: 24),
+    ])
+    adView.iconView = appIcon
+
     let root: UIView
     if compact {
-      // The compact still is too small for a MediaView (AdMob asks for
-      // 120 pt), so it shows the ad's icon asset instead.
-      let icon = UIImageView()
-      icon.contentMode = .scaleAspectFill
-      icon.image = nativeAd.icon?.image
-      framed(icon, radius: 10)
-      adView.iconView = icon
+      let media = MediaView()
+      media.contentMode = .scaleAspectFit
+      media.mediaContent = nativeAd.mediaContent
+      framed(media, radius: 10)
+      adView.mediaView = media
 
       let top = UIStackView(arrangedSubviews: [badge, UIView()])
       top.axis = .horizontal
-      let body = UIStackView(arrangedSubviews: [icon, headline])
+      let title = UIStackView(arrangedSubviews: [appIcon, headline])
+      title.axis = .horizontal
+      title.spacing = 6
+      title.alignment = .center
+      let cta = UIButton(type: .custom)
+      cta.setTitle(nativeAd.callToAction, for: .normal)
+      cta.setTitleColor(ink, for: .normal)
+      cta.titleLabel?.font = .systemFont(ofSize: 13, weight: .semibold)
+      cta.contentEdgeInsets = UIEdgeInsets(top: 8, left: 12, bottom: 8, right: 12)
+      cta.backgroundColor = surface
+      cta.layer.borderColor = line2.cgColor
+      cta.layer.borderWidth = 1 / UIScreen.main.scale
+      cta.layer.cornerRadius = 16
+      cta.isHidden = (nativeAd.callToAction ?? "").isEmpty
+      cta.isUserInteractionEnabled = false
+      adView.callToActionView = cta
+      let details = UIStackView(arrangedSubviews: [title, cta])
+      details.axis = .vertical
+      details.spacing = 8
+      details.alignment = .leading
+      let body = UIStackView(arrangedSubviews: [media, details])
       body.axis = .horizontal
       body.spacing = 10
       body.alignment = .center
@@ -238,7 +270,7 @@ final class LastReelNativeAdFactory: NSObject, FLTNativeAdFactory {
       advertiser.isHidden = (nativeAd.advertiser ?? "").isEmpty
       adView.advertiserView = advertiser
 
-      let tag = UIStackView(arrangedSubviews: [badge, advertiser])
+      let tag = UIStackView(arrangedSubviews: [badge, appIcon, advertiser])
       tag.axis = .horizontal
       tag.spacing = 8
       tag.alignment = .center

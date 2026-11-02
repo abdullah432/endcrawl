@@ -30,7 +30,7 @@ import 'export_sheet.dart' show RenderProgressBar;
 
 /// The tablet's render page (T6.2, P6.2): the frame being encoded on the
 /// monitor, the progress card under it and, on Free, the one static ad in
-/// the wait — gone when the render ends. Beside it in landscape (below in
+/// the wait, followed by a separate Ready ad when it ends. Beside it in landscape (below in
 /// portrait) is the Renders list: this render once it has finished or
 /// failed, with its actions, then the last render of each other project.
 ///
@@ -60,18 +60,23 @@ class TabletRenderPage extends ConsumerWidget {
           icon: Icons.close_rounded,
           size: 44,
           tooltip: 'Close',
-          onPressed: () => closeEcSheet(context),
+          onPressed: () {
+            ref.read(exportControllerProvider.notifier).closeCompletedTabletRender();
+            closeEcSheet(context);
+          },
         ),
       ],
     );
     final status = _StatusCard(run: run, portrait: portrait);
-    // The wait's ad only while the encoder runs; the rating question can
-    // take its place, as on the phone. A failure is a problem, not a wait.
+    // Rendering and Ready use separate units. The rating question can
+    // take an ad's place, as on the phone. Failed renders show no ad.
     final slot = switch (run.phase) {
       ExportPhase.running => RateSlot(
         ad: TabletAdSlot(AdPlacement.rendering, layout: AdLayout.strip, portrait: portrait, gap: 14),
       ),
-      ExportPhase.done => const RateSlot(ad: SizedBox.shrink()),
+      ExportPhase.done => RateSlot(
+        ad: TabletAdSlot(AdPlacement.exportComplete, layout: AdLayout.strip, portrait: portrait, gap: 14),
+      ),
       ExportPhase.failed => const SizedBox.shrink(),
     };
     final renders = _RendersPanel(run: run, portrait: portrait);

@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart' show defaultTargetPlatform, TargetPlatform;
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 
 import '../../../core/config/ad_config.dart';
@@ -122,15 +121,15 @@ class AdMobAdService implements AdService {
         debugPrint('AdMob: consent does not allow ad requests yet');
         return false;
       }
-      if (adDiagnosticsEnabled) {
-        const configuredIds = String.fromEnvironment('ADMOB_TEST_DEVICE_IDS');
-        final ids = configuredIds.split(',').map((id) => id.trim())
-            .where((id) => id.isNotEmpty).toList();
-        if (ids.isNotEmpty) {
-          await MobileAds.instance.updateRequestConfiguration(
-            RequestConfiguration(testDeviceIds: ids));
-          recordAdDiagnostic('Configured ${ids.length} SDK test device(s); production ad units remain selected unless sample override is enabled.');
-        }
+      // A release may register specific test phones without enabling the
+      // diagnostic UI or changing the ad units for other users.
+      const configuredIds = String.fromEnvironment('ADMOB_TEST_DEVICE_IDS');
+      final ids = configuredIds.split(',').map((id) => id.trim())
+          .where((id) => id.isNotEmpty).toList();
+      if (ids.isNotEmpty) {
+        await MobileAds.instance.updateRequestConfiguration(
+          RequestConfiguration(testDeviceIds: ids));
+        recordAdDiagnostic('Configured ${ids.length} SDK test device(s); production ad units remain selected unless sample override is enabled.');
       }
       await MobileAds.instance.initialize();
       debugPrint(
@@ -373,7 +372,7 @@ class AdMobAdService implements AdService {
             _exportInterstitial = ad;
             _exportInterstitialLoadedAt = _now();
             _exportInterstitialAttempts = 0;
-            debugPrint('AdMob: export interstitial loaded');
+            recordAdDiagnostic('export interstitial loaded');
             _exportLoadFinished();
           },
           onAdFailedToLoad: (error) {
@@ -405,8 +404,12 @@ class AdMobAdService implements AdService {
 
   @override
   Future<void> showExportInterstitial() async {
-    if (_exportInterstitialShowing || !_canPresentExportAd) return;
+    if (_exportInterstitialShowing || !_canPresentExportAd) {
+      recordAdDiagnostic('export interstitial skipped: showing=$_exportInterstitialShowing, enabled=${_enabled()}, fullscreen=$_fullScreen, lifecycle=${WidgetsBinding.instance.lifecycleState}');
+      return;
+    }
     if (_exportInterstitial == null) {
+      recordAdDiagnostic('export interstitial skipped: inventory not ready');
       // Never wait: the render is done and its file is on screen. A request
       // that lands later is kept for the next render, not shown over this.
       if (!(_exportInterstitialRetry?.isActive ?? false)) {
@@ -453,10 +456,10 @@ class AdMobAdService implements AdService {
 
     ad.fullScreenContentCallback = FullScreenContentCallback(
       onAdShowedFullScreenContent: (_) =>
-          debugPrint('AdMob: export interstitial displayed'),
+          recordAdDiagnostic('export interstitial displayed'),
       onAdDismissedFullScreenContent: (_) => ended(),
       onAdFailedToShowFullScreenContent: (_, error) {
-        debugPrint('AdMob: export interstitial show failed — $error');
+        recordAdDiagnostic('export interstitial show failed — $error');
         ended();
       },
     );
@@ -464,7 +467,7 @@ class AdMobAdService implements AdService {
     try {
       await ad.show();
     } catch (error) {
-      debugPrint('AdMob: export interstitial show failed — $error');
+      recordAdDiagnostic('export interstitial show failed — $error');
       ended();
     }
     await dismissed.future;
@@ -683,7 +686,7 @@ class _NativeAdViewState extends State<_NativeAdView> {
     // The tablet shapes fill the card the slot draws around them; the
     // phone row draws its own rounded corners natively.
     final creative = widget.style.layout == AdLayout.row
-        ? SizedBox(height: defaultTargetPlatform == TargetPlatform.iOS ? 260 : 76, child: AdWidget(ad: ad))
+        ? SizedBox(height: 144, child: AdWidget(ad: ad))
         : AdWidget(ad: ad);
     return widget.framed(creative);
   }

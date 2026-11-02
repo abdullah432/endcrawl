@@ -18,8 +18,8 @@ abstract final class TabletAdMetrics {
   /// The compact card's "Ad" row grows with the text size ([text]).
   static double height(AdLayout layout, {bool portrait = false, TextScaler text = TextScaler.noScaling}) =>
       switch (layout) {
-        AdLayout.strip => portrait ? 126 : 134,
-        AdLayout.compact => 104 + (text.scale(16) - 16).clamp(0, 40),
+        AdLayout.strip => 156,
+        AdLayout.compact => 176 + (text.scale(16) - 16).clamp(0, 40),
         AdLayout.row => 76,
       };
 
@@ -30,10 +30,10 @@ abstract final class TabletAdMetrics {
 
   static double radius(AdLayout layout) => layout == AdLayout.compact ? 16 : 22;
 
-  /// The 16:9 still in a strip; the compact card's is 72 × 56.
+  /// Media stays at least 120 logical pixels tall, including compact cards.
   static Size image(AdLayout layout, {bool portrait = false}) => switch (layout) {
-    AdLayout.strip => portrait ? const Size(168, 96) : const Size(184, 104),
-    _ => const Size(72, 56),
+    AdLayout.strip => portrait ? const Size(168, 128) : const Size(184, 128),
+    _ => const Size(128, 128),
   };
 
   static double imageGap(AdLayout layout, {bool portrait = false}) =>

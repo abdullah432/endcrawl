@@ -219,7 +219,7 @@ void main() {
   group('tablet', () {
     const tablet = Size(1194, 834);
 
-    testWidgets('Export opens the page with no ad; a finished render shows one', (
+    testWidgets('a finished tablet render waits for the cross before showing its ad', (
       tester,
     ) async {
       await app.pump(tester, size: tablet);
@@ -230,7 +230,37 @@ void main() {
       expect(find.text('Render the roll.'), findsOneWidget);
       await tap(tester, 'Render');
       await finish(tester);
+      expect(app.ads.exportInterstitialShown, 0);
+      await tap(tester, 'Share');
+      expect(app.ads.exportInterstitialShown, 0);
+      await tester.tap(find.byTooltip('Close').last);
+      await tester.pumpAndSettle();
       expect(app.ads.exportInterstitialShown, 1);
+    }, variant: mobile);
+
+
+    testWidgets('Done closes a completed tablet render without an interstitial', (tester) async {
+      await app.pump(tester, size: tablet);
+      await tap(tester, 'The Long Way Down');
+      await tap(tester, 'Export');
+      await tap(tester, 'Render');
+      await finish(tester);
+      expect(app.ads.exportInterstitialShown, 0);
+      await tap(tester, 'Done');
+      expect(app.ads.exportInterstitialShown, 0);
+    }, variant: mobile);
+
+    testWidgets('closing a running tablet render never schedules a completion ad', (tester) async {
+      app.encoder.frameTime = const Duration(milliseconds: 50);
+      await app.pump(tester, size: tablet);
+      await tap(tester, 'The Long Way Down');
+      await tap(tester, 'Export');
+      await tap(tester, 'Render');
+      await tester.tap(find.byTooltip('Close').last);
+      await tester.pumpAndSettle();
+      await finish(tester);
+      await tester.pump(const Duration(seconds: 2));
+      expect(app.ads.exportInterstitialShown, 0);
     }, variant: mobile);
 
     testWidgets('Export… from the project menu opens straight on the page', (
