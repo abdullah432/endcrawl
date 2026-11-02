@@ -47,6 +47,15 @@ final class LastReelNativeAdFactory: NSObject, FLTNativeAdFactory {
     card.translatesAutoresizingMaskIntoConstraints = false
     adView.addSubview(card)
 
+    // Main image/video assets must be rendered by the SDK's MediaView.
+    // The icon below remains the advertiser's separate app icon.
+    let media = MediaView()
+    media.translatesAutoresizingMaskIntoConstraints = false
+    media.contentMode = .scaleAspectFit
+    media.mediaContent = nativeAd.mediaContent
+    card.addSubview(media)
+    adView.mediaView = media
+
     let icon = UIImageView()
     icon.contentMode = .scaleAspectFill
     icon.backgroundColor = tint
@@ -114,8 +123,13 @@ final class LastReelNativeAdFactory: NSObject, FLTNativeAdFactory {
       card.bottomAnchor.constraint(equalTo: adView.bottomAnchor),
       row.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 12),
       row.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -12),
-      row.centerYAnchor.constraint(equalTo: card.centerYAnchor),
-      row.topAnchor.constraint(greaterThanOrEqualTo: card.topAnchor, constant: 10),
+      media.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 12),
+      media.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -12),
+      media.topAnchor.constraint(equalTo: card.topAnchor, constant: 12),
+      media.heightAnchor.constraint(equalToConstant: 160),
+      row.topAnchor.constraint(equalTo: media.bottomAnchor, constant: 12),
+      row.heightAnchor.constraint(equalToConstant: 64),
+      row.bottomAnchor.constraint(equalTo: card.bottomAnchor, constant: -12),
       choices.topAnchor.constraint(equalTo: adView.topAnchor, constant: 6),
       choices.trailingAnchor.constraint(equalTo: adView.trailingAnchor, constant: -6),
       choices.widthAnchor.constraint(equalToConstant: 15),

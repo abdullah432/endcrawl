@@ -131,6 +131,23 @@ void main() {
     await tester.pump();
   }
 
+  testWidgets('diagnostic device IDs are applied before initialization and ad requests', (tester) async {
+    await mount(tester);
+    const diagnostic = bool.fromEnvironment('AD_DIAGNOSTICS');
+    const configured = String.fromEnvironment('ADMOB_TEST_DEVICE_IDS');
+    final ids = configured.split(',').map((id) => id.trim())
+        .where((id) => id.isNotEmpty).toList();
+    final configuration = named('MobileAds#updateRequestConfiguration');
+    if (diagnostic && ids.isNotEmpty) {
+      expect(configuration, hasLength(1));
+      expect((configuration.single.arguments as Map)['testDeviceIds'], ids);
+      expect(calls.indexOf(configuration.single), lessThan(calls.indexOf(named('MobileAds#initialize').single)));
+      expect(calls.indexOf(configuration.single), lessThan(calls.indexOf(named('loadNativeAd').single)));
+    } else {
+      expect(configuration, isEmpty);
+    }
+  });
+
   for (final platform in [TargetPlatform.iOS, TargetPlatform.android]) {
     testWidgets(
       'the editor and Timing & Look request their own native units on $platform',

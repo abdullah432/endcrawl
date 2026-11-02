@@ -1,12 +1,14 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show defaultTargetPlatform, TargetPlatform;
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 
 import '../../../core/config/ad_config.dart';
 import '../../../core/theme/theme_context.dart';
 import '../../../core/theme/ec_palette.dart';
 import 'ad_service.dart';
+import 'ad_diagnostics.dart';
 
 /// [AdService] on Google AdMob.
 ///
@@ -46,6 +48,22 @@ class AdMobAdService implements AdService {
   }) : _units = units ?? AdUnits.current,
        _enabled = enabled ?? (() => true),
        _now = now ?? DateTime.now;
+
+  Future<void> openInspector() async {
+    if (!adDiagnosticsEnabled) return;
+    try {
+      if (!await _ensureReady().timeout(const Duration(seconds: 20))) {
+        recordAdDiagnostic('Inspector blocked: consent, account or platform does not permit ads.');
+        return;
+      }
+      MobileAds.instance.openAdInspector((error) {
+        recordAdDiagnostic(error == null ? 'Inspector closed: success' :
+          'Inspector failed: ${error.domain}/${error.code}: ${error.message}');
+      });
+    } catch (error) {
+      recordAdDiagnostic('Inspector failed: $error');
+    }
+  }
 
   /// Consent, then the SDK. False when ads can't be requested — no units
   /// for this platform, or consent not given.
@@ -104,6 +122,16 @@ class AdMobAdService implements AdService {
         debugPrint('AdMob: consent does not allow ad requests yet');
         return false;
       }
+      if (adDiagnosticsEnabled) {
+        const configuredIds = String.fromEnvironment('ADMOB_TEST_DEVICE_IDS');
+        final ids = configuredIds.split(',').map((id) => id.trim())
+            .where((id) => id.isNotEmpty).toList();
+        if (ids.isNotEmpty) {
+          await MobileAds.instance.updateRequestConfiguration(
+            RequestConfiguration(testDeviceIds: ids));
+          recordAdDiagnostic('Configured ${ids.length} SDK test device(s); production ad units remain selected unless sample override is enabled.');
+        }
+      }
       await MobileAds.instance.initialize();
       debugPrint(
         'AdMob: SDK ready (${_units.libraryNative.contains('3940256099942544') ? 'test' : 'production'} units)',
@@ -117,14 +145,19 @@ class AdMobAdService implements AdService {
 
   AdRequest get _request => AdRequest(nonPersonalizedAds: !_personalised());
 
-  String _nativeUnit(AdPlacement placement) => switch (placement) {
+  String _nativeUnit(AdPlacement placement) {
+    if (AdUnits.diagnosticNativeTestAds) {
+      return AdUnits.diagnosticNativeUnit!;
+    }
+    return switch (placement) {
     AdPlacement.library => _units!.libraryNative,
     AdPlacement.exportSettings => _units!.exportSettingsNative,
     AdPlacement.rendering => _units!.renderingNative,
     AdPlacement.exportComplete => _units!.exportReadyNative,
     AdPlacement.editor => _units!.editorNative,
     AdPlacement.timingLook => _units!.timingLookNative,
-  };
+    };
+  }
 
   @override
   Widget nativeAd(
@@ -135,10 +168,16 @@ class AdMobAdService implements AdService {
     if (_units == null) return const SizedBox.shrink();
     final unit = _nativeUnit(placement);
     return _NativeAdView(
+      diagnosticLabel: "${placement.name} unit=$unit",
       key: ValueKey((placement, style.layout, style.portrait)),
       style: style,
       load: (colours, listener) async {
-        if (!await _ensureReady()) return null;
+        recordAdDiagnostic('native ${placement.name}: preparing unit=$unit');
+        if (!await _ensureReady()) {
+          recordAdDiagnostic('native ${placement.name}: blocked before request (consent/account/platform)');
+          return null;
+        }
+        recordAdDiagnostic('native ${placement.name}: requesting unit=$unit factory=$nativeCardFactoryId');
         final ad = NativeAd(
           adUnitId: unit,
           factoryId: nativeCardFactoryId,
@@ -504,6 +543,7 @@ Map<String, Object> nativeCardLayout(AdSlotStyle style, EcPalette p) {
 /// nothing until the ad has loaded — at most the space [AdSlotStyle.reserve]
 /// keeps for it — and nothing if it never does.
 class _NativeAdView extends StatefulWidget {
+  final String diagnosticLabel;
   final Future<NativeAd?> Function(
     Map<String, Object> colours,
     NativeAdListener listener,
@@ -513,6 +553,7 @@ class _NativeAdView extends StatefulWidget {
   final AdSlotStyle style;
 
   const _NativeAdView({
+    required this.diagnosticLabel,
     super.key,
     required this.load,
     required this.framed,
@@ -575,11 +616,13 @@ class _NativeAdViewState extends State<_NativeAdView> {
               _loaded = true;
             });
             widget.style.onShown?.call();
+            recordAdDiagnostic('native ${widget.diagnosticLabel}: loaded; response=${ad.responseInfo}');
             debugPrint('AdMob: native ad loaded');
           },
           onAdClicked: (_) => widget.style.onTapped?.call(),
           onAdFailedToLoad: (ad, error) {
             failed = true;
+            recordAdDiagnostic('native ${widget.diagnosticLabel}: failed ${error.domain}/${error.code}: ${error.message}; response=${error.responseInfo}');
             _logFailure('native', error);
             ad.dispose();
             if (!mounted) return;
@@ -602,6 +645,7 @@ class _NativeAdViewState extends State<_NativeAdView> {
     } catch (error) {
       if (!mounted) return;
       _loading = false;
+      recordAdDiagnostic('native ${widget.diagnosticLabel}: request exception $error');
       debugPrint('AdMob: native request failed — $error');
       _retryLater();
     }
@@ -639,7 +683,7 @@ class _NativeAdViewState extends State<_NativeAdView> {
     // The tablet shapes fill the card the slot draws around them; the
     // phone row draws its own rounded corners natively.
     final creative = widget.style.layout == AdLayout.row
-        ? SizedBox(height: 76, child: AdWidget(ad: ad))
+        ? SizedBox(height: defaultTargetPlatform == TargetPlatform.iOS ? 260 : 76, child: AdWidget(ad: ad))
         : AdWidget(ad: ad);
     return widget.framed(creative);
   }

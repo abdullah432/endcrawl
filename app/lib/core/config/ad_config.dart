@@ -47,6 +47,12 @@ class AdUnits {
 
   /// The units for this build and platform, or null where there are none
   /// (a release build on a platform without real units yet shows no ads).
+  static const diagnosticNativeTestAds = bool.fromEnvironment('AD_DIAGNOSTICS') &&
+      bool.fromEnvironment('AD_NATIVE_TEST_ADS');
+
+  static String? get diagnosticNativeUnit => !diagnosticNativeTestAds ? null :
+      forBuild(platform: defaultTargetPlatform, releaseMode: false)?.libraryNative;
+
   static AdUnits? get current => kIsWeb
       ? null
       : forBuild(platform: defaultTargetPlatform, releaseMode: kReleaseMode);
