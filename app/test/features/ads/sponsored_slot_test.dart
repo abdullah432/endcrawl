@@ -50,6 +50,9 @@ void main() {
         ),
       );
       expect(ads.nativeRequests, 0);
+      plan.add(const Entitlement.checking());
+      await tester.pumpAndSettle();
+      expect(ads.nativeRequests, 0);
       plan.add(const Entitlement.free());
       await tester.pumpAndSettle();
       expect(ads.nativeRequests, 1);

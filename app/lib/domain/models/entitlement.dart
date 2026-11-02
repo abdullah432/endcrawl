@@ -21,6 +21,10 @@ class Entitlement {
 
   final Plan plan;
 
+  /// False until the store has answered for the current account. Checking
+  /// keeps Free's access limits, but must never enable ads or claim Pro.
+  final bool isResolved;
+
   /// Set for Pro: how it's billed and when it renews (7.3).
   final BillingPeriod? period;
   final DateTime? renewsAt;
@@ -33,7 +37,11 @@ class Entitlement {
   /// Free after having had Pro (a trial or a subscription that ended).
   final bool lapsed;
 
-  const Entitlement.free({this.lapsed = false})
+  const Entitlement.free({bool lapsed = false}) : this._free(lapsed: lapsed, isResolved: true);
+
+  const Entitlement.checking() : this._free(lapsed: false, isResolved: false);
+
+  const Entitlement._free({required this.lapsed, required this.isResolved})
     : plan = Plan.free,
       period = null,
       renewsAt = null,
@@ -43,6 +51,7 @@ class Entitlement {
 
   const Entitlement.pro({this.period, this.renewsAt, this.willRenew = true, this.managementUrl, this.trialEndsAt})
     : plan = Plan.pro,
+      isResolved = true,
       lapsed = false;
 
   bool get isPro => plan == Plan.pro;
@@ -61,7 +70,7 @@ class Entitlement {
   /// Null means unlimited.
   int? get projectLimit => isPro ? null : freeProjectLimit;
 
-  bool get showsAds => !isPro;
+  bool get showsAds => isResolved && !isPro;
 
   /// Whether one more project fits, given how many exist.
   bool canAddProject(int existing) => projectLimit == null || existing < projectLimit!;

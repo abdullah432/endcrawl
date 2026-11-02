@@ -163,6 +163,61 @@ void main() {
     expect((await repository.watch().first).isPro, true);
   });
 
+  for (final pro in [false, true]) {
+    test('does not enable ads before the first store response (Pro=$pro)', () async {
+      final started = Completer<void>();
+      final response = Completer<Object?>();
+      intercept = (call) async {
+        if (call.method == 'getCustomerInfo') {
+          if (!started.isCompleted) started.complete();
+          return response.future;
+        }
+        return null;
+      };
+      repository.setUser('a');
+      await started.future;
+      final checking = await repository.watch().first;
+      response.complete(customer(pro: pro));
+      await repository.refresh();
+      expect(checking.isPro, false);
+      expect(checking.showsAds, false);
+      expect(checking.isResolved, false);
+      expect(checking.projectLimit, Entitlement.freeProjectLimit);
+      final resolved = await repository.watch().first;
+      expect(resolved.isResolved, true);
+      expect(resolved.isPro, pro);
+      expect(resolved.showsAds, !pro);
+    });
+  }
+
+  test('a failed first store check does not turn an unknown account into ad-supported Free', () async {
+    intercept = (call) async {
+      if (call.method == 'getCustomerInfo') throw PlatformException(code: '10');
+      return null;
+    };
+    repository.setUser('a');
+    await repository.refresh();
+    expect((await repository.watch().first).isPro, false);
+    expect((await repository.watch().first).showsAds, false);
+    intercept = null;
+    await repository.refresh();
+    expect((await repository.watch().first).showsAds, true);
+  });
+
+  test('a failed refresh keeps previously verified Pro access', () async {
+    owned = true;
+    repository.setUser('a');
+    await repository.refresh();
+    intercept = (call) async {
+      if (call.method == 'getCustomerInfo') throw PlatformException(code: '10');
+      return null;
+    };
+    await repository.refresh();
+    final entitlement = await repository.watch().first;
+    expect(entitlement.isPro, true);
+    expect(entitlement.showsAds, false);
+  });
+
   test('late restore result cannot grant access after account switch', () async {
     repository.setUser('a');
     await repository.refresh();
@@ -179,6 +234,7 @@ void main() {
     await started.future;
     repository.setUser('b');
     expect((await repository.watch().first).isPro, false);
+    expect((await repository.watch().first).showsAds, false);
     response.complete(customer(pro: true));
     expect((await restore).isOk, false);
     await repository.refresh();

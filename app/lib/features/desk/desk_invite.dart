@@ -115,7 +115,9 @@ abstract final class DeskInvite {
     final container = ProviderScope.containerOf(context, listen: false);
     if (container.read(iosFreeLaunchProvider)) return;
     if (container.read(deskInviteOpenProvider)) return;
-    final pro = container.read(entitlementProvider).value?.isPro ?? false;
+    final entitlement = container.read(entitlementProvider).value;
+    if (entitlement == null || !entitlement.isResolved) return;
+    final pro = entitlement.isPro;
     container.read(deskInviteOpenProvider.notifier).set(true);
     try {
       await _show(context, container, pro, container.read(deskInviteStoreProvider), container.read(clockProvider)(),
@@ -129,15 +131,15 @@ abstract final class DeskInvite {
     final container = ProviderScope.containerOf(context, listen: false);
     if (container.read(iosFreeLaunchProvider)) return;
     final store = container.read(deskInviteStoreProvider);
-    // The plan reads as Free until the store (and, for a tester, Firestore)
-    // answers, and changes under a library still showing the old one: wait
-    // for all three to settle, or a Pro library would be sold Pro.
+    // Wait for the actual store answer as well as the library and tester
+    // state, or a Pro account could be shown the Free upgrade invite.
     bool settled(AsyncValue<Object?> value) => value.hasValue && !value.isLoading;
     final latest = container.read(libraryViewProvider);
     if (!settled(container.read(entitlementProvider)) || !settled(container.read(testerAllowedProvider)) || !settled(latest)) {
       return;
     }
     final view = latest.requireValue;
+    if (!(container.read(entitlementProvider).value?.isResolved ?? false) || !view.entitlement.isResolved) return;
     final now = container.read(clockProvider)();
     if (container.read(deskInviteShownThisSessionProvider) ||
         container.read(deskInviteOpenProvider) ||

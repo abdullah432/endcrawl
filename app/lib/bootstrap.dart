@@ -231,8 +231,8 @@ final entitlementRepositoryProvider = Provider<EntitlementRepository>((ref) {
   return repository;
 });
 
-/// The signed-in account's plan. Defaults to Free while loading, so a slow
-/// store never makes the cap disappear.
+/// The signed-in account's plan. Checking keeps Free's access limits while
+/// suppressing ads until the store has resolved the current account.
 final entitlementProvider = StreamProvider<Entitlement>((ref) {
   ref.watch(currentUidProvider);
   if (!ref.watch(verifiedWorkspaceProvider) && ref.watch(testerProProvider)) {

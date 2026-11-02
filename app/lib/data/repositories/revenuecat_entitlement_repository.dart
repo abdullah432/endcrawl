@@ -24,7 +24,7 @@ class RevenueCatEntitlementRepository with WidgetsBindingObserver implements Ent
   String? _sdkUid;
   int _generation = 0;
   bool _disposed = false;
-  Entitlement _current = const Entitlement.free();
+  Entitlement _current = const Entitlement.checking();
   final Map<String, rc.Package> _packages = {};
 
   Future<T> _serial<T>(Future<T> Function() action) {
@@ -38,7 +38,7 @@ class RevenueCatEntitlementRepository with WidgetsBindingObserver implements Ent
     _uid = uid;
     _generation++;
     _packages.clear();
-    _publish(const Entitlement.free());
+    _publish(const Entitlement.checking());
     unawaited(refresh());
   }
 
@@ -73,7 +73,7 @@ class RevenueCatEntitlementRepository with WidgetsBindingObserver implements Ent
       });
     } catch (_) {
       // Keep the last SDK-verified plan on transient failures. A new account
-      // has already been reset to Free by setUser.
+      // is still checking after setUser, with no Pro access or ad requests.
     }
   }
 

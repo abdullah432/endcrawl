@@ -102,6 +102,24 @@ void main() {
       expect(app.ads.appOpenPreloaded, 0, reason: 'Pro never loads one');
     });
 
+    testWidgets('does not request ads while checking an existing Pro account', (tester) async {
+      final plan = FakeEntitlementRepository(const Entitlement.checking());
+      final app = AppHarness(plan: plan);
+      await app.pump(tester);
+      await leaveAndReturn(tester, app, const Duration(seconds: 15));
+      expect(app.ads.appOpenShown, 0);
+      expect(app.ads.appOpenPreloaded, 0);
+      expect(app.ads.requested, isEmpty);
+      expect(find.textContaining('CHECKING PLAN'), findsOneWidget);
+
+      plan.entitlement = const Entitlement.pro();
+      await tester.pumpAndSettle();
+      await leaveAndReturn(tester, app, const Duration(seconds: 15));
+      expect(app.ads.appOpenShown, 0);
+      expect(app.ads.appOpenPreloaded, 0);
+      expect(app.ads.requested, isEmpty);
+    });
+
     testWidgets('shows on a return mid-render, and the render still finishes', (
       tester,
     ) async {

@@ -74,8 +74,9 @@ RevenueCat dashboard verification on 2026-10-02 confirmed both products remain
 attached to `pro` and to the `default` offering's `$rc_monthly` / `$rc_annual`
 packages. The SDK selects eligible Play offers automatically. Existing focused
 billing, library, free-plan editing, and trial analytics tests passed (55 tests).
-Real Android license-tester trial purchases, cancellation, expiry, and restore
-remain unverified; dashboard configuration and mocked tests do not prove checkout.
+At that time, real Android license-tester trial purchases, cancellation, expiry,
+and restore remained unverified. See the newer device validation below;
+dashboard configuration and mocked tests alone do not prove checkout.
 
 How the app reads them (`revenuecat_entitlement_repository.dart`):
 
@@ -102,6 +103,12 @@ changes, purchases, and restores. Firebase UID is the RevenueCat app user ID.
 Sign-out/account switching clears visible access immediately; stale async results
 cannot grant the previous customer's access to the next account. No plan is read
 from client-writable Firestore fields.
+
+Before the first store answer for an account, the repository publishes a
+checking state. It grants no Pro permissions and keeps the Free project limit,
+but does not permit ads or show Free upgrade prompts. A failed initial check
+stays unresolved until a retry succeeds; a failed refresh of an already verified
+account retains its last plan. Settings offers Restore purchase while checking.
 
 Active `pro` entitlement controls unlimited projects, ad removal, and Pro exports.
 Cancellation of auto-renewal does not revoke paid access early. The subscription
@@ -135,6 +142,28 @@ purchase confirmation, cancelled purchase, pending payment, restore after
 reinstall, renewal, cancellation through the store, expiry, and switching Firebase
 accounts. Confirm transactions and entitlement updates in RevenueCat sandbox.
 A successful build and mocked tests do not establish real billing readiness.
+
+### Android device validation — 2026-11-02
+
+A local debug build was installed on a Samsung SM-S921B running Android 17.
+Google Play explicitly identified checkout as a test subscription, using
+"Test card, always approves" with no real charge. The yearly trial unlocked
+Pro in the app. The real RevenueCat webhook wrote a matching Pro entitlement
+ledger and `trialing` provider snapshot for the same Firebase UID. The accelerated
+trial then renewed, and both RevenueCat and Firestore changed to active Pro.
+
+Before the startup fix, a cold restart of that Pro account still initialized
+AdMob. With the checking state, the patched build restored Pro without AdMob
+initialization in its startup logs.
+
+The final debug APK was also tested with the designated Android tester's
+Firebase account. Yearly test checkout unlocked Pro, and the same account's
+RevenueCat entitlement, Firestore ledger, and provider snapshot agreed on active
+yearly Pro. Restore purchases confirmed "Pro restored"; a cold restart and a
+background/resume retained Pro without initializing AdMob. The subscription screen showed unlimited
+projects and ads off. Monthly checkout, pending/declined payments, cancellation,
+expiry, restore after reinstall, and iOS purchases still need separate device
+validation.
 
 ## Account audit / remaining setup
 

@@ -26,7 +26,10 @@ function run(command, args, env = process.env) {
 }
 try {
   await run('npm', ['--prefix', 'functions', 'run', 'build']);
-  writeFileSync(localFiles[0], `PROFILE_ROLLOUT_MODE=pilot\nPROFILE_PILOT_UID=${pilotUid}\nBILLING_ROLLOUT_MODE=pilot\nBILLING_PILOT_UID=local-billing-pilot\n`, { flag: 'wx', mode: 0o600 });
+  // Billing handler tests enable their in-process worker with a mocked fetch.
+  // Keep the separate emulator worker off: it cannot see that mock and must
+  // never send its dummy credential to RevenueCat when fixtures are created.
+  writeFileSync(localFiles[0], `PROFILE_ROLLOUT_MODE=pilot\nPROFILE_PILOT_UID=${pilotUid}\nBILLING_ROLLOUT_MODE=off\n`, { flag: 'wx', mode: 0o600 });
   createdFiles.push(localFiles[0]);
   writeFileSync(localFiles[1], 'REVENUECAT_API_KEY=emulator-unused\nREVENUECAT_WEBHOOK_AUTH=Bearer billing-emulator-only\n', { flag: 'wx', mode: 0o600 });
   createdFiles.push(localFiles[1]);

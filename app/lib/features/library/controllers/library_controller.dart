@@ -62,6 +62,7 @@ class LibraryView {
   /// "Reel · 7 · Pro". [countOnTrial] swaps the trial's countdown for the
   /// project count — right after a duplicate (1.7).
   String reelLabel({bool countOnTrial = false}) {
+    if (!entitlement.isResolved) return 'Reel · Checking plan…';
     final days = trialDaysLeft;
     if (days != null) {
       return countOnTrial ? 'Reel · Pro trial · ${plural(count, 'project')}' : 'Reel · Pro trial · ${plural(days, 'day')} left';
@@ -76,7 +77,7 @@ class LibraryView {
 
 final libraryViewProvider = FutureProvider<LibraryView>((ref) async {
   final summaries = await ref.watch(projectSummariesProvider.future);
-  final entitlement = ref.watch(entitlementProvider).value ?? const Entitlement.free();
+  final entitlement = ref.watch(entitlementProvider).value ?? const Entitlement.checking();
 
   final byCreation = [...summaries]..sort((a, b) => a.createdAt.compareTo(b.createdAt));
   final reels = {for (final (i, s) in byCreation.indexed) s.id: i + 1};

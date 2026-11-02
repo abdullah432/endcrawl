@@ -128,6 +128,20 @@ void main() {
   });
 
   group('when it shows', () {
+    testWidgets('waits for store verification before choosing the Free or Pro invite', (tester) async {
+      final plan = FakeEntitlementRepository(const Entitlement.checking());
+      final app = AppHarness(plan: plan, desk: InMemoryDeskInviteStore(), iosFreeLaunch: false);
+      await app.pump(tester);
+      expect(freeSheet, findsNothing);
+      expect(proSheet, findsNothing);
+      expect(app.desk.quietUntil, isNull);
+
+      plan.entitlement = const Entitlement.pro();
+      await tester.pumpAndSettle();
+      expect(freeSheet, findsNothing);
+      expect(proSheet, findsOneWidget);
+    });
+
     testWidgets('Not now keeps it away for 30 days', (tester) async {
       final app = harness();
       await app.pump(tester);

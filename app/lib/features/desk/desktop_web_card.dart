@@ -19,7 +19,9 @@ class DesktopWebCard extends ConsumerWidget {
     if (ref.watch(iosFreeLaunchProvider)) return const SizedBox.shrink();
     final p = context.palette;
     final t = context.type;
-    final pro = ref.watch(entitlementProvider).value?.isPro ?? false;
+    final entitlement = ref.watch(entitlementProvider).value;
+    if (entitlement == null || !entitlement.isResolved) return const SizedBox.shrink();
+    final pro = entitlement.isPro;
     final action = EcButton.secondary(
       label: pro ? 'Send the link' : 'Preview',
       size: EcButtonSize.medium,

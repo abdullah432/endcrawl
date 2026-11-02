@@ -235,7 +235,7 @@ class _ProjectList extends ConsumerWidget {
     ];
     final readOnly = ref.watch(readOnlyProjectIdsProvider);
     final showTrialOffer =
-        !view.entitlement.isPro && view.isFull && !ui.freeingSlot;
+        view.entitlement.isResolved && !view.entitlement.isPro && view.isFull && !ui.freeingSlot;
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 22),

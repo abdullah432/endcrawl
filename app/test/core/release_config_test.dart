@@ -44,7 +44,7 @@ void main() {
             final active = enabled && platform == TargetPlatform.iOS && !web;
             expect(container.read(iosFreeLaunchProvider), active);
             expect(container.read(projectLimitProvider), active ? isNull : 2);
-            expect(container.read(webPreviewProvider), web);
+            expect(container.read(webPreviewProvider), web || platform == TargetPlatform.macOS);
             expect(
               container.read(entitlementProvider).requireValue,
               same(free),

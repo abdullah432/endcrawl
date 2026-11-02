@@ -767,7 +767,7 @@ class _PlanCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final p = context.palette;
     final t = context.type;
-    final entitlement = ref.watch(entitlementProvider).value ?? const Entitlement.free();
+    final entitlement = ref.watch(entitlementProvider).value ?? const Entitlement.checking();
     final count = ref.watch(projectSummariesProvider).value?.length ?? 0;
     final plan = ref.watch(planControllerProvider);
     final limit = entitlement.projectLimit;
@@ -781,6 +781,20 @@ class _PlanCard extends ConsumerWidget {
       await ref.read(planControllerProvider.notifier).restore();
       final message = ref.read(planControllerProvider).message;
       if (message != null && context.mounted) showEcToast(context, message);
+    }
+
+    if (!entitlement.isResolved) {
+      return EcNotice(
+        tone: EcTone.neutral,
+        icon: Icons.hourglass_empty_rounded,
+        title: 'Checking your plan…',
+        actions: [
+          TextButton(
+            onPressed: plan.busy ? null : restore,
+            child: const Text('Restore purchase'),
+          ),
+        ],
+      );
     }
 
     // T7.1 — on a tablet the plan leads the detail pane as a full card.

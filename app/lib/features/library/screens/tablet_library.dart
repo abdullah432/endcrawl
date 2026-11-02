@@ -304,7 +304,7 @@ class _Grid extends ConsumerWidget {
     ].where((i) => needle.isEmpty || i.summary.title.toLowerCase().contains(needle)).toList();
 
     final free = !view.entitlement.isPro && view.limit != null;
-    final showPlan = free && view.isFull && !ui.freeingSlot && needle.isEmpty;
+    final showPlan = view.entitlement.isResolved && free && view.isFull && !ui.freeingSlot && needle.isEmpty;
     // P1.2: on Free the portrait library shows two large cards.
     final large = portrait && free;
     final gap = portrait ? 14.0 : 16.0;
