@@ -6,12 +6,36 @@ ads, with the App Tracking Transparency pre-prompt three days after install.
 
 ## Version
 
-`pubspec.yaml` is `1.0.1+2` (version `1.0.1`, build `2`). Every later upload
-needs a higher build number.
+Pass the iOS version explicitly when `pubspec.yaml` is set to an Android
+release. Build 10 was rejected for ITMS-91064; its replacement is `1.0.2 (11)`.
+Every later upload needs a higher build number.
 
 ```sh
-flutter build ipa --release --export-options-plist=ios/ExportOptions.plist
+python3 tool/validate_privacy_manifests.py ios/Runner/PrivacyInfo.xcprivacy
+flutter build ipa --release --target=lib/main.dart --build-name=1.0.2 --build-number=11 \
+  --dart-define=AD_DIAGNOSTICS=false --dart-define=AD_NATIVE_TEST_ADS=false \
+  --export-options-plist=ios/ExportOptions.plist
+python3 tool/validate_privacy_manifests.py build/ios/archive/Runner.xcarchive
+python3 tool/validate_privacy_manifests.py build/ios/ipa/LastReel.ipa
 ```
+
+## Privacy manifest validation
+
+The app declares tracking because AdMob can use the IDFA after ATT permission.
+Its tracking domain is `googleads.g.doubleclick.net`, Google's ad-request host.
+Keep the list aligned with the advertising services actually integrated.
+
+Apple's ITMS-91064 wording mentions domains with tracking disabled, but the
+reverse combination is also invalid: tracking enabled with an empty domain
+array. Build 10 contained that reverse mismatch in the app's root manifest.
+Keep tracking enabled and supply the domain; do not remove truthful tracking
+or collected-data disclosures just to pass validation. The preflight above
+scans every embedded manifest, including SDK bundles, in the actual IPA.
+Do not patch or re-sign the rejected IPA; rebuild it from corrected source.
+
+References:
+- https://developer.apple.com/documentation/technotes/tn3181-debugging-invalid-privacy-manifest
+- https://developers.google.com/admob/android/network-tracing (Google's documented ad-request host)
 
 ## AdMob console (owner)
 
