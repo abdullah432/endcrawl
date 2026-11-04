@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -274,6 +275,15 @@ Future<AppServices> bootstrap() async {
   }
   pilotStartup('initializing Firebase');
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  // Firebase is for usage analytics, not advertising audiences. Do not
+  // infer advertising consent from its separate usage-analytics setting.
+  if (!kIsWeb && defaultTargetPlatform == TargetPlatform.iOS) {
+    await FirebaseAnalytics.instance.setConsent(
+      adStorageConsentGranted: false,
+      adUserDataConsentGranted: false,
+      adPersonalizationSignalsConsentGranted: false,
+    );
+  }
   pilotStartup('Firebase ready');
 
   // Offline persistence is on by default on iOS and Android; it is set
@@ -290,7 +300,7 @@ Future<AppServices> bootstrap() async {
 
   final deskInviteStore = PreferencesDeskInviteStore(preferences);
   await deskInviteStore.countSession();
-  // The tracking pre-prompt waits three days from here (the install, or
+  // Record the first launch for the first-Home tracking permission flow (or
   // the update that brought it).
   final trackingStore = PreferencesTrackingStore(preferences);
   await trackingStore.recordFirstSeen(DateTime.now());

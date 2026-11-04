@@ -9,7 +9,8 @@ abstract interface class TrackingStore {
   /// update.
   DateTime? get firstSeen;
 
-  /// The pre-prompt has shown, or iOS had already decided: never again.
+  /// Historical completion marker. The actual iOS status is authoritative;
+  /// an undecided native request must remain eligible after interruptions.
   bool get prePromptDone;
 
   /// Records [now] as the first launch, unless one is already recorded.
@@ -28,7 +29,9 @@ class PreferencesTrackingStore implements TrackingStore {
   @override
   DateTime? get firstSeen {
     final ms = _prefs.getInt(_firstSeen);
-    return ms == null ? null : DateTime.fromMillisecondsSinceEpoch(ms, isUtc: true);
+    return ms == null
+        ? null
+        : DateTime.fromMillisecondsSinceEpoch(ms, isUtc: true);
   }
 
   @override

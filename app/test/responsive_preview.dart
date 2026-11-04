@@ -78,7 +78,7 @@ void main() {
           FakeCookooContactClient(),
         ),
         deskInviteStoreProvider.overrideWithValue(InMemoryDeskInviteStore(turnedOff: true)),
-        trackingStoreProvider.overrideWithValue(InMemoryTrackingStore()),
+        trackingStoreProvider.overrideWithValue(InMemoryTrackingStore(firstSeen: nativeAdQa ? DateTime.now() : null)),
         testerStoreProvider.overrideWithValue(InMemoryTesterStore()),
         testerAllowedProvider.overrideWith((ref) => Stream.value(false)),
       ],

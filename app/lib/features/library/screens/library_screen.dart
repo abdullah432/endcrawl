@@ -23,6 +23,7 @@ import '../../project/project_navigation.dart';
 import '../../settings/screens/settings_screen.dart';
 import '../../desk/desk_invite.dart';
 import '../../tracking/tracking_prompt.dart';
+import '../../tracking/tracking_authorization.dart';
 import '../../tester/tester_mode.dart';
 import '../controllers/library_controller.dart';
 import '../../editor/controllers/editor_ui_controller.dart';
@@ -44,16 +45,42 @@ import '../../access/widgets/locked_dialog.dart';
 /// closes the list (1.1), so neither the trial's end nor the free limit is
 /// a surprise. With no projects yet, the empty state *is* the template
 /// picker — no illustration, no "get started" button.
-class LibraryScreen extends ConsumerWidget {
+class LibraryScreen extends ConsumerStatefulWidget {
   const LibraryScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<LibraryScreen> createState() => _LibraryScreenState();
+}
+
+class _LibraryScreenState extends ConsumerState<LibraryScreen>
+    with WidgetsBindingObserver {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && mounted) {
+      ref.invalidate(trackingStatusProvider);
+      setState(() {});
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final view = ref.watch(libraryViewProvider);
     // 1.8 — now and then, LastReel on a computer. Watching the tester
     // check too, so the invite gets another look once it has answered.
     ref.watch(testerAllowedProvider);
-    // iOS on Free, three days after install: the tracking pre-prompt, before
+    // On the first Free iOS Home visit, explain ATT before
     // the desk invite gets its look.
     ref.watch(entitlementProvider);
     TrackingPrompt.check(context, view.value);
@@ -61,8 +88,12 @@ class LibraryScreen extends ConsumerWidget {
     // T1.1 / P1.1: a tablet gets the Projects and Settings tabs.
     if (context.isTablet) return const TabletHome();
     // Keep Settings open when folding replaces the tablet shell.
-    if (!ref.watch(runningOnWebProvider) && ref.watch(homeTabProvider) == HomeDestination.settings) {
-      void back() => selectHomeTab(ProviderScope.containerOf(context, listen: false), HomeDestination.projects);
+    if (!ref.watch(runningOnWebProvider) &&
+        ref.watch(homeTabProvider) == HomeDestination.settings) {
+      void back() => selectHomeTab(
+        ProviderScope.containerOf(context, listen: false),
+        HomeDestination.projects,
+      );
       return PopScope(
         canPop: false,
         onPopInvokedWithResult: (didPop, _) {
@@ -235,7 +266,10 @@ class _ProjectList extends ConsumerWidget {
     ];
     final readOnly = ref.watch(readOnlyProjectIdsProvider);
     final showTrialOffer =
-        view.entitlement.isResolved && !view.entitlement.isPro && view.isFull && !ui.freeingSlot;
+        view.entitlement.isResolved &&
+        !view.entitlement.isPro &&
+        view.isFull &&
+        !ui.freeingSlot;
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 22),

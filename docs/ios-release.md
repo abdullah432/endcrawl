@@ -2,17 +2,19 @@
 
 For the free iOS launch (`IOS_FREE_LAUNCH=true`, the default): no
 subscriptions, a paywall or a Subscription page on iPhone and iPad; Free shows
-ads, with the App Tracking Transparency pre-prompt three days after install.
+ads after the first-Home ATT decision. The neutral explanation has one Continue
+button, followed by the native iOS permission alert.
 
 ## Version
 
 Pass the iOS version explicitly when `pubspec.yaml` is set to an Android
-release. Build 10 was rejected for ITMS-91064; its replacement is `1.0.2 (11)`.
+release. Build 10 was rejected for ITMS-91064, fixed in build 11. Build 12 addresses
+Guideline 2.1 by removing the three-day ATT delay and gating ad initialization.
 Every later upload needs a higher build number.
 
 ```sh
 python3 tool/validate_privacy_manifests.py ios/Runner/PrivacyInfo.xcprivacy
-flutter build ipa --release --target=lib/main.dart --build-name=1.0.2 --build-number=11 \
+flutter build ipa --release --target=lib/main.dart --build-name=1.0.2 --build-number=12 \
   --dart-define=AD_DIAGNOSTICS=false --dart-define=AD_NATIVE_TEST_ADS=false \
   --export-options-plist=ios/ExportOptions.plist
 python3 tool/validate_privacy_manifests.py build/ios/archive/Runner.xcarchive
@@ -42,7 +44,7 @@ References:
 - **Privacy & messaging → IDFA explainer: unpublish it.** If it is published,
   Google's consent SDK shows its own "Our app wants to stay free for you" popup
   and Apple's tracking alert on the first ad request, skipping LastReel's
-  pre-prompt and its three-day wait.
+  explanation and causing competing permission presentations.
 - Keep the GDPR (EEA/UK) message published; it is unrelated to ATT.
 - Register the test iPad's IDFA under Settings → Test devices before tapping
   any ad on a release build.
@@ -77,10 +79,18 @@ On a real iPad (both orientations) and an iPhone, Free account:
 - [ ] Render the roll: ad right under Motion blur.
 - [ ] Library and Rendering ads draw the tablet card on iPad.
 - [ ] No ad anywhere in Settings.
-- [ ] Tracking: no popup on days 0–2. On a device whose first launch was
-      three or more days ago (or with the date moved forward), the LastReel
-      pre-prompt shows once, Continue opens Apple's alert, and
-      Privacy & data then shows "Ad personalisation · On/Off".
+- [ ] Fresh install: first Home visit shows the neutral explanation; Continue
+      opens native ATT after the explanation fully dismisses. AdMob/UMP start
+      only after ATT has a decided status.
+- [ ] Allow and deny paths retain access and show ads according to ATT and UMP.
+- [ ] A legacy pre-prompt flag cannot suppress an undecided ATT request.
+- [ ] An interrupted/undecided ATT request can retry after returning to Home.
+- [ ] On iPhone and both iPad orientations, capture physical-device screen
+      recording from fresh install/reset permissions through native ATT and
+      the following app flow. Attach the recording to App Review information
+      and explain the first-Home path in the review notes.
+- [ ] Firebase advertising storage, user-data sharing and personalization are
+      disabled; its independent usage-analytics setting is not ad consent.
 - [ ] No "See LastReel Pro", plan card, trial or "Remove ads" anywhere.
 
 ## SKAdNetwork

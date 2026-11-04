@@ -19,6 +19,7 @@ import 'ad_diagnostics.dart';
 /// Privacy & data (7.4).
 class AdMobAdService implements AdService {
   final AdUnits? _units;
+  final Future<void> Function()? beforeInitialize;
   final bool Function() _personalised;
   final bool Function() _enabled;
 
@@ -42,6 +43,7 @@ class AdMobAdService implements AdService {
   AdMobAdService(
     this._personalised, {
     AdUnits? units,
+    this.beforeInitialize,
     bool Function()? enabled,
     DateTime Function()? now,
   }) : _units = units ?? AdUnits.current,
@@ -52,12 +54,17 @@ class AdMobAdService implements AdService {
     if (!adDiagnosticsEnabled) return;
     try {
       if (!await _ensureReady().timeout(const Duration(seconds: 20))) {
-        recordAdDiagnostic('Inspector blocked: consent, account or platform does not permit ads.');
+        recordAdDiagnostic(
+          'Inspector blocked: consent, account or platform does not permit ads.',
+        );
         return;
       }
       MobileAds.instance.openAdInspector((error) {
-        recordAdDiagnostic(error == null ? 'Inspector closed: success' :
-          'Inspector failed: ${error.domain}/${error.code}: ${error.message}');
+        recordAdDiagnostic(
+          error == null
+              ? 'Inspector closed: success'
+              : 'Inspector failed: ${error.domain}/${error.code}: ${error.message}',
+        );
       });
     } catch (error) {
       recordAdDiagnostic('Inspector failed: $error');
@@ -81,6 +88,8 @@ class AdMobAdService implements AdService {
   Future<bool> _start() async {
     if (_units == null || _disposed) return false;
     try {
+      await beforeInitialize?.call();
+      if (_disposed || !_enabled()) return false;
       final consent = Completer<void>();
       void complete() {
         if (!consent.isCompleted) consent.complete();
@@ -124,12 +133,18 @@ class AdMobAdService implements AdService {
       // A release may register specific test phones without enabling the
       // diagnostic UI or changing the ad units for other users.
       const configuredIds = String.fromEnvironment('ADMOB_TEST_DEVICE_IDS');
-      final ids = configuredIds.split(',').map((id) => id.trim())
-          .where((id) => id.isNotEmpty).toList();
+      final ids = configuredIds
+          .split(',')
+          .map((id) => id.trim())
+          .where((id) => id.isNotEmpty)
+          .toList();
       if (ids.isNotEmpty) {
         await MobileAds.instance.updateRequestConfiguration(
-          RequestConfiguration(testDeviceIds: ids));
-        recordAdDiagnostic('Configured ${ids.length} SDK test device(s); production ad units remain selected unless sample override is enabled.');
+          RequestConfiguration(testDeviceIds: ids),
+        );
+        recordAdDiagnostic(
+          'Configured ${ids.length} SDK test device(s); production ad units remain selected unless sample override is enabled.',
+        );
       }
       await MobileAds.instance.initialize();
       debugPrint(
@@ -149,12 +164,12 @@ class AdMobAdService implements AdService {
       return AdUnits.diagnosticNativeUnit!;
     }
     return switch (placement) {
-    AdPlacement.library => _units!.libraryNative,
-    AdPlacement.exportSettings => _units!.exportSettingsNative,
-    AdPlacement.rendering => _units!.renderingNative,
-    AdPlacement.exportComplete => _units!.exportReadyNative,
-    AdPlacement.editor => _units!.editorNative,
-    AdPlacement.timingLook => _units!.timingLookNative,
+      AdPlacement.library => _units!.libraryNative,
+      AdPlacement.exportSettings => _units!.exportSettingsNative,
+      AdPlacement.rendering => _units!.renderingNative,
+      AdPlacement.exportComplete => _units!.exportReadyNative,
+      AdPlacement.editor => _units!.editorNative,
+      AdPlacement.timingLook => _units!.timingLookNative,
     };
   }
 
@@ -173,10 +188,14 @@ class AdMobAdService implements AdService {
       load: (colours, listener) async {
         recordAdDiagnostic('native ${placement.name}: preparing unit=$unit');
         if (!await _ensureReady()) {
-          recordAdDiagnostic('native ${placement.name}: blocked before request (consent/account/platform)');
+          recordAdDiagnostic(
+            'native ${placement.name}: blocked before request (consent/account/platform)',
+          );
           return null;
         }
-        recordAdDiagnostic('native ${placement.name}: requesting unit=$unit factory=$nativeCardFactoryId');
+        recordAdDiagnostic(
+          'native ${placement.name}: requesting unit=$unit factory=$nativeCardFactoryId',
+        );
         final ad = NativeAd(
           adUnitId: unit,
           factoryId: nativeCardFactoryId,
@@ -405,7 +424,9 @@ class AdMobAdService implements AdService {
   @override
   Future<void> showExportInterstitial() async {
     if (_exportInterstitialShowing || !_canPresentExportAd) {
-      recordAdDiagnostic('export interstitial skipped: showing=$_exportInterstitialShowing, enabled=${_enabled()}, fullscreen=$_fullScreen, lifecycle=${WidgetsBinding.instance.lifecycleState}');
+      recordAdDiagnostic(
+        'export interstitial skipped: showing=$_exportInterstitialShowing, enabled=${_enabled()}, fullscreen=$_fullScreen, lifecycle=${WidgetsBinding.instance.lifecycleState}',
+      );
       return;
     }
     if (_exportInterstitial == null) {
@@ -619,13 +640,17 @@ class _NativeAdViewState extends State<_NativeAdView> {
               _loaded = true;
             });
             widget.style.onShown?.call();
-            recordAdDiagnostic('native ${widget.diagnosticLabel}: loaded; response=${ad.responseInfo}');
+            recordAdDiagnostic(
+              'native ${widget.diagnosticLabel}: loaded; response=${ad.responseInfo}',
+            );
             debugPrint('AdMob: native ad loaded');
           },
           onAdClicked: (_) => widget.style.onTapped?.call(),
           onAdFailedToLoad: (ad, error) {
             failed = true;
-            recordAdDiagnostic('native ${widget.diagnosticLabel}: failed ${error.domain}/${error.code}: ${error.message}; response=${error.responseInfo}');
+            recordAdDiagnostic(
+              'native ${widget.diagnosticLabel}: failed ${error.domain}/${error.code}: ${error.message}; response=${error.responseInfo}',
+            );
             _logFailure('native', error);
             ad.dispose();
             if (!mounted) return;
@@ -648,7 +673,9 @@ class _NativeAdViewState extends State<_NativeAdView> {
     } catch (error) {
       if (!mounted) return;
       _loading = false;
-      recordAdDiagnostic('native ${widget.diagnosticLabel}: request exception $error');
+      recordAdDiagnostic(
+        'native ${widget.diagnosticLabel}: request exception $error',
+      );
       debugPrint('AdMob: native request failed — $error');
       _retryLater();
     }

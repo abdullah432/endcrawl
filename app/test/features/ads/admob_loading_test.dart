@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -86,9 +87,11 @@ void main() {
     WidgetTester tester, {
     AdPlacement placement = AdPlacement.library,
     AdUnits? units,
+    Future<void> Function()? beforeInitialize,
   }) async {
     final service = AdMobAdService(
       () => false,
+      beforeInitialize: beforeInitialize,
       units:
           units ??
           AdUnits.forBuild(platform: TargetPlatform.iOS, releaseMode: false),
@@ -130,6 +133,19 @@ void main() {
         .handlePlatformMessage(instanceManager.channel.name, message, (_) {});
     await tester.pump();
   }
+
+  testWidgets('no consent, SDK initialization or native request before the ATT decision gate', (tester) async {
+    final decision = Completer<void>();
+    await mount(tester, beforeInitialize: () => decision.future);
+    expect(consent.updates, 0);
+    expect(named('MobileAds#initialize'), isEmpty);
+    expect(named('loadNativeAd'), isEmpty);
+    decision.complete();
+    await tester.pump();
+    expect(consent.updates, 1);
+    expect(named('MobileAds#initialize'), hasLength(1));
+    expect(named('loadNativeAd'), hasLength(1));
+  });
 
   testWidgets('configured device IDs are applied before initialization and ad requests', (tester) async {
     await mount(tester);
