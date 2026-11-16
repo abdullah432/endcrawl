@@ -15,6 +15,9 @@ final adServiceProvider = Provider<AdService>((ref) {
         ? ref.read(trackingStatusProvider).value?.allowed ?? false
         : ref.read(userProfileProvider).value?.preferences.personalisedAds ??
               false,
+    beforeInitialize: defaultTargetPlatform == TargetPlatform.iOS && !kIsWeb
+        ? () => ref.read(trackingConsentGateProvider).wait()
+        : null,
     enabled: () => ref.read(entitlementProvider).value?.showsAds ?? false,
   );
   ref.onDispose(service.dispose);

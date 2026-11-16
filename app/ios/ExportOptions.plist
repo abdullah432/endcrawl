@@ -4,7 +4,7 @@
 <dict>
 	<!-- App Store builds: manual signing with the COOKOO distribution profile,
 	     so no registered device is needed. Use:
-	     flutter build ipa --export-options-plist=ios/ExportOptions.plist -->
+	     Pass ios/ExportOptions.plist as Flutter's export options plist. -->
 	<key>method</key>
 	<string>app-store-connect</string>
 	<key>teamID</key>

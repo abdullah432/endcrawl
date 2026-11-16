@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -86,9 +87,11 @@ void main() {
     WidgetTester tester, {
     AdPlacement placement = AdPlacement.library,
     AdUnits? units,
+    Future<void> Function()? beforeInitialize,
   }) async {
     final service = AdMobAdService(
       () => false,
+      beforeInitialize: beforeInitialize,
       units:
           units ??
           AdUnits.forBuild(platform: TargetPlatform.iOS, releaseMode: false),
@@ -131,6 +134,35 @@ void main() {
     await tester.pump();
   }
 
+  testWidgets('no consent, SDK initialization or native request before the ATT decision gate', (tester) async {
+    final decision = Completer<void>();
+    await mount(tester, beforeInitialize: () => decision.future);
+    expect(consent.updates, 0);
+    expect(named('MobileAds#initialize'), isEmpty);
+    expect(named('loadNativeAd'), isEmpty);
+    decision.complete();
+    await tester.pump();
+    expect(consent.updates, 1);
+    expect(named('MobileAds#initialize'), hasLength(1));
+    expect(named('loadNativeAd'), hasLength(1));
+  });
+
+  testWidgets('configured device IDs are applied before initialization and ad requests', (tester) async {
+    await mount(tester);
+    const configured = String.fromEnvironment('ADMOB_TEST_DEVICE_IDS');
+    final ids = configured.split(',').map((id) => id.trim())
+        .where((id) => id.isNotEmpty).toList();
+    final configuration = named('MobileAds#updateRequestConfiguration');
+    if (ids.isNotEmpty) {
+      expect(configuration, hasLength(1));
+      expect((configuration.single.arguments as Map)['testDeviceIds'], ids);
+      expect(calls.indexOf(configuration.single), lessThan(calls.indexOf(named('MobileAds#initialize').single)));
+      expect(calls.indexOf(configuration.single), lessThan(calls.indexOf(named('loadNativeAd').single)));
+    } else {
+      expect(configuration, isEmpty);
+    }
+  });
+
   for (final platform in [TargetPlatform.iOS, TargetPlatform.android]) {
     testWidgets(
       'the editor and Timing & Look request their own native units on $platform',
@@ -160,6 +192,28 @@ void main() {
       await event(tester, request['adId'] as int, 'onAdLoaded');
       expect(find.text('Loaded creative'), findsOneWidget);
     }, variant: TargetPlatformVariant.only(platform));
+  }
+
+  for (final platform in [TargetPlatform.iOS, TargetPlatform.android]) {
+    for (final placement in [AdPlacement.rendering, AdPlacement.exportComplete]) {
+      testWidgets('$placement recovers after no fill on $platform', (tester) async {
+        final units = AdUnits.forBuild(platform: platform, releaseMode: true)!;
+        await mount(tester, placement: placement, units: units);
+        final first = named('loadNativeAd').single.arguments as Map;
+        expect(first['adUnitId'], placement == AdPlacement.rendering
+            ? units.renderingNative : units.exportReadyNative);
+        await event(tester, first['adId'] as int, 'onAdFailedToLoad',
+          error: LoadAdError(1, 'com.google.admob', 'No ad to show', null));
+        expect(find.text('Loaded creative'), findsNothing);
+        await tester.pump(const Duration(seconds: 30));
+        await tester.pump();
+        final retry = named('loadNativeAd').last.arguments as Map;
+        expect(named('loadNativeAd'), hasLength(2));
+        expect(retry['adUnitId'], first['adUnitId']);
+        await event(tester, retry['adId'] as int, 'onAdLoaded');
+        expect(find.text('Loaded creative'), findsOneWidget);
+      }, variant: TargetPlatformVariant.only(platform));
+    }
   }
 
   testWidgets(

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -19,19 +20,20 @@ import 'tracking_store.dart';
 /// Overridden in `main` with the SharedPreferences-backed store, and in
 /// tests with an in-memory one.
 final trackingStoreProvider = Provider<TrackingStore>((ref) {
-  throw StateError('trackingStoreProvider was not overridden — see bootstrap().');
+  throw StateError(
+    'trackingStoreProvider was not overridden — see bootstrap().',
+  );
 });
 
 /// Set once the pre-prompt has had its chance this run of the app, so the
 /// desk invite and the rating prompt stay out of the same session.
-final trackingPromptThisSessionProvider = NotifierProvider<ShownThisSession, bool>(ShownThisSession.new);
+final trackingPromptThisSessionProvider =
+    NotifierProvider<ShownThisSession, bool>(ShownThisSession.new);
 
-/// A1 / A4 / A5 — "Keep LastReel free, with ads that fit.": a short
+/// A short
 /// explainer before iOS's own App Tracking Transparency alert.
 ///
-/// When it shows: once, on Free, on iOS, when the app is opened at least
-/// [settleIn] after it was first opened on this device — so people have
-/// used LastReel and liked it before they are asked. It comes up over the
+/// When it shows: on the first Home visit on Free iOS while ATT is undecided. It comes up over the
 /// library, never mid-edit, never with the desk invite or the rating prompt
 /// in the same session. If iOS has already decided (Settings, a managed
 /// device), it never shows. Pro is never asked: Pro sees no ads.
@@ -39,7 +41,7 @@ final trackingPromptThisSessionProvider = NotifierProvider<ShownThisSession, boo
 /// One action, Continue, which hands over to iOS. No close and no "Not
 /// now": iOS itself offers the no.
 abstract final class TrackingPrompt {
-  static const settleIn = Duration(days: 3);
+  static final _busy = Provider((ref) => _PromptBusy());
 
   static bool due({
     required TrackingStore store,
@@ -48,9 +50,9 @@ abstract final class TrackingPrompt {
     required bool free,
     required bool web,
   }) {
-    if (!ios || web || !free || store.prePromptDone) return false;
+    if (!ios || web || !free) return false;
     final first = store.firstSeen;
-    return first != null && !now.isBefore(first.add(settleIn));
+    return first != null;
   }
 
   /// Called from the library's build: only while the library itself is on
@@ -59,15 +61,17 @@ abstract final class TrackingPrompt {
     if (view == null) return;
     if (!(ModalRoute.of(context)?.isCurrent ?? true)) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (context.mounted && (ModalRoute.of(context)?.isCurrent ?? true)) maybeShow(context);
+      if (context.mounted && (ModalRoute.of(context)?.isCurrent ?? true)) {
+        maybeShow(context);
+      }
     });
   }
 
   static Future<void> maybeShow(BuildContext context) async {
     final container = ProviderScope.containerOf(context, listen: false);
     final ios = defaultTargetPlatform == TargetPlatform.iOS;
-    final web = container.read(verifiedWorkspaceProvider);
-    if (!ios || web || container.read(trackingPromptThisSessionProvider)) return;
+    final web = kIsWeb || container.read(runningOnWebProvider) || container.read(verifiedWorkspaceProvider);
+    if (!ios || web || container.read(_busy).active) return;
     // The plan reads as Free until the store answers: wait for it, or Pro
     // would be asked about ads it never sees.
     final entitlement = container.read(entitlementProvider);
@@ -77,28 +81,54 @@ abstract final class TrackingPrompt {
     if (container.read(deskInviteOpenProvider) ||
         container.read(deskInviteShownThisSessionProvider) ||
         container.read(reviewPromptShownThisSessionProvider) ||
-        !due(store: store, now: now, ios: ios, free: entitlement.requireValue.showsAds, web: web)) {
+        !due(
+          store: store,
+          now: now,
+          ios: ios,
+          free: entitlement.requireValue.showsAds,
+          web: web,
+        )) {
       return;
     }
-    // Claimed before anything is awaited, so the desk invite, checking
-    // after the same frame, keeps out of this session.
+    final busy = container.read(_busy);
+    final gate = container.read(trackingConsentGateProvider);
+    busy.active = true;
     container.read(trackingPromptThisSessionProvider.notifier).mark();
-    final authorization = container.read(trackingAuthorizationProvider);
-    if (await authorization.status() != TrackingAuthorizationStatus.notDetermined) {
-      // Decided in iOS already: respect it and never ask.
-      await store.markPrePromptDone();
-      return;
+    try {
+      await waitForActiveApp();
+      if (!context.mounted || !(ModalRoute.of(context)?.isCurrent ?? true)) {
+        return;
+      }
+      // Claimed before anything is awaited, so the desk invite, checking
+      // after the same frame, keeps out of this session.
+      final authorization = container.read(trackingAuthorizationProvider);
+      final status = await authorization.status();
+      if (status != TrackingAuthorizationStatus.notDetermined) {
+        gate.resolve(status);
+        // Decided in iOS already: respect it and never ask.
+        await store.markPrePromptDone();
+        return;
+      }
+      // The system status is authoritative, including upgrades from old builds.
+      final analytics = container.read(analyticsProvider)
+        ..logEvent('att_preprompt_shown', {'source': 'first_home'});
+      if (!context.mounted) return;
+      await show(context);
+      analytics.logEvent('att_preprompt_continue');
+      await waitForActiveApp();
+      if (!context.mounted) return;
+      final result = await authorization.request();
+      gate.resolve(result);
+      if (result != TrackingAuthorizationStatus.notDetermined) {
+        await store.markPrePromptDone();
+      }
+      if (context.mounted) {
+        analytics.logEvent('att_result', {'status': result.name});
+        container.invalidate(trackingStatusProvider);
+      }
+    } finally {
+      busy.active = false;
     }
-    // Counted before it opens, so a killed app can't bring it back.
-    await store.markPrePromptDone();
-    final analytics = container.read(analyticsProvider)
-      ..logEvent('att_preprompt_shown', {'source': 'day_${settleIn.inDays}_open'});
-    if (!context.mounted) return;
-    await show(context);
-    analytics.logEvent('att_preprompt_continue');
-    final result = await authorization.request();
-    analytics.logEvent('att_result', {'status': result.name});
-    container.invalidate(trackingStatusProvider);
   }
 
   /// The pre-prompt alone: a sheet on a phone, a centred 560-wide card on
@@ -106,18 +136,19 @@ abstract final class TrackingPrompt {
   static Future<void> show(BuildContext context) {
     final tablet = context.tabletLayout;
     if (tablet == null) {
-      return showModalBottomSheet<void>(
-        context: context,
+      final route = ModalBottomSheetRoute<void>(
         isScrollControlled: true,
         isDismissible: false,
         enableDrag: false,
         useSafeArea: true,
         backgroundColor: Colors.transparent,
-        barrierColor: context.palette.scrim,
+        modalBarrierColor: context.palette.scrim,
         builder: (_) => const _PrePromptSheet(),
       );
+      unawaited(Navigator.of(context).push(route));
+      return route.completed.then((_) {});
     }
-    return showDialog<void>(
+    final route = DialogRoute<void>(
       context: context,
       barrierDismissible: false,
       barrierColor: context.palette.scrim,
@@ -128,12 +159,18 @@ abstract final class TrackingPrompt {
           insetPadding: const EdgeInsets.all(24),
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 560),
-            child: _PrePromptCard(art: tablet == TabletLayout.portrait),
+            child: const _PrePromptCard(),
           ),
         ),
       ),
     );
+    unawaited(Navigator.of(context).push(route));
+    return route.completed.then((_) {});
   }
+}
+
+class _PromptBusy {
+  bool active = false;
 }
 
 /// A1 — the phone's sheet.
@@ -161,7 +198,10 @@ class _PrePromptSheet extends StatelessWidget {
                   child: Container(
                     width: 36,
                     height: 4,
-                    decoration: BoxDecoration(color: p.line2, borderRadius: BorderRadius.circular(2)),
+                    decoration: BoxDecoration(
+                      color: p.line2,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 18),
@@ -175,82 +215,31 @@ class _PrePromptSheet extends StatelessWidget {
   }
 }
 
-/// A4 / A5 — the tablet's card; [art] adds the panel on top in portrait.
+/// A centred permission explanation on tablets.
 class _PrePromptCard extends StatelessWidget {
-  final bool art;
-  const _PrePromptCard({required this.art});
+  const _PrePromptCard();
 
   @override
   Widget build(BuildContext context) {
     final p = context.palette;
     return Container(
       clipBehavior: Clip.antiAlias,
-      decoration: BoxDecoration(color: p.sheet, borderRadius: BorderRadius.circular(28), boxShadow: EcDialog.shadow),
+      decoration: BoxDecoration(
+        color: p.sheet,
+        borderRadius: BorderRadius.circular(28),
+        boxShadow: EcDialog.shadow,
+      ),
       child: SingleChildScrollView(
         padding: const EdgeInsets.all(14),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            if (art) const _Art(),
             Padding(
-              padding: EdgeInsets.fromLTRB(14, art ? 18 : 12, 14, 6),
+              padding: EdgeInsets.fromLTRB(14, 12, 14, 6),
               child: const _PrePromptContent(titleSize: 34),
             ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-/// A5's art: LastReel Free, made possible by a few quiet ads.
-class _Art extends StatelessWidget {
-  const _Art();
-
-  @override
-  Widget build(BuildContext context) {
-    final t = context.type;
-    return Container(
-      height: 170,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(18),
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Colors.black, Color(0xFF0B0B12), Color(0xFF2A2350)],
-          stops: [0, .6, 1],
-        ),
-      ),
-      padding: const EdgeInsets.all(14),
-      child: Stack(
-        children: [
-          Text('LastReel Free', style: t.mono.copyWith(fontSize: 10, color: Colors.white.withValues(alpha: .6))),
-          Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  'MADE POSSIBLE BY',
-                  style: t.eyebrow.copyWith(
-                    fontSize: 9,
-                    letterSpacing: 2.4,
-                    color: Colors.white.withValues(alpha: .55),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'A FEW QUIET ADS',
-                  style: t.titleM.copyWith(
-                    fontSize: 16,
-                    letterSpacing: 3.2,
-                    color: Colors.white,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
       ),
     );
   }
@@ -261,9 +250,21 @@ class _PrePromptContent extends StatelessWidget {
   const _PrePromptContent({required this.titleSize});
 
   static const _promises = [
-    (Icons.drag_handle_rounded, 'The same number of ads either way', 'Saying no never adds ads or locks anything.'),
-    (Icons.lock_outline_rounded, 'Your projects stay yours', 'Names and credits you type are never used for ads.'),
-    (Icons.tune_rounded, 'Change it anytime', 'iOS Settings › Privacy & Security › Tracking.'),
+    (
+      Icons.drag_handle_rounded,
+      'The same number of ads either way',
+      'Saying no never adds ads or locks anything.',
+    ),
+    (
+      Icons.lock_outline_rounded,
+      'Your projects stay yours',
+      'Names and credits you type are never used for ads.',
+    ),
+    (
+      Icons.tune_rounded,
+      'Change it anytime',
+      'iOS Settings › Privacy & Security › Tracking.',
+    ),
   ];
 
   @override
@@ -278,33 +279,17 @@ class _PrePromptContent extends StatelessWidget {
         Semantics(
           header: true,
           child: EcHeadline(
-            'Keep LastReel free,',
-            emphasis: 'with ads that fit.',
+            'About ad ',
+            emphasis: 'privacy.',
             style: t.displayL.copyWith(fontSize: titleSize, height: 1.05),
           ),
         ),
         const SizedBox(height: 10),
         Text(
-          'LastReel is free because of a few quiet ads. Next, iOS asks if apps may use your activity to choose '
-          'them. Say yes and they’re more likely to be about film than random things.',
+          'LastReel uses advertising partners to show ads. Next, iOS will ask whether you allow tracking '
+          'across other companies’ apps and websites to personalize advertising. Your choice won’t '
+          'change access to the app or the number of ads.',
           style: t.body.copyWith(fontSize: 14, height: 1.5, color: p.ink2),
-        ),
-        const SizedBox(height: 14),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: [
-            for (final topic in const ['Cameras & lenses', 'Editing tools', 'Film festivals'])
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-                decoration: BoxDecoration(
-                  color: p.surface,
-                  borderRadius: BorderRadius.circular(999),
-                  border: Border.all(color: p.line),
-                ),
-                child: Text(topic, style: t.bodyS.copyWith(fontSize: 12, color: p.ink2)),
-              ),
-          ],
         ),
         const SizedBox(height: 14),
         Container(
@@ -325,7 +310,10 @@ class _PrePromptContent extends StatelessWidget {
                       Container(
                         width: 30,
                         height: 30,
-                        decoration: BoxDecoration(color: p.accentWash, borderRadius: BorderRadius.circular(8)),
+                        decoration: BoxDecoration(
+                          color: p.accentWash,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
                         child: Icon(icon, size: 16, color: p.accent),
                       ),
                       const SizedBox(width: 12),
@@ -333,7 +321,10 @@ class _PrePromptContent extends StatelessWidget {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(title, style: t.titleS.copyWith(fontSize: 13.5)),
+                            Text(
+                              title,
+                              style: t.titleS.copyWith(fontSize: 13.5),
+                            ),
                             const SizedBox(height: 2),
                             Text(body, style: t.caption.copyWith(fontSize: 12)),
                           ],

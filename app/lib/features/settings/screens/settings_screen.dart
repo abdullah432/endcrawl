@@ -1,3 +1,5 @@
+import '../../ads/data/ad_diagnostics.dart';
+import '../../ads/screens/ad_diagnostics_screen.dart';
 import 'package:flutter/foundation.dart' show TargetPlatform, defaultTargetPlatform;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -236,6 +238,7 @@ class SettingsGroups {
     final links = ref.read(externalLinksProvider);
     final version = _version;
     return EcGroup(label: 'Support', children: [
+      if (adDiagnosticsEnabled) EcGroupRow(title: 'Ad diagnostics', onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const AdDiagnosticsScreen()))),
       EcGroupRow(title: 'Help centre', onTap: () => links.openUrl(AppLinks.helpCentre)),
       EcGroupRow(
         title: 'Contact support',

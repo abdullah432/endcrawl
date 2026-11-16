@@ -153,6 +153,8 @@ class ExportState {
 /// writes its outcome to the project so the library's pill is true.
 class ExportController extends Notifier<ExportState> {
   _Job? _job;
+  bool _deferExportAd = false;
+  bool _exportAdPending = false;
   String? _completedOutput;
   AppLifecycleListener? _lifecycle;
 
@@ -183,6 +185,18 @@ class ExportController extends Notifier<ExportState> {
       }
     });
     return const ExportState();
+  }
+
+  /// Capture the presentation when a job starts, including background renders.
+  void configureExportPresentation({required bool tablet}) {
+    _deferExportAd = tablet;
+  }
+
+  /// Only the tablet's explicit cross consumes its completed render's ad.
+  void closeCompletedTabletRender() {
+    if (!_exportAdPending || state.run?.phase != ExportPhase.done) return;
+    _exportAdPending = false;
+    unawaited(_showExportAd());
   }
 
   void setCodec(Codec c) => state = state.copyWith(codec: c);
@@ -274,7 +288,8 @@ class ExportController extends Notifier<ExportState> {
       totalFrames: project.engine.totalFrames.round(),
       onPass: access == ExportAccess.unlocked,
     );
-    final job = _job = _Job();
+    _exportAdPending = false;
+    final job = _job = _Job(deferExportAd: _deferExportAd);
     state = state.withRun(run);
     if (!run.onPass) prepareExportAd();
     _watchLifecycle();
@@ -318,6 +333,7 @@ class ExportController extends Notifier<ExportState> {
         state.run?.gallerySave == GallerySave.failed) {
       return;
     }
+    _exportAdPending = false;
     final artifact = _completedOutput;
     _completedOutput = null;
     if (artifact != null) {
@@ -551,7 +567,11 @@ class ExportController extends Notifier<ExportState> {
     // The interstitial follows a finished render, once, with its file
     // already in hand. A render a rewarded ad paid for gets no second ad.
     if (run.phase == ExportPhase.done && !run.onPass) {
-      unawaited(_showExportAd());
+      if (job.deferExportAd) {
+        _exportAdPending = true;
+      } else {
+        unawaited(_showExportAd());
+      }
     }
   }
 
@@ -629,6 +649,9 @@ class ExportController extends Notifier<ExportState> {
 
 /// One render's pause and cancel switches.
 class _Job {
+  final bool deferExportAd;
+  _Job({required this.deferExportAd});
+
   bool cancelled = false;
   Completer<void>? _resume;
 

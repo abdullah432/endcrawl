@@ -59,6 +59,18 @@ class LastReelNativeAdFactory(private val context: Context) : NativeAdFactory {
             }
         }
 
+        val media = MediaView(context).apply {
+            setImageScaleType(ImageView.ScaleType.FIT_CENTER)
+            mediaContent = nativeAd.mediaContent
+        }
+        card.addView(media, LinearLayout.LayoutParams(dp(120), dp(120)).apply { marginEnd = dp(12) })
+        adView.mediaView = media
+        val row = LinearLayout(context).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+        card.addView(row, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+
         val icon = ImageView(context).apply {
             scaleType = ImageView.ScaleType.CENTER_CROP
             background = GradientDrawable().apply {
@@ -67,17 +79,22 @@ class LastReelNativeAdFactory(private val context: Context) : NativeAdFactory {
             }
             clipToOutline = true
         }
-        card.addView(icon, LinearLayout.LayoutParams(dp(44), dp(44)).apply { marginEnd = dp(12) })
-
-        val words = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL }
-        val headline = label(14f, ink, bold = true)
-        words.addView(headline)
+        val title = LinearLayout(context).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+        title.addView(icon, LinearLayout.LayoutParams(dp(24), dp(24)).apply { marginEnd = dp(6) })
+        val headline = label(14f, ink, bold = true).apply { maxLines = 2 }
+        title.addView(headline, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+        row.addView(title)
         val meta = LinearLayout(context).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
         }
         val badge = label(10f, muted, bold = true).apply {
             text = "Ad"
+            minHeight = dp(15)
+            minWidth = dp(15)
             setPadding(dp(4), 0, dp(4), 0)
             background = GradientDrawable().apply {
                 cornerRadius = dp(3).toFloat()
@@ -85,10 +102,8 @@ class LastReelNativeAdFactory(private val context: Context) : NativeAdFactory {
             }
         }
         meta.addView(badge, LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { marginEnd = dp(6) })
-        val body = label(12f, muted)
-        meta.addView(body)
-        words.addView(meta, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(3) })
-        card.addView(words, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+        val body = label(11f, muted).apply { maxLines = 3 }
+        row.addView(body, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(6) })
 
         val cta = label(12.5f, onInk, bold = true).apply {
             setPadding(dp(14), dp(9), dp(14), dp(9))
@@ -99,7 +114,9 @@ class LastReelNativeAdFactory(private val context: Context) : NativeAdFactory {
             // The whole card is the click target; the SDK handles the tap.
             isClickable = false
         }
-        card.addView(cta, LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { marginStart = dp(10) })
+        meta.addView(View(context), LinearLayout.LayoutParams(0, 1, 1f))
+        meta.addView(cta, LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT))
+        row.addView(meta, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(6) })
 
         adView.addView(card, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT))
         val choices = AdChoicesView(context)
@@ -134,7 +151,7 @@ class LastReelNativeAdFactory(private val context: Context) : NativeAdFactory {
      *   with the link's space under the action.
      * - stripPortrait: the same, with the link's space under the headline
      *   in place of the body.
-     * - compact: "Ad" on top (the link opposite), then a 72 × 56 still and
+     * - compact: "Ad" on top (the link opposite), then 128 × 128 media and
      *   the headline.
      */
     private fun createTabletAd(nativeAd: NativeAd, layout: String, colour: (String, String) -> Int): NativeAdView {
@@ -151,6 +168,7 @@ class LastReelNativeAdFactory(private val context: Context) : NativeAdFactory {
 
         val media = MediaView(context).apply {
             setImageScaleType(ImageView.ScaleType.CENTER_CROP)
+            mediaContent = nativeAd.mediaContent
             background = GradientDrawable().apply {
                 setColor(tint)
                 cornerRadius = dp(if (compact) 10 else 14).toFloat()
@@ -159,9 +177,9 @@ class LastReelNativeAdFactory(private val context: Context) : NativeAdFactory {
             clipToOutline = true
         }
         val (mediaW, mediaH) = when {
-            compact -> dp(72) to dp(56)
-            portrait -> dp(168) to dp(96)
-            else -> dp(184) to dp(104)
+            compact -> dp(128) to dp(128)
+            portrait -> dp(168) to dp(128)
+            else -> dp(184) to dp(128)
         }
 
         val badge = TextView(context).apply {
@@ -181,19 +199,14 @@ class LastReelNativeAdFactory(private val context: Context) : NativeAdFactory {
             if (compact) maxLines = 2
         }
         adView.headlineView = headline
-        // The compact card's still is too small for a MediaView (AdMob asks
-        // for 120 dp), so it shows the ad's icon asset instead.
-        val icon = ImageView(context).apply {
-            scaleType = ImageView.ScaleType.CENTER_CROP
-            background = GradientDrawable().apply {
-                setColor(tint)
-                cornerRadius = dp(10).toFloat()
-                setStroke(dp(1).coerceAtLeast(1), line2, dp(4).toFloat(), dp(3).toFloat())
-            }
-            clipToOutline = true
+        adView.mediaView = media
+
+        val appIcon = ImageView(context).apply {
+            scaleType = ImageView.ScaleType.FIT_CENTER
             setImageDrawable(nativeAd.icon?.drawable)
+            visibility = if (nativeAd.icon == null) View.GONE else View.VISIBLE
         }
-        if (compact) adView.iconView = icon else adView.mediaView = media
+        adView.iconView = appIcon
 
         val root: View
         if (compact) {
@@ -203,8 +216,29 @@ class LastReelNativeAdFactory(private val context: Context) : NativeAdFactory {
                 addView(LinearLayout(context).apply {
                     orientation = LinearLayout.HORIZONTAL
                     gravity = Gravity.CENTER_VERTICAL
-                    addView(icon, LinearLayout.LayoutParams(mediaW, mediaH).apply { marginEnd = dp(10) })
-                    addView(headline, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+                    addView(media, LinearLayout.LayoutParams(mediaW, mediaH).apply { marginEnd = dp(10) })
+                    addView(LinearLayout(context).apply {
+                        orientation = LinearLayout.VERTICAL
+                        addView(LinearLayout(context).apply {
+                            orientation = LinearLayout.HORIZONTAL
+                            gravity = Gravity.CENTER_VERTICAL
+                            addView(appIcon, LinearLayout.LayoutParams(dp(24), dp(24)).apply { marginEnd = dp(6) })
+                            addView(headline, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+                        })
+                        val cta = label(13f, ink, bold = true).apply {
+                            text = nativeAd.callToAction ?: ""
+                            visibility = if (nativeAd.callToAction.isNullOrEmpty()) View.GONE else View.VISIBLE
+                            setPadding(dp(12), dp(8), dp(12), dp(8))
+                            background = GradientDrawable().apply {
+                                setColor(surface)
+                                cornerRadius = dp(16).toFloat()
+                                setStroke(dp(1).coerceAtLeast(1), line2)
+                            }
+                            isClickable = false
+                        }
+                        adView.callToActionView = cta
+                        addView(cta, LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(8) })
+                    }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
                 }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(8) })
             }
         } else {
@@ -215,6 +249,7 @@ class LastReelNativeAdFactory(private val context: Context) : NativeAdFactory {
                     orientation = LinearLayout.HORIZONTAL
                     gravity = Gravity.CENTER_VERTICAL
                     addView(badge)
+                    addView(appIcon, LinearLayout.LayoutParams(dp(24), dp(24)).apply { marginStart = dp(8) })
                     addView(advertiser, LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { marginStart = dp(8) })
                 })
                 addView(headline, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(6) })

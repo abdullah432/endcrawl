@@ -43,8 +43,15 @@
 	<string>LastReel saves the credit rolls you render to your photo library.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>LastReel needs photo library access to export and save your credit roll videos.</string>
+	<!-- Usage analytics stays separate from advertising consent. -->
+	<key>GOOGLE_ANALYTICS_DEFAULT_ALLOW_AD_STORAGE</key>
+	<false/>
+	<key>GOOGLE_ANALYTICS_DEFAULT_ALLOW_AD_USER_DATA</key>
+	<false/>
+	<key>GOOGLE_ANALYTICS_DEFAULT_ALLOW_AD_PERSONALIZATION_SIGNALS</key>
+	<false/>
 	<key>NSUserTrackingUsageDescription</key>
-	<string>LastReel shows a few ads to stay free. Allowing tracking makes those ads more relevant to you. It doesn’t add more ads.</string>
+	<string>Your permission allows our advertising partners to use your activity across other companies’ apps and websites to personalize advertising.</string>
 	<key>SKAdNetworkItems</key>
 	<array>
 		<dict>
