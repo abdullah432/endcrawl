@@ -1,0 +1,35 @@
+{
+  "title": "Refund & cancellation",
+  "summary": "Cancellation stops renewal. Refund requests are handled separately by the provider that charged you.",
+  "updated": "3 November 2026",
+  "sections": [
+    {
+      "heading": "Paddle web purchases",
+      "body": "For a web purchase, request a refund through paddle.net or the support link in your Paddle receipt. You can also contact hello@cookoo.dev for product problems and help identifying the purchase. Include the receipt or transaction reference and purchase email; never send a full card number or password."
+    },
+    {
+      "heading": "Refund eligibility",
+      "body": "Paddle’s Refund Policy and Buyer Terms govern Paddle transactions, including applicable statutory withdrawal rights and discretionary refunds. A discretionary request submitted within 14 days is not a guarantee of approval. Mandatory consumer rights remain unaffected, including rights for faulty or misdescribed products. This page does not impose usage restrictions on statutory rights or replace more favourable rights provided by law."
+    },
+    {
+      "heading": "Cancelling a web subscription",
+      "body": "Open LastReel Settings → Manage billing in the Plan or subscription section, or follow the Manage subscription link in your Paddle receipt. You may also request cancellation at paddle.net. Cancelling stops future renewal payments; Pro normally remains available through the end of the paid period. Cancellation alone does not refund the current period."
+    },
+    {
+      "heading": "Refunds and Pro access",
+      "body": "Approved refunds are processed by the billing provider under its policy. Access associated with a refunded purchase may end. A refund request and subscription cancellation are separate actions: if you also want to prevent renewal, explicitly cancel the subscription. LastReel support will check both billing status and access when handling a refund intended to end a subscription."
+    },
+    {
+      "heading": "Apple and Google purchases",
+      "body": "For App Store or Google Play purchases, use the respective store’s refund and subscription-management process. Paddle cannot refund an Apple or Google charge. Sign in to the store account that made the purchase. LastReel support can help with app access but does not replace the store’s refund decision."
+    },
+    {
+      "heading": "Account deletion and Free",
+      "body": "Deleting your LastReel account does not cancel a Paddle, Apple or Google subscription. Cancel separately before deleting the account. When Pro expires, Free limits apply; two projects remain editable and additional projects are read-only. Expiry alone does not delete your projects."
+    },
+    {
+      "heading": "Help with a charge or technical problem",
+      "body": "Contact hello@cookoo.dev for LastReel product issues. For a Paddle receipt, charge, cancellation or refund, visit paddle.net. Keep your receipt and the policy version that applied when you purchased."
+    }
+  ]
+}

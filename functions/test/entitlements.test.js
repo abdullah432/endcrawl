@@ -11,8 +11,19 @@ test('canonical trials, renewals, cancellation, expiration, refunds and grace', 
   assert.equal(normalizeEntitlement(customer(now + 86400000, {unsubscribe_detected_at: '2026-10-01'}), now).willRenew, false);
   const expired = normalizeEntitlement(customer(now - 1), now);
   assert.equal(expired.plan, 'free'); assert.equal(expired.lapsed, true);
+  // Paddle refunds adjust a payment without necessarily cancelling its subscription.
+  // Keep the same canonical access that RevenueCat's clients receive; support must
+  // also cancel immediately when a full refund is meant to terminate access.
+  assert.equal(normalizeEntitlement(customer(now + 86400000, {refunded_at: new Date(now).toISOString()}), now).plan, 'pro');
   assert.equal(normalizeEntitlement({subscriber: {entitlements: {}}}, now).plan, 'free');
   assert.equal(normalizeEntitlement(customer(now - 1, {grace_period_expires_date: new Date(now + 60000).toISOString()}), now).plan, 'pro');
+  const issue = normalizeEntitlement(customer(now - 1, {
+    billing_issues_detected_at: new Date(now - 60000).toISOString(),
+    grace_period_expires_date: new Date(now + 60000).toISOString(),
+  }), now);
+  assert.equal(issue.billingIssue, true);
+  assert.equal(issue.graceEndsAtMs, now + 60000);
+  assert.equal(normalizeEntitlement(customer(now - 1, {billing_issues_detected_at: new Date(now).toISOString()}), now).billingIssue, false);
   const malformed = customer(); malformed.subscriber.entitlements.pro.expires_date = 'invalid';
   assert.equal(normalizeEntitlement(malformed, now).plan, 'free');
 });

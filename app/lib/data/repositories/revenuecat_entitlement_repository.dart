@@ -225,7 +225,11 @@ Entitlement entitlementFromCustomerInfo(rc.CustomerInfo info) {
   }
   final expires = pro.expirationDate == null ? null : DateTime.tryParse(pro.expirationDate!);
   final plan = pro.productPlanIdentifier ?? pro.productIdentifier.split(':').last;
-  final period = switch (plan) {
+  final period = BillingConfig.paddleMonthlyPrices.split(',').contains(pro.productIdentifier)
+      ? BillingPeriod.monthly
+      : BillingConfig.paddleYearlyPrices.split(',').contains(pro.productIdentifier)
+      ? BillingPeriod.yearly
+      : switch (plan) {
     'monthly' || 'lastreel_pro_monthly' => BillingPeriod.monthly,
     'yearly' || 'annual' || 'lastreel_pro_yearly' => BillingPeriod.yearly,
     _ => null,
@@ -235,6 +239,7 @@ Entitlement entitlementFromCustomerInfo(rc.CustomerInfo info) {
     renewsAt: expires,
     willRenew: pro.willRenew,
     managementUrl: info.managementURL == null ? null : Uri.tryParse(info.managementURL!),
+    billingStore: pro.store.name,
     trialEndsAt: pro.periodType == rc.PeriodType.trial ? expires : null,
   );
 }

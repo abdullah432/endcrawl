@@ -2,7 +2,7 @@ import { ButtonLink } from "@/components/ui/ButtonLink";
 import { Container } from "@/components/ui/Container";
 import { DisplayHeading } from "@/components/ui/DisplayHeading";
 import { SectionIntro } from "@/components/ui/SectionIntro";
-import { anchors } from "@/config/site";
+import { anchors, links, webBillingAvailable } from "@/config/site";
 import { plans } from "@/content/landing";
 import styles from "./Plans.module.css";
 
@@ -16,6 +16,11 @@ function PlanCard({ plan, tone }: { plan: Plan; tone: "free" | "pro" }) {
         <p className={styles.label}>{plan.label}</p>
         <DisplayHeading heading={{ text: plan.title }} level={3} size="card" id={`plan-${tone}`} className={styles.title} />
       </header>
+      {pro && <div className={styles.pricing}>
+        <p><strong>US$4.99</strong> / month</p>
+        <p><strong>US$29.99</strong> / year</p>
+        <small>{webBillingAvailable ? "Web pricing." : "Planned web pricing · web checkout is not live yet."} Annual billing is one yearly payment. Renews until cancelled. Taxes and final currency are shown at checkout. Native store prices may differ.</small>
+      </div>}
       <ul className={styles.list}>
         {plan.items.map((item) => (
           <li key={item}>
@@ -26,15 +31,14 @@ function PlanCard({ plan, tone }: { plan: Plan; tone: "free" | "pro" }) {
           </li>
         ))}
       </ul>
-      {/* Both plans start in the app: Pro is bought through Google Play there. */}
-      <ButtonLink href={`#${anchors.get}`} size="lg" block variant={pro ? "primary" : "outline"} className={styles.cta}>
+      <ButtonLink href={pro && webBillingAvailable ? links.subscribe : `#${anchors.get}`} size="lg" block variant={pro ? "primary" : "outline"} className={styles.cta}>
         {plan.cta}
       </ButtonLink>
     </article>
   );
 }
 
-/** Free and Pro side by side. No prices: Google Play shows the current one. */
+/** Published catalog pricing is separate from the live checkout availability gate. */
 export function Plans() {
   return (
     <Container as="section" id={anchors.plans} className={styles.section} aria-labelledby="plans-title">

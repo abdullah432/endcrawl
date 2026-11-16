@@ -2,7 +2,7 @@
  * Every word on the landing page, approved copy from the LastReel website
  * design. Sections render from this data, so copy changes happen here.
  */
-import { anchors, links } from "@/config/site";
+import { anchors, links, webBillingAvailable } from "@/config/site";
 
 /** Display headings are set in the serif with an italic second half. */
 export type Heading = { text: string; emphasis?: string; after?: string };
@@ -24,7 +24,8 @@ export const nav = [
 export const footerNav = [
   ...nav,
   { label: "Privacy", href: links.privacy },
-  ...(links.terms ? [{ label: "Terms", href: links.terms }] : []),
+  { label: "Terms", href: links.terms },
+  { label: "Refund & cancellation", href: links.refunds },
   { label: "Contact", href: links.contact },
 ];
 
@@ -32,7 +33,7 @@ export const hero = {
   eyebrow: "End credits · for people who make films",
   heading: { text: "Credit", emphasis: "everyone." } satisfies Heading,
   lede: "Build your end credits on your phone. Time them to the frame. Export a master your editor won’t send back.",
-  footnote: "Free to start · No watermark · Finish at a desk with Pro",
+  footnote: "Free to start · No watermark · Edit on your phone or at a desk",
   rollStatus: "24 fps · 4 px/frame · no judder",
   rollStamp: "Made in LastReel · 00:02:41:00",
 };
@@ -114,7 +115,7 @@ export const howItWorks = {
     {
       visual: "desk",
       title: "Finish at a desk.",
-      body: "Start on the bus, finish in the edit suite. With Pro, the same projects open in the web app: blocks, monitor and a true-length timeline side by side.",
+      body: "Start on the bus, finish in the edit suite. The same projects open in the web app: blocks, monitor and a true-length timeline side by side. Free includes two projects and standard exports; Pro adds more.",
       alt: "The desktop web app with blocks, monitor and settings side by side over a timeline.",
     },
   ] satisfies { visual: StepVisual; title: string; body: string; alt: string }[],
@@ -147,7 +148,9 @@ export const madeFor = {
 
 export const plans = {
   heading: { text: "Start free.", emphasis: "Go Pro for delivery." } satisfies Heading,
-  intro: "Editing is identical on both plans. Pro adds projects, master formats and the desk. Google Play shows the current price and any offer before you subscribe.",
+  intro: webBillingAvailable
+    ? "Pro adds unlimited projects and higher-quality exports on mobile and the web. Subscribe on the web or in the Android app. Checkout shows the current price before you confirm."
+    : "Editing is identical on both plans. Pro adds unlimited projects and master export formats. Google Play shows the current price and any offer before you subscribe.",
   free: {
     label: "Free",
     title: "Make your credits.",
@@ -167,10 +170,10 @@ export const plans = {
       "Unlimited projects",
       "ProRes, PNG alpha and 4K on every render",
       "No ads",
-      "LastReel on the web, at your desk",
+      "PNG alpha and 4K browser exports",
       "The same projects on every device",
     ],
-    cta: "Subscribe in the app",
+    cta: webBillingAvailable ? "Get Pro on the web" : "Subscribe in the app",
   },
 };
 
@@ -188,15 +191,17 @@ export const faq = {
     },
     {
       q: "Can I work on my computer?",
-      a: "Yes, with Pro. Log in to the web app with the same account and your projects are already there. Anyone can log in and preview; editing and export need Pro.",
+      a: "Yes. Log in to the web app with the same account and your projects are already there. The Free plan includes two editable projects and MP4 exports up to 1080p. Pro adds unlimited projects, PNG alpha and exports up to 4K on supported devices.",
     },
     {
       q: "Is LastReel on iPhone or iPad?",
-      a: "Not yet; it’s coming soon. Today LastReel runs on Android phones and tablets, and on the web with Pro.",
+      a: "Yes. Download Last Reel: End Credits Maker from the App Store for iPhone and iPad. The current iOS launch version includes unlimited projects with ads; some export options require an optional rewarded ad. LastReel is also available on Android and the web, where Free includes two editable projects.",
     },
     {
       q: "How do I subscribe, and what does it cost?",
-      a: "Subscribe in the Android app through Google Play. Google Play shows the current price and any offer before you confirm, and handles billing and cancellation.",
+      a: webBillingAvailable
+        ? "Sign into the web app and choose a monthly or annual Pro plan. Paddle handles web payments and billing. You can also subscribe through Google Play in the Android app. Checkout shows the current price and any taxes before you confirm; manage your subscription through the provider you used. Pro follows the same LastReel account across devices."
+        : "Subscribe in the Android app through Google Play. Google Play shows the current price and any offer before you confirm, and handles billing and cancellation.",
     },
     { q: "What happens if Pro ends?", a: "Nothing is deleted. You keep every project, two stay editable, and ads return on the free plan." },
   ],
@@ -218,5 +223,5 @@ export const header = { logIn: "Log in", getStarted: "Get started" };
 
 export const stores = {
   googlePlay: { kicker: "Get it on", name: "Google Play" },
-  ios: { name: "iPhone & iPad", status: "Coming soon" },
+  ios: { kicker: "Download on the", name: "App Store" },
 };

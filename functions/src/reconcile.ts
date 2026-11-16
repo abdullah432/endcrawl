@@ -1,12 +1,13 @@
 import type { Firestore } from 'firebase-admin/firestore';
 import { normalizeEntitlement, shouldReplace, subscriptionSnapshot } from './entitlements.js';
+import type { EntitlementOptions } from './entitlements.js';
 
 /** The callable and webhook worker use the same canonical reconciliation. */
 export async function reconcileEntitlement(uid: string, db: Firestore,
-  loadCustomer: (uid: string) => Promise<Record<string, any>>, now = Date.now()) {
+  loadCustomer: (uid: string) => Promise<Record<string, any>>, now = Date.now(), options: EntitlementOptions = {}) {
   const customer = await loadCustomer(uid);
   if (!customer.subscriber || typeof customer.subscriber !== 'object') throw new Error('Invalid customer information');
-  const next = normalizeEntitlement(customer, now);
+  const next = normalizeEntitlement(customer, now, options);
   const ref = db.doc(`billingEntitlements/${uid}`);
   const subscriptionRef = db.doc(`billing/revenuecat/subscriptions/${uid}`);
   return db.runTransaction(async (transaction) => {

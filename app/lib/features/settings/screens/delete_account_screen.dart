@@ -11,11 +11,13 @@ import '../../../core/widgets/ec_fields.dart';
 import '../../../core/widgets/ec_headline.dart';
 import '../../../core/widgets/ec_scaffold.dart';
 import '../../../core/widgets/ec_surfaces.dart';
+import '../../../core/widgets/ec_toast.dart';
 import '../../../core/theme/ec_type.dart';
 import '../../../data/repositories/auth_repository.dart';
 import '../../../domain/models/app_user.dart';
 import '../../../domain/models/render_summary.dart';
 import '../../library/controllers/library_controller.dart';
+import '../../plan/controllers/web_billing.dart';
 import '../controllers/account_controller.dart';
 import 'verify_identity_screen.dart';
 
@@ -61,12 +63,36 @@ class _DeleteAccountScreenState extends ConsumerState<DeleteAccountScreen> {
       _error = null;
     });
     // On success the gate swaps the whole tree for 7.6c.
-    final result = await ref.read(accountControllerProvider).deleteAccount(password: _password.text);
+    final result = await ref
+        .read(accountControllerProvider)
+        .deleteAccount(password: _password.text);
     if (result case Err(:final failure) when mounted) {
       setState(() {
         _busy = false;
         _error = isCancellation(failure) ? null : failure.message;
       });
+    }
+  }
+
+  Future<void> _openBilling() async {
+    final uid = ref.read(currentUidProvider);
+    if (ref.read(webBillingEnabledProvider)) {
+      try {
+        final url = await ref.read(webBillingRepositoryProvider).management();
+        if (!mounted || ref.read(currentUidProvider) != uid) return;
+        if (!await ref.read(billingNavigationProvider)(url) && mounted) {
+          showEcToast(context, 'Could not open billing.');
+        }
+      } catch (error) {
+        if (mounted && ref.read(currentUidProvider) == uid) {
+          showEcToast(context, webBillingError(error));
+        }
+      }
+    } else {
+      final url =
+          ref.read(entitlementProvider).value?.managementUrl ??
+          AppLinks.manageSubscriptions;
+      await ref.read(externalLinksProvider).openUrl(url);
     }
   }
 
@@ -118,14 +144,14 @@ class _DeleteAccountScreenState extends ConsumerState<DeleteAccountScreen> {
             tone: EcTone.warn,
             title: 'Deleting doesn’t cancel a subscription.',
             body:
-                'Your store handles billing. Cancel Pro in your store subscriptions first.',
+                'Your billing provider handles renewal. Cancel any active subscription before deleting your account.',
             actions: [
               EcButton.text(
-                label: 'Open subscriptions ›',
+                label: ref.watch(webBillingEnabledProvider)
+                    ? 'Manage billing ›'
+                    : 'Open subscriptions ›',
                 size: EcButtonSize.small,
-                onPressed: () => ref
-                    .read(externalLinksProvider)
-                    .openUrl(AppLinks.manageSubscriptions),
+                onPressed: _openBilling,
               ),
             ],
           ),

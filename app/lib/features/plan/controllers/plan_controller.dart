@@ -98,7 +98,8 @@ class PlanController extends Notifier<PlanState> {
     final result = await ref.read(entitlementRepositoryProvider).purchase(offer);
     if (!ref.mounted || ref.read(currentUidProvider) != uid) return false;
     state = switch (result) {
-      Ok() => state.copyWith(purchasing: false),
+      Ok(:final value) => state.copyWith(purchasing: false,
+        message: value.isPro ? null : 'Complete checkout to activate Pro. Check access when you return.'),
       Err(:final failure) => state.copyWith(
         purchasing: false,
         message: failure.kind == FailureKind.cancelled ? null : failure.message,

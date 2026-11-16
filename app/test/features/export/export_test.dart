@@ -1,3 +1,13 @@
+import 'dart:io';
+import 'package:flutter/services.dart';
+import 'dart:ui' as ui;
+import 'package:flutter/rendering.dart';
+import 'dart:async';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lastreel/core/result.dart';
+import 'package:lastreel/features/export/controllers/export_controller.dart';
 import 'package:lastreel/domain/models/entitlement.dart';
 import 'package:lastreel/domain/models/project_settings.dart';
 import 'package:lastreel/domain/models/render_summary.dart';
@@ -33,7 +43,15 @@ void main() {
   }
 
   Future<void> openExport(WidgetTester tester) async {
+    if (const bool.fromEnvironment('CAPTURE_UX')) {
+      await tester.runAsync(() async {
+        final loader = FontLoader('MaterialIcons')..addFont(rootBundle.load('fonts/MaterialIcons-Regular.otf'));
+        await loader.load();
+      });
+    }
     await app.pump(tester);
+    await tester.runAsync(() => GoogleFonts.pendingFonts());
+    await tester.pumpAndSettle();
     await tester.tap(find.text('The Long Way Down'));
     await tester.pumpAndSettle();
     await tapText(tester, 'Export');
@@ -66,7 +84,7 @@ void main() {
         await runRender(tester);
         expect(app.encoder.started.single.fps, 60);
         expect(app.projects.projects.values.single.settings.ppf, 5.5);
-        expect(find.text('Save to Files'), findsOneWidget);
+        expect(find.text('Share video'), findsOneWidget);
       },
     );
 
@@ -304,7 +322,7 @@ void main() {
         expect(app.encoder.started.single.codec, Codec.prores422);
         // The render the rewarded ad paid for adds no interstitial.
         expect(app.ads.exportInterstitialShown, 0);
-        expect(find.text('Save to Files'), findsOneWidget);
+        expect(find.text('Share video'), findsOneWidget);
 
         await tester.tapAt(const Offset(10, 10)); // close the sheet
         await tester.pumpAndSettle();
@@ -389,11 +407,11 @@ void main() {
         await tapText(tester, 'Render H.264');
         await runRender(tester);
 
-        expect(find.text('Save to Files'), findsOneWidget);
+        expect(find.text('Share video'), findsOneWidget);
         expect(find.text('SPONSORED'), findsOneWidget);
         expect(find.text('REMOVE ADS'), findsOneWidget);
         expect(find.text('Soundstripe — score your next cut'), findsOneWidget);
-        final destinations = tester.getBottomLeft(find.text('Share sheet')).dy;
+        final destinations = tester.getBottomLeft(find.text('Share video')).dy;
         expect(
           tester.getTopLeft(find.text('SPONSORED')).dy,
           greaterThan(destinations),
@@ -428,7 +446,7 @@ void main() {
       await openExport(tester);
       await tapText(tester, 'Render H.264');
       await runRender(tester);
-      expect(find.text('Save to Files'), findsOneWidget);
+      expect(find.text('Share video'), findsOneWidget);
       expect(find.textContaining('SPONSORED'), findsNothing);
     });
   });
@@ -503,18 +521,92 @@ void main() {
       await tapText(tester, 'Render H.264');
       await runRender(tester);
 
-      await tapText(tester, 'Save to Photos');
       expect(app.destinations.savedToPhotos, [
         '/renders/The Long Way Down.mp4',
       ]);
-      expect(find.text('Saved to Photos'), findsOneWidget);
+      expect(find.text('Saved to Gallery'), findsOneWidget);
+      if (const bool.fromEnvironment('CAPTURE_UX')) {
+        await tester.runAsync(() async {
+          final view = tester.binding.renderViews.first;
+          final layer = view.debugLayer! as OffsetLayer;
+          final image = layer.toImageSync(Offset.zero & view.size, pixelRatio: 2);
+          final data = await image.toByteData(format: ui.ImageByteFormat.png);
+          await File(
+            '../output/ux-audit/05-export-saved-after.png',
+          ).writeAsBytes(data!.buffer.asUint8List());
+          image.dispose();
+        });
+      }
       await tester.pump(const Duration(seconds: 5)); // the toast leaves
       await tester.pumpAndSettle();
 
-      await tapText(tester, 'Share sheet');
-      await tapText(tester, 'Save to Files');
-      expect(app.destinations.shared, hasLength(2));
+      await tapText(tester, 'Share video');
+      expect(app.destinations.shared, hasLength(1));
     });
+
+    for (final platform in [TargetPlatform.android, TargetPlatform.iOS]) {
+      testWidgets('automatic save is once-only and recoverable on $platform', (
+        tester,
+      ) async {
+        debugDefaultTargetPlatformOverride = platform;
+        addTearDown(() => debugDefaultTargetPlatformOverride = null);
+        final completion = Completer<void>();
+        app.destinations.photoCompletion = completion.future;
+        app.destinations.photoResult = const Err(
+          AppFailure(
+            FailureKind.permission,
+            'Permission denied. Enable access in Settings.',
+          ),
+        );
+        await openExport(tester);
+        await tapText(tester, 'Render H.264');
+        for (var i = 0; i < 80; i++) {
+          await tester.pump(const Duration(milliseconds: 20));
+        }
+        final container = ProviderScope.containerOf(
+          tester.element(find.byType(ExportSheet)),
+        );
+        final controller = container.read(exportControllerProvider.notifier);
+        expect(app.destinations.savedToPhotos, hasLength(1));
+        expect(
+          container.read(exportControllerProvider).savingToGallery,
+          isTrue,
+        );
+        expect(controller.start(), isFalse);
+        controller.dismiss();
+        expect(container.read(exportControllerProvider).run, isNotNull);
+        completion.complete();
+        await tester.pumpAndSettle();
+        expect(find.text('Retry saving'), findsOneWidget);
+        expect(
+          container.read(exportControllerProvider).run!.phase,
+          ExportPhase.done,
+        );
+        controller.dismiss();
+        expect(
+          container.read(exportControllerProvider).run!.gallerySave,
+          GallerySave.failed,
+        );
+        app.destinations.photoResult = const Ok(null);
+        await tapText(tester, 'Retry saving');
+        expect(app.destinations.savedToPhotos, hasLength(2));
+        expect(
+          container.read(exportControllerProvider).run!.gallerySave,
+          GallerySave.saved,
+        );
+        await controller.retryGallerySave();
+        await tester.pump();
+        expect(app.destinations.savedToPhotos, hasLength(2));
+        expect(
+          find.text(
+            platform == TargetPlatform.iOS
+                ? 'Saved to Photos'
+                : 'Saved to Gallery',
+          ),
+          findsOneWidget,
+        );
+      });
+    }
 
     testWidgets('an image sequence isn’t offered to Photos', (tester) async {
       app = AppHarness(
@@ -529,8 +621,8 @@ void main() {
       await runRender(tester);
 
       expect(app.encoder.started.single.outputPath, endsWith('.zip'));
-      expect(find.text('Save to Photos'), findsNothing);
-      expect(find.text('Save to Files'), findsOneWidget);
+      expect(app.destinations.savedToPhotos, isEmpty);
+      expect(find.text('Share file'), findsOneWidget);
     });
 
     testWidgets('Pro renders show no ad', (tester) async {
@@ -691,7 +783,7 @@ void main() {
       tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
       await runRender(tester);
       expect(app.encoder.appended, 48);
-      expect(find.text('Save to Files'), findsOneWidget);
+      expect(find.text('Share video'), findsOneWidget);
     });
 
     testWidgets('the render keeps going behind our own full-screen ad', (

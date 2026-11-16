@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:google_fonts/google_fonts.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -36,6 +37,8 @@ void main() {
     bool openExport = true,
   }) async {
     await app.pump(tester);
+    await tester.runAsync(() => GoogleFonts.pendingFonts());
+    await tester.pumpAndSettle();
     await tap(tester, 'The Long Way Down');
     if (openExport) await tap(tester, 'Export');
     return ProviderScope.containerOf(
@@ -62,7 +65,7 @@ void main() {
       expect(app.ads.exportInterstitialShown, 0);
       await finish(tester);
       expect(app.ads.exportInterstitialShown, 1);
-      await tap(tester, 'Save to Files');
+      await tap(tester, 'Share video');
       expect(app.destinations.shared, hasLength(1));
       await tester.pumpAndSettle();
       expect(app.ads.exportInterstitialShown, 1);
@@ -121,7 +124,7 @@ void main() {
         container.read(exportControllerProvider).run?.phase,
         ExportPhase.done,
       );
-      expect(find.text('Save to Files'), findsOneWidget);
+      expect(find.text('Share video'), findsOneWidget);
       expect(tester.takeException(), isNull);
     },
     variant: mobile,
@@ -136,10 +139,10 @@ void main() {
     await tap(tester, 'Render H.264');
     await finish(tester);
     expect(app.ads.exportInterstitialShown, 1);
-    expect(find.text('Save to Files'), findsOneWidget);
+    expect(find.text('Share video'), findsOneWidget);
     dismissed.complete();
     await tester.pumpAndSettle();
-    expect(find.text('Save to Files'), findsOneWidget);
+    expect(find.text('Share video'), findsOneWidget);
   }, variant: mobile);
 
   testWidgets('Pro exports never preload or show the interstitial', (

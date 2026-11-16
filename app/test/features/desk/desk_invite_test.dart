@@ -41,13 +41,13 @@ void main() {
   }
 
   group('1.8a free', () {
-    testWidgets('sells the desk as part of Pro', (tester) async {
+    testWidgets('opens the Free web editor and offers optional Pro', (tester) async {
       final app = harness();
       await app.pump(tester);
       expect(freeSheet, findsOneWidget);
-      expect(find.text('LASTREEL PRO · DESKTOP & WEB'), findsOneWidget);
+      expect(find.text('LASTREEL · DESKTOP & WEB'), findsOneWidget);
       expect(find.text('Upgrade to Pro'), findsOneWidget);
-      expect(find.text('Preview on the web'), findsOneWidget);
+      expect(find.text('Open web app'), findsOneWidget);
       expect(find.text('Email me the link'), findsNothing);
       expect(find.text('We’ll send the link to'), findsNothing);
 
@@ -56,10 +56,10 @@ void main() {
       expect(app.analytics.names, containsAllInOrder(['desk_invite_shown', 'desk_invite_upgrade']));
     });
 
-    testWidgets('Preview on the web opens the web app', (tester) async {
+    testWidgets('Open web app opens the normal web app', (tester) async {
       final app = harness();
       await app.pump(tester);
-      await tapText(tester, 'Preview on the web');
+      await tapText(tester, 'Open web app');
       expect(freeSheet, findsNothing);
       expect(app.links.opened, [AppLinks.webApp]);
       expect(app.analytics.names, contains('desk_invite_preview'));
@@ -113,7 +113,7 @@ void main() {
     testWidgets('names the signed-in address, and Change sends it elsewhere', (tester) async {
       final app = harness(projects: 3, isPro: true);
       await app.pump(tester);
-      expect(find.text('INCLUDED WITH YOUR PRO PLAN'), findsOneWidget);
+      expect(find.text('PRO ON EVERY DEVICE'), findsOneWidget);
       expect(find.text(testUser.email!), findsOneWidget);
 
       await tapText(tester, 'Change');
@@ -238,7 +238,7 @@ void main() {
       expect(app.links.composedBodies.single, contains(AppLinks.webApp.toString()));
     });
 
-    testWidgets('free accounts too, from Preview on the web', (tester) async {
+    testWidgets('free accounts too, from Open web app', (tester) async {
       final app = harness(web: true);
       await app.pump(tester);
       expect(find.textContaining('bigger screens.', findRichText: true), findsOneWidget);

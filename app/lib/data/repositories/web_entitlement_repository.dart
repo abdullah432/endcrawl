@@ -35,6 +35,9 @@ Entitlement entitlementFromLedger(Map<String, dynamic> data, DateTime now) {
     renewsAt: expires,
     willRenew: data['willRenew'] == true,
     trialEndsAt: date('trialEndsAtMs'),
+    billingIssue: data['billingIssue'] == true,
+    graceEndsAt: date('graceEndsAtMs'),
+    billingStore: data['billingStore'] is String ? data['billingStore'] as String : null,
     managementUrl:
         uri != null &&
             uri.scheme == 'https' &&

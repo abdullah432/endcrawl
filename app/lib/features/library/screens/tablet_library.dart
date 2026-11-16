@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../bootstrap.dart';
+import '../../access/controllers/web_access.dart' show runningOnWebProvider;
 import '../../../core/result.dart';
 import '../../../core/theme/theme_context.dart';
 import '../../../core/theme/ec_type.dart';
@@ -449,7 +450,9 @@ class _PlanCard extends ConsumerWidget {
       Text('Both free projects are in use.', style: t.displayS.copyWith(fontSize: 26, height: 1.05)),
       SizedBox(height: wide ? 10 : 14),
       Text(
-        wide
+        ref.watch(runningOnWebProvider)
+            ? 'Nothing is deleted and nothing expires. Pro adds unlimited projects, PNG alpha and exports up to 4K.'
+            : wide
             ? 'Nothing is deleted and nothing expires. Pro adds unlimited projects, ProRes and 4K, and no ads.'
             : 'Nothing is deleted and nothing expires. Pro adds unlimited projects, ProRes and 4K exports, and no ads.',
         style: t.body.copyWith(fontSize: 13, height: 1.5, color: p.ink2),

@@ -16,6 +16,7 @@ import '../../settings/controllers/account_controller.dart';
 import '../../settings/screens/account_deleted_screen.dart';
 import '../controllers/auth_controller.dart';
 import '../screens/verify_email_screen.dart';
+import '../../plan/widgets/web_checkout_return.dart';
 
 /// Chooses between the onboarding/auth flow and the app, driven by the auth
 /// stream rather than by navigation — a sign-out from anywhere, or an
@@ -63,7 +64,7 @@ class _WebHome extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     if (ref.watch(runningOnWebProvider) && MediaQuery.sizeOf(context).width < Breakpoints.medium) return const BiggerScreensPage();
-    return const LibraryScreen();
+    return WebCheckoutReturn(key: ValueKey(ref.watch(currentUidProvider)), child: const LibraryScreen());
   }
 }
 

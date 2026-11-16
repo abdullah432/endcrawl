@@ -11,8 +11,8 @@ abstract final class AppPlatform {
         _ => false,
       };
 
-  /// Desktop and web use the existing server-verified mobile subscription.
-  static bool get requiresVerifiedPro => kIsWeb || isNativeDesktop;
+  /// Desktop and web read their Free/Pro plan from the server-owned billing ledger.
+  static bool get usesServerEntitlements => kIsWeb || isNativeDesktop;
 
   static bool get isMobile =>
       !kIsWeb &&

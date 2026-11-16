@@ -11,6 +11,12 @@ const siteUrl =
     ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
     : "http://localhost:3000");
 
+/** Enable only after live Paddle checkout has passed end-to-end verification. */
+export const webBillingAvailable = process.env.NEXT_PUBLIC_WEB_BILLING_ENABLED === "true";
+const webAppUrl = process.env.NEXT_PUBLIC_WEB_APP_URL ?? "https://app.lastreel.cookoo.dev/";
+const subscribeUrl = new URL(webAppUrl);
+subscribeUrl.searchParams.set("subscribe", "1");
+
 export const site = {
   name: "LastReel",
   title: "LastReel — End credits for people who make films",
@@ -24,13 +30,15 @@ export const site = {
 export const links = {
   /** Verified listing: “Last Reel: End Credits Maker” on Google Play. */
   googlePlay: "https://play.google.com/store/apps/details?id=com.lastreel.app",
-  /** The Flutter web app — Pro workspace; anyone can sign in and preview. */
-  webApp: process.env.NEXT_PUBLIC_WEB_APP_URL ?? "https://endcrawl-620c2.web.app",
-  privacy: "https://cookoo.dev/lastreel/privacy-policy",
-  /** No public terms page yet; the footer leaves the link out until one exists. */
-  terms: process.env.NEXT_PUBLIC_TERMS_URL ?? null,
+  appStore: "https://apps.apple.com/app/last-reel-end-credits-maker/id6822275411",
+  /** The Flutter web app — normal Free and Pro plans on the same account. */
+  webApp: webAppUrl,
+  subscribe: subscribeUrl.toString(),
+  privacy: "/privacy",
+  terms: "/terms",
+  refunds: "/refunds",
   help: "https://cookoo.dev/lastreel/help",
-  contact: "mailto:hello@cookoo.dev",
+  contact: "/contact",
 } as const;
 
 /** In-page anchors shared by the header, footer and calls to action. */

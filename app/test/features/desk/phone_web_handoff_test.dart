@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:lastreel/core/config/app_links.dart';
 import 'package:lastreel/domain/models/entitlement.dart';
 import 'package:lastreel/features/access/screens/web_access_screen.dart';
+import 'package:lastreel/features/plan/screens/pro_sheet.dart';
 import 'package:lastreel/features/desk/bigger_screens_page.dart';
 import 'package:lastreel/features/library/screens/library_screen.dart';
 
@@ -36,33 +37,17 @@ void main() {
     );
   }
 
-  testWidgets('a pushed access screen shows the phone handoff when narrowed', (
-    tester,
-  ) async {
+  testWidgets('web upgrades open the shared paywall without the retired preview screen', (tester) async {
     final app = AppHarness(web: true);
     await app.pump(tester, size: const Size(1440, 900));
-    final context = tester.element(find.byType(Navigator).first);
-    WebAccessScreen.open(context);
+    WebAccessScreen.open(tester.element(find.byType(Navigator).first));
     await tester.pumpAndSettle();
-    expect(
-      find.text('Your credits, at a desk.', findRichText: true),
-      findsOneWidget,
-    );
-
-    tester.view.physicalSize = AppHarness.phone;
-    await tester.pumpAndSettle();
-    expect(find.byType(BiggerScreensPage), findsOneWidget);
+    expect(find.byType(ProSheet), findsOneWidget);
     expect(find.text('Preview the app first'), findsNothing);
-    expect(find.text('Email me this link'), findsOneWidget);
-    expect(find.text('Copy link'), findsOneWidget);
-
-    tester.view.physicalSize = const Size(1440, 900);
-    await tester.pumpAndSettle();
-    expect(find.byType(BiggerScreensPage), findsNothing);
-    expect(find.text('Preview the app first'), findsOneWidget);
+    expect(find.text('Continue with Paddle'), findsOneWidget);
   });
 
-  testWidgets('Free desktop preview swaps to phone handoff when narrowed', (
+  testWidgets('Free desktop app swaps to phone handoff when narrowed', (
     tester,
   ) async {
     final app = AppHarness(web: true);

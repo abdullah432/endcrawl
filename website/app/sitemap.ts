@@ -5,5 +5,12 @@ import { site } from "@/config/site";
 export const dynamic = "force-static";
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  return [{ url: site.url, changeFrequency: "monthly", priority: 1 }];
+  return [
+    { url: site.url, changeFrequency: "monthly", priority: 1 },
+    ...["terms", "privacy", "refunds", "contact"].map(path => ({
+      url: new URL(`/${path}`, site.url).toString(),
+      changeFrequency: "monthly" as const,
+      priority: 0.4,
+    })),
+  ];
 }

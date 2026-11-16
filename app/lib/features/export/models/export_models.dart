@@ -163,6 +163,9 @@ enum ExportAccess {
 
 enum ExportPhase { running, failed, done }
 
+/// Rendering and saving to the device library are separate outcomes.
+enum GallerySave { notApplicable, saving, saved, failed }
+
 /// Why an encode stopped.
 enum EncoderFailureKind { outOfSpace, unsupported, failed }
 
@@ -198,6 +201,8 @@ class ExportRun {
   final String? outputPath;
   final ExportArtifact? artifact;
   final int? fileBytes;
+  final GallerySave gallerySave;
+  final String? galleryMessage;
 
   /// Rendered on a pass from a rewarded ad, spent when this succeeds.
   final bool onPass;
@@ -219,6 +224,8 @@ class ExportRun {
     this.outputPath,
     this.artifact,
     this.fileBytes,
+    this.gallerySave = GallerySave.notApplicable,
+    this.galleryMessage,
     this.onPass = false,
   });
 
@@ -244,6 +251,8 @@ class ExportRun {
     String? outputPath,
     ExportArtifact? artifact,
     int? fileBytes,
+    GallerySave? gallerySave,
+    String? galleryMessage,
   }) => ExportRun(
     projectId: projectId,
     projectTitle: projectTitle,
@@ -261,6 +270,8 @@ class ExportRun {
     outputPath: outputPath ?? this.outputPath,
     artifact: artifact ?? this.artifact,
     fileBytes: fileBytes ?? this.fileBytes,
+    gallerySave: gallerySave ?? this.gallerySave,
+    galleryMessage: galleryMessage,
     onPass: onPass,
   );
 }

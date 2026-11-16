@@ -8,22 +8,23 @@ import '../../core/widgets/ec_button.dart';
 import '../../core/widgets/ec_surfaces.dart';
 import 'desk_invite.dart';
 import '../plan/controllers/release_policy.dart';
+import '../access/controllers/web_access.dart' show runningOnWebProvider;
 
 /// Settings' permanent way to discover the desk, independent of the
-/// occasional library invite. Reuses its Free upgrade/preview and Pro link sheets.
+/// occasional library invite. Opens the web app and explains shared Pro features.
 class DesktopWebCard extends ConsumerWidget {
   const DesktopWebCard({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    if (ref.watch(iosFreeLaunchProvider)) return const SizedBox.shrink();
+    if (ref.watch(iosFreeLaunchProvider) || ref.watch(runningOnWebProvider)) return const SizedBox.shrink();
     final p = context.palette;
     final t = context.type;
     final entitlement = ref.watch(entitlementProvider).value;
     if (entitlement == null || !entitlement.isResolved) return const SizedBox.shrink();
     final pro = entitlement.isPro;
     final action = EcButton.secondary(
-      label: pro ? 'Send the link' : 'Preview',
+      label: pro ? 'Send the link' : 'Open web app',
       size: EcButtonSize.medium,
       expand: false,
       trailing: Icon(
@@ -46,7 +47,7 @@ class DesktopWebCard extends ConsumerWidget {
           child: Text(
             pro
                 ? 'Included with Pro'
-                : 'Only with Pro. Take a look before you upgrade.',
+                : 'Free editing on the web. Pro features follow your account.',
             style: t.bodyS.copyWith(color: p.muted),
           ),
         ),
@@ -97,7 +98,7 @@ class DesktopWebCard extends ConsumerWidget {
                             style: t.titleS.copyWith(fontSize: 17),
                           ),
                         ),
-                        const EcGradientPill('Pro'),
+                        if (pro) const EcGradientPill('Pro'),
                       ],
                     ),
                     const SizedBox(height: 6),

@@ -19,10 +19,7 @@ final verifiedWorkspaceProvider = Provider<bool>(
 /// can open, play and read every project, but not change, create or
 /// export anything. Never true in the mobile apps, whose Free/Pro rules
 /// are unchanged.
-final webPreviewProvider = Provider<bool>((ref) {
-  if (!ref.watch(verifiedWorkspaceProvider)) return false;
-  return !(ref.watch(entitlementProvider).value?.isPro ?? false);
-});
+final webPreviewProvider = Provider<bool>((ref) => false);
 
 /// The workspace actions the web preview locks, each with the wording the
 /// locked dialog (D8) uses for it.

@@ -6,6 +6,7 @@ import '../../../core/widgets/ec_button.dart';
 import '../../../core/widgets/ec_dialog.dart';
 import '../controllers/web_access.dart';
 import '../screens/web_access_screen.dart';
+import '../../plan/controllers/web_billing.dart';
 
 /// D8 — what every locked action in the web preview opens, worded for the
 /// action that was tried. It lists what the preview already allows, so it
@@ -16,12 +17,12 @@ Future<void> showWebLockedDialog(BuildContext context, LockedAction action) asyn
   if (getPro == true && context.mounted) await WebAccessScreen.open(context);
 }
 
-class _LockedDialog extends StatelessWidget {
+class _LockedDialog extends ConsumerWidget {
   final LockedAction action;
   const _LockedDialog(this.action);
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final p = context.palette;
     final t = context.type;
     final line = t.bodyS.copyWith(fontSize: 13, color: p.ink);
@@ -69,7 +70,7 @@ class _LockedDialog extends StatelessWidget {
           Text(
             'You can open this project, play it and read every setting. '
             'Web and desktop editing require LastReel Pro. '
-            'To ${action.verb} here, subscribe in the mobile app with the same account, then check access here.',
+            'To ${action.verb} here, ${ref.watch(webBillingEnabledProvider) ? 'choose a Pro plan for this account.' : 'subscribe in the mobile app with the same account, then check access here.'}',
             style: t.body.copyWith(fontSize: 14, height: 1.55),
           ),
           const SizedBox(height: 20),

@@ -19,6 +19,8 @@ import 'data/repositories/revenuecat_entitlement_repository.dart';
 import 'data/repositories/auth_repository.dart';
 import 'data/repositories/entitlement_repository.dart';
 import 'data/repositories/web_entitlement_repository.dart';
+import 'data/repositories/web_checkout_entitlement_repository.dart';
+import 'features/plan/controllers/web_billing.dart';
 import 'data/repositories/firebase_auth_repository.dart';
 import 'data/repositories/firestore_project_repository.dart';
 import 'data/repositories/project_repository.dart';
@@ -207,7 +209,7 @@ final clarityUserSyncProvider = Provider<void>((ref) {
 
 /// One SDK owner for the lifetime of the app, with immediate account isolation.
 final entitlementRepositoryProvider = Provider<EntitlementRepository>((ref) {
-  if (AppPlatform.requiresVerifiedPro) {
+  if (AppPlatform.usesServerEntitlements) {
     final uid = ref.watch(currentUidProvider);
     if (uid == null) return const FreeEntitlementRepository();
     final repository = WebEntitlementRepository(
@@ -216,6 +218,14 @@ final entitlementRepositoryProvider = Provider<EntitlementRepository>((ref) {
       functions: FirebaseFunctions.instance,
     );
     ref.onDispose(repository.dispose);
+    if (ref.watch(webBillingEnabledProvider)) {
+      return WebCheckoutEntitlementRepository(
+        access: repository,
+        billing: ref.watch(webBillingRepositoryProvider),
+        navigate: ref.watch(billingNavigationProvider),
+        isCurrent: () => ref.mounted && ref.read(currentUidProvider) == uid,
+      );
+    }
     return repository;
   }
   if (BillingConfig.apiKey.isEmpty) return const FreeEntitlementRepository();

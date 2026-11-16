@@ -31,16 +31,17 @@ class PlatformExportDestinations implements ExportDestinations {
     }
   }
 
+  String get _library => Platform.isAndroid ? 'Gallery' : 'Photos';
+
+  String get _permissionHelp => Platform.isAndroid
+      ? 'Allow storage access in Settings → Apps → LastReel → Permissions, then retry.'
+      : 'Allow LastReel to add photos in Settings → Apps → LastReel → Photos, then retry.';
+
   @override
   Future<Result<void>> saveToPhotos(ExportArtifact artifact) async {
     try {
       if (!await Gal.hasAccess() && !await Gal.requestAccess()) {
-        return const Err(
-          AppFailure(
-            FailureKind.permission,
-            'Allow LastReel to add to Photos in Settings.',
-          ),
-        );
+        return Err(AppFailure(FailureKind.permission, _permissionHelp));
       }
       await Gal.putVideo(artifact.location);
       return const Ok(null);
@@ -51,13 +52,13 @@ class PlatformExportDestinations implements ExportDestinations {
               ? FailureKind.permission
               : FailureKind.unknown,
           switch (e.type) {
-            GalExceptionType.accessDenied =>
-              'Allow LastReel to add to Photos in Settings.',
+            GalExceptionType.accessDenied => _permissionHelp,
             GalExceptionType.notEnoughSpace =>
-              'Not enough free space in Photos.',
+              'Not enough free space to save to $_library. Free up space and retry.',
             GalExceptionType.notSupportedFormat =>
-              'Photos can’t hold this format — share it instead.',
-            GalExceptionType.unexpected => 'Couldn’t save to Photos.',
+              '$_library can’t hold this format — share it instead.',
+            GalExceptionType.unexpected =>
+              'Couldn’t save to $_library. Try again or share the video.',
           },
           cause: e,
           stackTrace: s,
@@ -71,7 +72,8 @@ class PlatformExportDestinations implements ExportDestinations {
     try {
       await SharePlus.instance.share(
         ShareParams(
-          files: [XFile(artifact.location)],
+          files: [XFile(artifact.location, mimeType: artifact.mimeType)],
+          fileNameOverrides: [artifact.filename],
           sharePositionOrigin: origin,
         ),
       );

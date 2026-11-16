@@ -216,12 +216,17 @@ store purchase checks remain required.
 
 ## Web
 
-Only verified Pro accounts can edit or export in the browser workspace. Signed-in
-desktop users open their projects directly; Free users can preview and play them,
-and locked actions explain mobile subscription using the same Firebase account.
-See [responsive web setup](responsive-web.md) for the server-owned
-entitlement ledger, Firebase Functions deployment, RevenueCat webhook secrets and
-mobile-to-web verification steps. Native Free limits and purchases stay unchanged.
+An opt-in Paddle + RevenueCat hosted checkout is now implemented for the Flutter
+web app. It stays disabled by default until provider setup and real sandbox
+validation are complete. See [web billing](web-billing.md) for configuration,
+rollout gates, checkout return handling, and release requirements.
+
+Web and native desktop use the normal Free/Pro plan: two editable projects and
+standard exports on Free, with unlimited projects and premium exports on Pro.
+There is no preview tier or separate web access screen. Browser upgrades use the
+shared responsive paywall and Paddle checkout when enabled; native mobile keeps
+its store billing. See [web billing](web-billing.md) for setup and validation and
+[responsive web](responsive-web.md) for rendering and account synchronization.
 
 ## References
 

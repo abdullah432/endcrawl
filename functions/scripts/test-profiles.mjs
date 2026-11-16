@@ -31,7 +31,7 @@ try {
   // never send its dummy credential to RevenueCat when fixtures are created.
   writeFileSync(localFiles[0], `PROFILE_ROLLOUT_MODE=pilot\nPROFILE_PILOT_UID=${pilotUid}\nBILLING_ROLLOUT_MODE=off\n`, { flag: 'wx', mode: 0o600 });
   createdFiles.push(localFiles[0]);
-  writeFileSync(localFiles[1], 'REVENUECAT_API_KEY=emulator-unused\nREVENUECAT_WEBHOOK_AUTH=Bearer billing-emulator-only\n', { flag: 'wx', mode: 0o600 });
+  writeFileSync(localFiles[1], 'REVENUECAT_API_KEY=emulator-unused\nREVENUECAT_WEBHOOK_AUTH=Bearer billing-emulator-only\nPADDLE_API_KEY=pdl_sdbx_apikey_emulator\n', { flag: 'wx', mode: 0o600 });
   createdFiles.push(localFiles[1]);
   await run('firebase', ['emulators:exec', '--config', 'firebase.profiles-test.json',
     '--project', 'demo-lastreel-profiles', '--only', 'auth,firestore,functions',

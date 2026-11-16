@@ -12,9 +12,7 @@ abstract final class Features {
   /// The verify-email gate (0.5) for email & password sign-ups: sends the
   /// link at sign-up and holds unverified accounts on 0.5.
   ///
-  /// On because of Google: with an unverified address, a later Google
-  /// sign-in on the same Gmail makes Firebase drop the password from the
-  /// account (Google is the trusted owner of the address), so email &
-  /// password stops working. A verified address keeps both.
-  static const emailVerification = true;
+  /// Disabled for now: email accounts enter the library directly, and
+  /// registration does not send a verification email.
+  static const emailVerification = false;
 }

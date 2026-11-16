@@ -6,6 +6,7 @@ import 'package:lastreel/core/config/app_platform.dart';
 import 'package:lastreel/domain/models/entitlement.dart';
 import 'package:lastreel/features/access/controllers/web_access.dart';
 import 'package:lastreel/features/export/controllers/export_controller.dart';
+import 'package:lastreel/features/export/models/export_models.dart';
 import 'package:lastreel/features/home/tablet_layout.dart';
 import 'package:lastreel/features/plan/controllers/web_access.dart';
 
@@ -15,16 +16,16 @@ import '../../support/fake_project_repository.dart';
 import '../../support/fixtures.dart';
 
 void main() {
-  test('macOS uses verified workspace access, never mobile rules', () {
+  test('macOS reads server-owned entitlements without a mobile tester override', () {
     debugDefaultTargetPlatformOverride = TargetPlatform.macOS;
     addTearDown(() => debugDefaultTargetPlatformOverride = null);
     expect(AppPlatform.isNativeDesktop, isTrue);
-    expect(AppPlatform.requiresVerifiedPro, isTrue);
+    expect(AppPlatform.usesServerEntitlements, isTrue);
     expect(AppPlatform.isMobile, isFalse);
   });
 
   testWidgets(
-    'native Free preview rejects exports and responds to plan expiry',
+    'native Free allows standard editing and keeps premium exports gated after expiry',
     (tester) async {
       final plan = FakeEntitlementRepository();
       final app = AppHarness(
@@ -41,8 +42,9 @@ void main() {
       );
       expect(scope.read(runningOnWebProvider), isFalse);
       expect(scope.read(verifiedWorkspaceProvider), isTrue);
-      expect(scope.read(webPreviewProvider), isTrue);
-      expect(scope.read(webAccessAllowedProvider), isFalse);
+      expect(scope.read(webPreviewProvider), isFalse);
+      expect(scope.read(webAccessAllowedProvider), isTrue);
+      scope.read(exportControllerProvider.notifier).setCodec(Codec.png);
       expect(scope.read(exportControllerProvider.notifier).start(), isFalse);
       expect(app.encoder.started, isEmpty);
 
@@ -53,7 +55,8 @@ void main() {
       await tester.pumpAndSettle();
       plan.entitlement = const Entitlement.free(lapsed: true);
       await tester.pumpAndSettle();
-      expect(scope.read(webAccessAllowedProvider), isFalse);
+      expect(scope.read(webAccessAllowedProvider), isTrue);
+      scope.read(exportControllerProvider.notifier).setCodec(Codec.png);
       expect(scope.read(exportControllerProvider.notifier).start(), isFalse);
       expect(app.encoder.started, isEmpty);
     },

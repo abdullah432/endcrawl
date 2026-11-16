@@ -21,6 +21,7 @@ import '../data/output_sink.dart';
 import '../data/png_sequence_encoder.dart';
 import '../data/video_encoder.dart';
 import '../models/export_models.dart';
+import '../models/export_artifact.dart';
 import '../render/frame_renderer.dart';
 import '../render/frame_source.dart';
 
@@ -125,6 +126,7 @@ class ExportState {
   }
 
   bool get rendering => run?.phase == ExportPhase.running;
+  bool get savingToGallery => run?.gallerySave == GallerySave.saving;
 
   ExportState copyWith({
     Codec? codec,
@@ -228,7 +230,11 @@ class ExportController extends Notifier<ExportState> {
   /// Pro settings on the free plan without a pass — the gate is here, not
   /// just a hidden button.
   bool startAt60Fps() {
-    if (!ref.read(webAccessAllowedProvider) || state.rendering) return false;
+    if (!ref.read(webAccessAllowedProvider) ||
+        state.rendering ||
+        state.savingToGallery) {
+      return false;
+    }
     final (codec, resolution, access) = selection();
     final caps = ref.read(encoderCapabilitiesProvider).value;
     if (access == ExportAccess.locked ||
@@ -241,7 +247,7 @@ class ExportController extends Notifier<ExportState> {
 
   bool start() {
     if (!ref.read(webAccessAllowedProvider)) return false;
-    if (state.rendering) return false;
+    if (state.rendering || state.savingToGallery) return false;
     final (codec, resolution, access) = selection();
     if (access == ExportAccess.locked) return false;
     final project = ref.read(projectControllerProvider);
@@ -298,7 +304,7 @@ class ExportController extends Notifier<ExportState> {
 
   /// Stops the render and throws the partial file away.
   void cancel() {
-    if (!state.rendering) return;
+    if (!state.rendering && !state.savingToGallery) return;
     _job?.cancel();
     _job = null;
     _stopWatchingLifecycle();
@@ -307,7 +313,11 @@ class ExportController extends Notifier<ExportState> {
 
   /// Clears a finished or failed render, back to 6.1.
   void dismiss() {
-    if (state.rendering) return;
+    if (state.rendering ||
+        state.savingToGallery ||
+        state.run?.gallerySave == GallerySave.failed) {
+      return;
+    }
     final artifact = _completedOutput;
     _completedOutput = null;
     if (artifact != null) {
@@ -413,16 +423,21 @@ class ExportController extends Notifier<ExportState> {
         return;
       }
       _completedOutput = out.path;
-      _finish(
-        job,
-        run.copyWith(
-          phase: ExportPhase.done,
-          frame: run.totalFrames,
-          outputPath: out.path,
-          fileBytes: out.bytes,
-          artifact: out.artifact,
-        ),
+      run = run.copyWith(
+        phase: ExportPhase.done,
+        frame: run.totalFrames,
+        outputPath: out.path,
+        fileBytes: out.bytes,
+        artifact: out.artifact,
       );
+      if (_autoSaveVideo(run)) {
+        run = run.copyWith(gallerySave: GallerySave.saving);
+        _update(job, run);
+        // Complete the system permission/save flow before presenting the
+        // existing post-export UI/ad. The render itself remains successful.
+        run = await _saveVideo(run);
+      }
+      _finish(job, run);
     } on EncoderException catch (e) {
       await _discard(session);
       _finish(
@@ -454,6 +469,59 @@ class ExportController extends Notifier<ExportState> {
     } finally {
       source?.dispose();
       if (identical(_job, job) && !state.rendering) _stopWatchingLifecycle();
+    }
+  }
+
+  bool _autoSaveVideo(ExportRun run) =>
+      !ref.read(runningOnWebProvider) &&
+      (defaultTargetPlatform == TargetPlatform.iOS ||
+          defaultTargetPlatform == TargetPlatform.android) &&
+      run.codec != Codec.png;
+
+  Future<ExportRun> _saveVideo(ExportRun run) async {
+    final artifact =
+        run.artifact ??
+        ExportArtifact(
+          location: run.outputPath!,
+          filename: p.basename(run.outputPath!),
+          mimeType: run.codec == Codec.h264 || run.codec == Codec.hevc
+              ? 'video/mp4'
+              : 'video/quicktime',
+          bytes: run.fileBytes ?? 0,
+        );
+    try {
+      final result = await ref
+          .read(exportDestinationsProvider)
+          .saveToPhotos(artifact);
+      return switch (result) {
+        Ok() => run.copyWith(gallerySave: GallerySave.saved),
+        Err(:final failure) => run.copyWith(
+          gallerySave: GallerySave.failed,
+          galleryMessage: failure.message,
+        ),
+      };
+    } catch (_) {
+      return run.copyWith(
+        gallerySave: GallerySave.failed,
+        galleryMessage:
+            'Couldn’t save to your device. Try again or share the video.',
+      );
+    }
+  }
+
+  /// Retry delivery without rendering again or making duplicate gallery copies.
+  Future<void> retryGallerySave() async {
+    final run = state.run;
+    if (run == null ||
+        run.phase != ExportPhase.done ||
+        run.gallerySave != GallerySave.failed) {
+      return;
+    }
+    final saving = run.copyWith(gallerySave: GallerySave.saving);
+    state = state.withRun(saving);
+    final saved = await _saveVideo(saving);
+    if (ref.mounted && identical(state.run, saving)) {
+      state = state.withRun(saved);
     }
   }
 

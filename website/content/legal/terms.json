@@ -1,0 +1,43 @@
+{
+  "title": "Terms of service",
+  "summary": "Your credits are yours. These terms explain your account, the Free plan and a recurring Pro subscription.",
+  "updated": "3 November 2026",
+  "sections": [
+    {
+      "heading": "About LastReel",
+      "body": "LastReel is an end-credit creation and editing application from COOKOO TECHNOLOGIES (SMC-PRIVATE) LIMITED. For product support and questions about these terms, contact hello@cookoo.dev."
+    },
+    {
+      "heading": "Your account and content",
+      "body": "Keep your sign-in details secure and use an account you are authorised to use. You retain ownership of your projects and exports. You give us permission to process your content as needed to provide, sync and support the service. Only upload content you have the right to use. Do not use LastReel for unlawful activity, infringement, abusive content or interference with the service."
+    },
+    {
+      "heading": "Free and Pro",
+      "body": "Free includes every block, timing and look tool, two editable projects, and standard exports up to 1080p. Web standard export is H.264 MP4. Pro adds unlimited projects, PNG alpha and exports up to 4K on supported devices, and removes in-app ads. Native export formats such as HEVC and ProRes depend on the device and platform; ProRes is not a web export format. The web editor is available on Free and Pro."
+    },
+    {
+      "heading": "Prices and recurring billing",
+      "body": "The selected price, currency, applicable taxes and billing period are shown before purchase. Monthly subscriptions renew monthly and annual subscriptions renew yearly until cancelled. An annual price is charged in one yearly payment, not in monthly instalments. No free trial applies unless the checkout explicitly offers one. App-store prices and offers may differ from web prices."
+    },
+    {
+      "heading": "Who handles payment",
+      "body": "Paddle is the merchant of record and authorised reseller for web purchases and handles web payment processing, receipts and applicable transaction taxes. Paddle Buyer Terms apply to those purchases. Apple App Store and Google Play purchases are billed and managed by the respective store. RevenueCat links verified subscription status to your LastReel account; use the same signed-in account across devices."
+    },
+    {
+      "heading": "Cancel, restore or request a refund",
+      "body": "Use Settings → Manage billing (in the Plan or subscription section) to open the billing provider responsible for your purchase. For a Paddle purchase you can also use the Manage subscription link in your receipt or visit paddle.net. Cancelling stops future renewals; Pro normally remains available until the paid period ends. Cancellation does not itself issue a refund. See our Refund & cancellation policy for refund requests and statutory rights. Use Restore purchase or Check access if an existing subscription is not reflected in the app."
+    },
+    {
+      "heading": "When Pro ends or an account is deleted",
+      "body": "When Pro ends, the Free plan limits apply: two projects remain editable and additional projects become read-only. A subscription ending does not itself delete projects. Deleting your LastReel account does not cancel billing with Paddle, Apple or Google. Cancel the subscription separately before deleting your account. Account deletion removes account-associated data through the deletion flow, subject to necessary legal, security and billing retention."
+    },
+    {
+      "heading": "Service and changes",
+      "body": "Features and export support can vary with your device, browser and operating system. Keep your own copies of important exports. We may maintain or update the service and restrict access for abuse. We will communicate material changes affecting a paid subscription as required by applicable law and the billing provider. Nothing in these terms limits mandatory consumer rights or liability that cannot lawfully be excluded."
+    },
+    {
+      "heading": "Questions",
+      "body": "Contact hello@cookoo.dev for product, account or policy questions. For Paddle charges, receipts, cancellation or refunds, you may also contact Paddle at paddle.net. The dated version published here describes these terms; changes will be identified by an updated date."
+    }
+  ]
+}

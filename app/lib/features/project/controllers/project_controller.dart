@@ -356,6 +356,8 @@ class ProjectController extends Notifier<ProjectState> {
 
   // ---------- look / background ----------
 
+  void setFace(CreditFace face) => _updateSettings((s) => s.copyWith(face: face));
+
   void setLook(RollLook look) => _updateSettings((s) => s.copyWith(look: look));
   void setTilt(double v) => _updateSettings((s) => s.copyWith(tilt: v));
   void setVanishingDistance(double v) => _updateSettings((s) => s.copyWith(vanishingDistance: v));

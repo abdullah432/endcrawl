@@ -70,7 +70,7 @@ class PrivacyScreen extends ConsumerWidget {
               EcGroupRow(
                 title: 'Purchases',
                 subtitle:
-                    'Your store handles payment; RevenueCat manages plan status.',
+                    'Paddle or your app store handles payment; RevenueCat manages plan status.',
                 chevron: false,
               ),
               EcGroupRow(
@@ -151,7 +151,6 @@ class PrivacyDetail extends ConsumerWidget {
     final t = context.type;
     final prefs = (ref.watch(userProfileProvider).value ?? const UserProfile()).preferences;
     final settings = ref.read(settingsControllerProvider);
-    final store = AppLinks.storeName;
 
     void update(Preferences Function(Preferences) change) async {
       final result = await settings.updatePreferences(change);
@@ -171,7 +170,7 @@ class PrivacyDetail extends ConsumerWidget {
     final storedItems = [
       stored('Account', 'Name, email and sign-in method'),
       stored('Projects & renders', 'Synced so they survive a new device'),
-      stored('Purchases', 'Plan status only. $store handles payment.'),
+      stored('Purchases', 'Plan status only. Paddle or your app store handles payment.'),
       stored('Session insights', 'Microsoft Clarity records how screens are used. Emails and passwords are hidden.'),
     ];
 
@@ -254,7 +253,7 @@ class PrivacyDetail extends ConsumerWidget {
                     Text('Delete account', style: t.titleM.copyWith(fontSize: 15, fontWeight: FontWeight.w700, color: p.warn)),
                     const SizedBox(height: 3),
                     Text(
-                      'Removes your account, projects and renders. If you have Pro, cancel it in $store first: '
+                      'Removes your account, projects and renders. If you have Pro, cancel it with your billing provider first: '
                       'deleting the account doesn’t cancel the subscription.',
                       style: t.bodyS.copyWith(fontSize: 12.5, height: 1.45, color: p.ink2),
                     ),

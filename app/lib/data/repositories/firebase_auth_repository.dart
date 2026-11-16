@@ -389,6 +389,10 @@ class FirebaseAuthRepository implements AuthRepository {
         ),
       'too-many-requests' => (FailureKind.permission, 'Too many attempts. Try again in a few minutes.'),
       'network-request-failed' => (FailureKind.network, 'No connection. Check your network and try again.'),
+      'keychain-error' => (
+          FailureKind.permission,
+          'LastReel could not securely save your sign-in. This app build needs working Keychain access. Contact support for a correctly signed build.',
+        ),
       'provider-already-linked' => (FailureKind.unknown, 'That method is already connected.'),
       'credential-already-in-use' => (
           FailureKind.permission,

@@ -1,0 +1,291 @@
+# Paddle web subscriptions through RevenueCat
+
+The Flutter web app owns plan selection and account/subscription management.
+RevenueCat Web Purchase Links host Paddle checkout. The Next.js marketing site
+links to the signed-in app; it does not need Firebase Auth or a payment SDK.
+
+## Current status
+
+The integration code is gated by `WEB_BILLING_ENABLED` (false by default).
+The Paddle sandbox provider, recurring prices, `pro` mappings, `web_sandbox`
+offering, hosted purchase link and restricted backend credentials are configured.
+The Flutter app, reconciliation functions and marketing copy are deployed.
+Checkout and sandbox entitlements remain restricted to the designated test UID;
+Live checkout is off. The existing account-profile-sync release flag is retained.
+No live products or payments are implied by a successful sandbox test.
+
+Native Google Play/App Store purchases keep using RevenueCat. Both web prices
+must be attached to the existing `pro` entitlement in the existing LastReel
+RevenueCat project, with the Firebase UID as the RevenueCat App User ID.
+
+## Verified sandbox results (3 November 2026)
+
+- Monthly USD 4.99 and annual USD 29.99 both completed real Paddle sandbox
+  checkout under the authenticated Firebase UID. RevenueCat and both Firebase
+  billing records matched the exact product, store, sandbox environment and period.
+- The published declined test card failed without granting Pro.
+- Checkout return showed the new confirmation only after canonical verification.
+  Existing Pro showed D5 with no second purchase button. All five saved projects
+  retained their pre-test update timestamps and normalized content hash.
+- Portal cancellation at period end kept Pro and set `willRenew=false`.
+  Immediate cancellation reconciled to Free/expired through the normal webhook.
+- A full monthly test refund was approved by Paddle and recorded as `refunded_at`
+  in RevenueCat. **Refunding alone did not cancel that Paddle subscription or
+  remove its still-active canonical entitlement.** For a refund intended to end
+  access and prevent another charge, support must also cancel the Paddle
+  subscription immediately. Do not infer access from an adjustment event or
+  silently diverge from mobile RevenueCat entitlements.
+- Both sandbox test subscriptions were ended. Final RevenueCat access is expired,
+  Firebase is Free, the subscription audit status is `refunded`, and renewal is off.
+- Automatic refund approval in Paddle sandbox runs on a ten-minute cycle.
+  Actual accelerated monthly/annual renewals and native-device purchases were
+  not performed. Grace/failure/retry handling is covered by canonical-data tests.
+- The public marketing site keeps `NEXT_PUBLIC_WEB_BILLING_ENABLED=false` until
+  Live is ready; no sandbox purchase link is publicly advertised.
+
+Design comparisons and intended differences are in `../design-qa.md`. The source
+was the supplied LastReel Desktop HTML archive. The reference's sample trials,
+preview-only Free tier, direct plan-switch button and automatic cancellation on
+account deletion are not promises made by this implementation. Account deletion
+explicitly directs subscribers to cancel with their billing provider first.
+
+## Final validation
+
+- Flutter analysis: clean. Full suite: 660 passed, 8 existing skips.
+- Backend emulator suite: 28 passed, no skips. Latest isolated unit/handler suite:
+  12 passed, with the two emulator-only groups skipped outside the emulator run.
+- Marketing typecheck, lint and static build: passed. Its build-blocking Next.js
+  issue was patched within 16.4 (16.4.4), React/React DOM to 19.3.1, and the
+  transitive Zod high-severity advisory was patched. npm still reports 16 moderate
+  dependency advisories; this was a scoped build repair, not a full dependency audit.
+- Real browser captures and comparisons: `../design-qa.md` (`passed`).
+- Live payments remain off. Paddle verification/payout details and final public
+  Public policy pages use the owner-confirmed legal operator name and Paddle's
+  refund policy without an additional LastReel guarantee. Identity/payout
+  verification and Live activation remain separate.
+
+## Account setup
+
+1. Create or log into a separate Paddle sandbox account. The owner completes
+   account terms, password creation, and any verification challenges.
+2. Set the default payment link to `https://pay.rev.cat`. Configure the required
+   checkout domain. Disable Paddle abandoned-cart emails for RevenueCat-hosted
+   checkout, because their recovery links cannot reopen those checkouts.
+3. Create an active `LastReel Pro` product and two active recurring prices:
+   USD 4.99 every month, USD 29.99 every year. The initial integration does not
+   offer trials: a price with a trial is rejected by the catalog endpoint.
+4. Create a sandbox Paddle API key using the permissions in RevenueCat's current
+   Paddle integration guide. Configure a new sandbox Paddle web provider inside
+   RevenueCat, automatic purchase tracking, and autogenerated IDs (identified
+   purchase links supply the Firebase UID). Credentials belong in the provider's
+   secret field, never a Dart define or repository file.
+5. Import both Paddle prices. Each Paddle price becomes a RevenueCat product.
+   Attach both to the existing `pro` entitlement and create a dedicated `web`
+   offering (`web_sandbox` for sandbox) with `$rc_monthly` and `$rc_annual` packages. Do not replace native
+   products or the existing native default offering.
+6. Create a Web Purchase Link selecting this offering and Paddle provider.
+   Set repeat purchases to show the success page for existing entitled users.
+   Set success redirect to `https://app.lastreel.cookoo.dev/?billing=return`.
+   Use the sandbox URL for sandbox configuration and the production URL for live.
+7. Confirm the existing RevenueCat webhook includes Paddle purchases and lifecycle
+   events. No direct Paddle-to-Firebase webhook is required: RevenueCat tracks
+   Paddle and the existing RevenueCat webhook reconciles canonical Customer Info.
+
+## Server configuration
+
+Store the Paddle key in Firebase Secret Manager as `PADDLE_API_KEY`. The catalog
+only reads prices. The RevenueCat backend key remains `REVENUECAT_API_KEY`.
+Existing webhook credentials remain unchanged.
+
+Set these non-secret Functions parameters in the appropriate ignored
+`functions/.env.<firebase-project-id>` file:
+
+```dotenv
+WEB_BILLING_MODE=sandbox
+PADDLE_SANDBOX_UIDS=EXACT_FIREBASE_TEST_UID
+PADDLE_SANDBOX_MONTHLY_PRICE_ID=pri_REPLACE_WITH_MONTHLY_ID
+PADDLE_SANDBOX_YEARLY_PRICE_ID=pri_REPLACE_WITH_YEARLY_ID
+REVENUECAT_SANDBOX_PURCHASE_LINK=https://pay.rev.cat/REPLACE_WITH_SANDBOX_TOKEN
+PADDLE_LIVE_MONTHLY_PRICE_ID=
+PADDLE_LIVE_YEARLY_PRICE_ID=
+REVENUECAT_LIVE_PURCHASE_LINK=
+```
+
+`WEB_BILLING_MODE` accepts `off`, `sandbox`, or `live`. Sandbox checkout and
+sandbox Paddle entitlements are allowed only for `PADDLE_SANDBOX_UIDS`, including
+when the general billing rollout is `all`. General `BILLING_ROLLOUT_MODE` guards
+continue to apply. A valid paid mobile subscription is retained if RevenueCat
+selects a disallowed sandbox Paddle entitlement for the same account.
+
+For live rollout, configure the separate live product IDs, production purchase
+link and live Paddle key, then set `WEB_BILLING_MODE=live`. Keep sandbox allowlist
+empty outside designated testing. Never distribute a sandbox purchase link.
+
+Deploy the three new callables together with the existing reconciliation code:
+
+```sh
+firebase deploy --project endcrawl-620c2 --only functions:getWebBillingOptions,functions:createWebCheckout,functions:getBillingManagementUrl,functions:refreshEntitlement,functions:revenueCatWebhook,functions:reconcileBillingEvent
+```
+
+The checkout endpoint derives the UID from Auth, accepts only monthly/yearly,
+and checks current verified access before issuing an identified purchase link.
+The browser never grants access from a redirect, URL UID, or checkout callback.
+
+The catalog fetches active recurring prices from the matching Paddle API with
+the server secret. Displayed amounts are the catalog's base currency; checkout
+shows the final currency, taxes and amount. Configure the RevenueCat packages to
+match these exact Paddle price IDs and verify this in sandbox before release.
+
+Management URLs are fetched fresh from verified RevenueCat Customer Info by an
+authenticated callable. Only Apple/Google/Paddle HTTPS portal hosts are accepted.
+Paddle portal URLs are never written to the entitlement ledger. The current
+RevenueCat v1 management URL opens Paddle’s email sign-in portal. Customers use
+the email entered at checkout; generating an authenticated v2 management URL is
+an optional later enhancement requiring a scoped RevenueCat v2 secret.
+
+## Flutter and website
+
+Build the browser app from `app/` with:
+
+```sh
+flutter build web --release --dart-define=PROFILE_SYNC_ENABLED=true --dart-define=WEB_BILLING_ENABLED=true
+```
+
+Web opens directly into the normal Free/Pro app. There is no web preview tier
+or separate access/marketing screen. Free allows two editable projects and
+standard MP4 exports up to 1080p; Pro adds unlimited projects, PNG alpha and
+exports up to 4K on supported devices. Web does not offer rewarded ads.
+
+Upgrade actions, project limits and premium exports open the shared `ProSheet`
+paywall. Web windows at least 1100 px wide use the supplied desktop D2 design;
+smaller windows retain the tablet/compact composition. The related D4 purchase
+confirmation, D5 already-Pro state and D15 subscription card use the same design. The purchase button uses Paddle; native mobile retains its
+store checkout. The backend checks canonical access before every checkout.
+Existing Pro users see billing management instead of another purchase button. Returning checkout sessions retry
+canonical verification a bounded number of times and offer manual recheck.
+Account changes cancel pending return work and prevent stale checkout navigation.
+
+`?subscribe=1` opens the subscription page after sign-in on supported browser
+widths. `?billing=return` triggers server verification. Neither parameter grants
+access. Phone browsers retain the existing bigger-screen handoff.
+
+Native builds can receive comma-separated public Paddle price IDs through
+`PADDLE_MONTHLY_PRICE_IDS` and `PADDLE_YEARLY_PRICE_IDS` for accurate period labels;
+Pro access itself remains based on the RevenueCat `pro` entitlement.
+
+## Verification
+
+```sh
+npm --prefix functions test
+npm --prefix functions run test:profiles
+cd app
+flutter analyze
+flutter test test/features/plan/web_billing_test.dart test/features/access/web_access_test.dart test/data/web_entitlement_test.dart test/data/revenuecat_entitlement_repository_test.dart
+flutter build web --release --dart-define=PROFILE_SYNC_ENABLED=true --dart-define=WEB_BILLING_ENABLED=true
+```
+
+Visual-only preview (fake catalog; does not charge or grant access):
+
+```sh
+flutter run -d web-server --web-port=8781 -t test/web_billing_preview.dart
+```
+
+Real sandbox release checks: use a valid email domain and Paddle's sandbox test
+card; verify the exact Firebase UID and product in Paddle, RevenueCat,
+`billingEntitlements/{uid}`, and `billing/revenuecat/subscriptions/{uid}`. Confirm
+web editing/export and mobile Pro on the same account; monthly/yearly selection;
+decline/cancellation; reload; sign-out/account replacement; duplicate/delayed
+events; billing portal; cancellation with access retained until expiry; expiry;
+refund behavior; and an existing mobile subscriber being prevented from buying
+again. RevenueCat ignores Paddle webhook simulations, so use real sandbox
+transactions. Sandbox subscriptions use full periods rather than Play's
+accelerated subscription clock.
+
+The sandbox hosted link currently uses Paddle buyer terms; it must be switched
+to the published LastReel Terms URL before live launch. The in-app terms now
+share the website content instead of the earlier design placeholder.
+
+Live launch also requires Paddle verification, payout configuration, domain
+approval (including `pay.rev.cat` for hosted links), public Terms/Privacy/Refund
+policies, a controlled live end-to-end purchase, and matching website copy.
+
+References:
+- https://developer.paddle.com/build/transactions/create-transaction-adjustments/
+- https://www.revenuecat.com/docs/web/integrations/paddle
+- https://www.revenuecat.com/docs/web/web-billing/web-purchase-links
+- https://developer.paddle.com/build/customers/integrate-customer-portal/
+- https://developer.paddle.com/build/go-live-checklist/
+
+### Public policies — 3 November 2026
+
+- Owner confirmed `COOKOO Technologies (SMC) Private limited` and chose Paddle's
+  refund policy without an additional LastReel refund promise.
+- Public website routes: `/terms`, `/privacy`, `/refunds`, `/contact`; pricing
+  remains USD4.99 monthly / USD29.99 yearly, labelled planned until Live opens.
+- Retained the existing `hello@cookoo.dev` support contact. No registration
+  country or governing-law clause was invented.
+- Shared website policy data is in `website/content/legal`; the offline Flutter
+  Terms and Refund documents are generated with `scripts/sync-legal-documents.py`.
+- Existing Flutter settings/paywall use theme components and the Riverpod
+  external-link service. Static Next pages require no client state manager.
+- Website lint/typecheck/static build and Flutter analysis passed. Focused
+  billing/settings suite: 31 passed, one existing skip. Mobile website checked
+  at 390px with no horizontal overflow.
+- Policies explain billing providers, renewal/cancellation, deletion not
+  cancelling billing, Free downgrade, Firebase/RevenueCat/Paddle and actual
+  analytics/session-insight providers. They do not activate checkout.
+
+### Live verification progress — 3 November 2026
+
+- Submitted `lastreel.cookoo.dev` and `app.lastreel.cookoo.dev` via Live Website
+  approval; both show **In review**. This is domain review, not completed account
+  verification or permission to enable Live checkout.
+- Account setup: selected privately owned company for the owner's incorporated
+  single-member company. Retained the dashboard's Pakistan country selection.
+- Owner confirmed the $0–$100K annual-revenue band and explicitly approved the
+  acceptable-use declaration at the product step. Saved the LastReel description.
+- Website step saved both domains, `/#plans`, `/terms`, `/privacy`, `/refunds`.
+- At step 4 of 5: entered the owner-confirmed full legal business name. Awaiting
+  incorporation date, company number, trading name and confirmation of existing
+  legal/trading addresses. Personal/stakeholder checks may follow; no unknown
+  identity facts were entered. No final verification submission yet.
+- Live checkout remains disabled. No Live payment credentials were created.
+
+- Owner supplied the exact SECP legal name `COOKOO TECHNOLOGIES (SMC-PRIVATE)
+  LIMITED`, incorporation date 4 July 2022, CUIN `0205686` (leading zero kept)
+  and trading name COOKOO. Saved company details and corrected postcode to the
+  owner's supplied registered address. Trading address selected as same as legal,
+  with owner confirmation requested before final submission.
+- Advanced to step 5 of 5: awaiting owner answers on MATCH/payment-service status,
+  payment-provider/regulatory history and final accuracy/change-notification
+  declaration. These answers are not inferred from product type.
+
+### Owner submitted Live verification — 3 November 2026
+
+The owner completed the final business-history answers and accuracy declaration
+in Paddle and submitted them personally. Verified the thank-you confirmation and
+Live dashboard: **Verify your account — In progress**, **We're reviewing your
+details**. Paddle says no action is currently needed and will email if additional
+information is required. This supersedes the step-5-pending notes above. Live
+checkout remains disabled pending approval and production setup.
+
+### Sumsub checks requested — 3 November 2026
+
+Paddle changed Live verification to **Action required** and linked its Sumsub
+partner. Opened the partner flow, matched the COOKOO registration/CUIN, confirmed
+company information, and reached associated parties. Prepared one individual
+with controller + director roles, ownership reason >=25% and 100% ownership
+based on the owner's explicit sole-owner/director statement. No beneficiary was
+created yet: legal personal name and email remain blank for the owner to enter.
+Do not store the private Sumsub session URL or identity-document information in
+this repository. Live checkout remains disabled.
+
+### Sumsub company documents required — 3 November 2026
+
+Owner completed the individual details directly and asked to continue. Confirmed
+one individual controller/director is present, selected no corporate shareholders
+consistent with the owner's sole ownership, and submitted associated parties.
+Sumsub now requests company documents for legal presence, ownership structure,
+and representative authorization. Upload page left open for the owner's SECP
+documents; no documents uploaded and no final approval yet. Live checkout stays
+in sandbox mode.

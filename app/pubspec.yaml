@@ -1,10 +1,10 @@
 name: lastreel
 description: "LastReel — an end-credits roll editor for phones."
 publish_to: "none"
-# # # Android (Play Store):
-# version: 1.0.0+17
-# # iOS (App Store):
-version: 1.0.1+2
+# # Android (Play Store):
+version: 1.0.0+17
+# # # iOS (App Store):
+# version: 1.0.1+2
 
 environment:
   sdk: ">=3.12.0 <4.0.0"
@@ -66,8 +66,49 @@ flutter:
   config:
     enable-swift-package-manager: true
   uses-material-design: true
+  fonts:
+    - family: InstrumentSerif
+      fonts:
+        - asset: assets/fonts/InstrumentSerif-Regular.ttf
+        - asset: assets/fonts/InstrumentSerif-Italic.ttf
+          style: italic
+    - family: Archivo
+      fonts:
+        - asset: assets/fonts/Archivo-Regular.ttf
+        - asset: assets/fonts/Archivo-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/Archivo-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/Archivo-Bold.ttf
+          weight: 700
+    - family: JetBrainsMono
+      fonts:
+        - asset: assets/fonts/JetBrainsMono-Regular.ttf
+        - asset: assets/fonts/JetBrainsMono-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/JetBrainsMono-Bold.ttf
+          weight: 700
+    - family: ArchivoNarrow
+      fonts:
+        - asset: assets/fonts/ArchivoNarrow-Regular.ttf
+        - asset: assets/fonts/ArchivoNarrow-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/ArchivoNarrow-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/ArchivoNarrow-Bold.ttf
+          weight: 700
+    - family: EBGaramond
+      fonts:
+        - asset: assets/fonts/EBGaramond-Regular.ttf
+        - asset: assets/fonts/EBGaramond-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/EBGaramond-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/EBGaramond-Bold.ttf
+          weight: 700
   assets:
     - assets/icon/
+    - assets/fonts/
     - assets/images/cookoo/
     - assets/images/apps/
 

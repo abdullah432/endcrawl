@@ -26,11 +26,11 @@ void main() {
     (tester) async {
       final app = AppHarness();
       await settings(tester, app);
-      final preview = find.text('Preview');
+      final preview = find.text('Open web app');
       await tester.ensureVisible(preview);
       expect(find.text('Desktop & web'), findsOneWidget);
       expect(
-        find.text('Only with Pro. Take a look before you upgrade.'),
+        find.text('Free editing on the web. Pro features follow your account.'),
         findsOneWidget,
       );
       await tester.tap(preview);
@@ -40,10 +40,10 @@ void main() {
         findsOneWidget,
       );
       expect(find.text('Upgrade to Pro'), findsOneWidget);
-      expect(find.text('Preview on the web'), findsOneWidget);
+      expect(find.text('Open web app'), findsNWidgets(2));
       expect(app.links.opened, isEmpty);
-      await tester.ensureVisible(find.text('Preview on the web'));
-      await tester.tap(find.text('Preview on the web'));
+      await tester.ensureVisible(find.text('Open web app').last);
+      await tester.tap(find.text('Open web app').last);
       await tester.pumpAndSettle();
       expect(app.links.opened, [AppLinks.webApp]);
       expect(app.desk.quietUntil, isNull);
@@ -51,13 +51,13 @@ void main() {
     },
   );
 
-  testWidgets('Free can upgrade from the desktop preview sheet', (
+  testWidgets('Free can upgrade from the desktop web sheet', (
     tester,
   ) async {
     final app = AppHarness();
     await settings(tester, app);
-    await tester.ensureVisible(find.text('Preview'));
-    await tester.tap(find.text('Preview'));
+    await tester.ensureVisible(find.text('Open web app').last);
+    await tester.tap(find.text('Open web app').last);
     await tester.pumpAndSettle();
     await tester.ensureVisible(find.text('Upgrade to Pro'));
     await tester.tap(find.text('Upgrade to Pro'));
@@ -103,7 +103,7 @@ void main() {
       tester.platformDispatcher.textScaleFactorTestValue = 1.4;
       addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
       await settings(tester, AppHarness(), size: size);
-      await tester.ensureVisible(find.text('Preview'));
+      await tester.ensureVisible(find.text('Open web app').last);
       expect(find.text('Desktop & web'), findsOneWidget);
       expect(tester.takeException(), isNull);
     });

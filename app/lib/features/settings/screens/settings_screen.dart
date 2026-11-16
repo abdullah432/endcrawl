@@ -25,6 +25,7 @@ import '../../plan/controllers/plan_controller.dart';
 import '../../plan/controllers/release_policy.dart';
 import '../../plan/screens/pro_sheet.dart';
 import '../../plan/widgets/plan_meter.dart';
+import '../../plan/widgets/web_subscription_card.dart';
 import '../controllers/settings_controller.dart';
 import '../models/legal_document.dart';
 import 'delete_account_screen.dart';
@@ -34,7 +35,6 @@ import 'profile_screen.dart';
 import 'subscription_screen.dart';
 import '../../../core/layout/layout_class.dart';
 import '../../access/controllers/web_access.dart';
-import '../../access/screens/web_access_screen.dart';
 import '../../home/tablet_layout.dart';
 import '../../home/widgets/app_side_nav.dart';
 import '../../review/review_prompt.dart';
@@ -136,7 +136,7 @@ class SettingsGroups {
 
   /// The plan — on the web, the subscription's status (D15): the web never
   /// sells, so it links out to Google Play and re-checks access instead.
-  Widget plan() => ref.watch(verifiedWorkspaceProvider) ? const _WebPlanCard() : const _PlanCard();
+  Widget plan() => const _PlanCard();
 
   Widget desktopWeb() => const DesktopWebCard();
 
@@ -296,6 +296,7 @@ class SettingsGroups {
     return EcGroup(label: 'Legal', children: [
       EcGroupRow(title: 'Terms of service', onTap: () => LegalDocumentScreen.open(context, termsOfService)),
       EcGroupRow(title: 'Privacy policy', onTap: () => links.openUrl(AppLinks.privacyPolicy)),
+      EcGroupRow(title: 'Refund & cancellation', onTap: () => LegalDocumentScreen.open(context, refundPolicy)),
       EcGroupRow(
         title: 'Open-source licences',
         onTap: () => showLicensePage(context: context, applicationName: 'LastReel', applicationVersion: _version),
@@ -308,6 +309,7 @@ class SettingsGroups {
     return EcGroup(label: 'Legal & privacy', children: [
       EcGroupRow(title: 'Privacy & data', onTap: () => PrivacyScreen.open(context)),
       EcGroupRow(title: 'Privacy policy', onTap: () => links.openUrl(AppLinks.privacyPolicy)),
+      EcGroupRow(title: 'Refund & cancellation', onTap: () => LegalDocumentScreen.open(context, refundPolicy)),
       EcGroupRow(title: 'Terms of service', onTap: () => LegalDocumentScreen.open(context, termsOfService)),
       EcGroupRow(
         title: 'Open-source licences',
@@ -607,105 +609,6 @@ class _DesktopSettings extends StatelessWidget {
   }
 }
 
-/// D15's subscription card: status only. Pro links out to Google Play to
-/// manage it and offers a re-check for a renewal that just went through;
-/// Free leads to how to get Pro. If Pro ends, nothing is deleted — the web
-/// goes back to preview.
-class _WebPlanCard extends ConsumerWidget {
-  const _WebPlanCard();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final p = context.palette;
-    final t = context.type;
-    final pro = ref.watch(entitlementProvider).value?.isPro ?? false;
-    final user = ref.watch(authStateProvider).value;
-    final checking = ref.watch(accessCheckProvider.select((c) => c.phase == AccessPhase.checking));
-    Widget chip(String label) => Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-          decoration: BoxDecoration(color: p.tint, borderRadius: BorderRadius.circular(10)),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.check_rounded, size: 14, color: p.ok),
-              const SizedBox(width: 6),
-              Text(label, style: t.bodyS.copyWith(fontSize: 12)),
-            ],
-          ),
-        );
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: p.surface,
-        borderRadius: BorderRadius.circular(EcRadius.group),
-        boxShadow: p.glassShadow,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
-            children: [
-              Expanded(child: Text('SUBSCRIPTION', style: t.eyebrow.copyWith(fontSize: 9.5))),
-              if (pro) EcStatusPill('Active', tone: EcTone.ok),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Text(pro ? 'LastReel Pro' : 'Free · web preview', style: t.displayM.copyWith(fontSize: 32)),
-          const SizedBox(height: 4),
-          Text(
-            pro
-                ? '${user?.email ?? 'This account'} · billed through Google Play'
-                : 'Open and play any project here. Editing, new projects and export unlock with Pro.',
-            style: t.bodyS.copyWith(color: p.ink2),
-          ),
-          const SizedBox(height: 14),
-          if (pro) ...[
-            Wrap(spacing: 8, runSpacing: 8, children: [chip('Web & desktop'), chip('Every format'), chip('No ads')]),
-            const SizedBox(height: 14),
-          ],
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              if (pro)
-                EcButton(
-                  label: 'Manage in Google Play',
-                  variant: EcButtonVariant.ink,
-                  size: EcButtonSize.medium,
-                  expand: false,
-                  leading: Icon(Icons.open_in_new_rounded, size: 15, color: p.onInk),
-                  onPressed: () => ref.read(externalLinksProvider).openUrl(AppLinks.playSubscriptions),
-                )
-              else
-                EcButton(
-                  label: 'How to get Pro',
-                  variant: EcButtonVariant.ink,
-                  size: EcButtonSize.medium,
-                  expand: false,
-                  onPressed: () => WebAccessScreen.open(context),
-                ),
-              EcButton.secondary(
-                label: 'Re-check access',
-                size: EcButtonSize.medium,
-                expand: false,
-                busy: checking,
-                onPressed: () => ref.read(accessCheckProvider.notifier).check(),
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          Text(
-            'Renewal date, price and cancellation live in your Google Play account. If Pro ends, nothing is deleted; '
-            'the web goes back to preview.',
-            style: t.fine.copyWith(fontSize: 11.5),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// A run of Settings content inside the 16 px side gutter.
 class _Gutter extends StatelessWidget {
   final List<Widget> children;
   const _Gutter({required this.children});
@@ -768,13 +671,16 @@ class _PlanCard extends ConsumerWidget {
     final p = context.palette;
     final t = context.type;
     final entitlement = ref.watch(entitlementProvider).value ?? const Entitlement.checking();
+    if (ref.watch(runningOnWebProvider) && entitlement.isPro) {
+      return const WebSubscriptionCard();
+    }
     final count = ref.watch(projectSummariesProvider).value?.length ?? 0;
     final plan = ref.watch(planControllerProvider);
     final limit = entitlement.projectLimit;
     final status = switch ((entitlement.trialEndsAt, limit)) {
       (final ends?, _) => 'Pro trial · ends ${formatDayMonth(ends)}',
       (_, null) => '${plural(count, 'project')} · no ads',
-      (_, final limit?) => '$count of ${plural(limit, 'project')} · ads on',
+      (_, final limit?) => '$count of ${plural(limit, 'project')}${ref.watch(verifiedWorkspaceProvider) ? '' : ' · ads on'}',
     };
     final upgradeLabel = plan.offers.any((o) => o.hasTrial) ? 'Start free trial' : 'Upgrade to Pro';
     Future<void> restore() async {
@@ -833,7 +739,7 @@ class _PlanCard extends ConsumerWidget {
                         onPressed: () => ProSheet.show(context, source: PlanSource.settings),
                       ),
                       EcButton.secondary(
-                        label: 'Restore purchase',
+                        label: ref.watch(verifiedWorkspaceProvider) ? 'Check access' : 'Restore purchase',
                         size: EcButtonSize.medium,
                         expand: false,
                         busy: plan.restoring,

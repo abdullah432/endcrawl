@@ -533,7 +533,9 @@ class _PlanCell extends ConsumerWidget {
           const SizedBox(height: 6),
           Expanded(
             child: Text(
-              'Nothing is deleted and nothing expires. Pro adds unlimited projects, ProRes and 4K exports, and no ads.',
+              ref.watch(runningOnWebProvider)
+                  ? 'Nothing is deleted and nothing expires. Pro adds unlimited projects, PNG alpha and exports up to 4K.'
+                  : 'Nothing is deleted and nothing expires. Pro adds unlimited projects, ProRes and 4K exports, and no ads.',
               style: t.bodyS.copyWith(fontSize: 12, color: p.ink2, height: 1.4),
               overflow: TextOverflow.fade,
             ),

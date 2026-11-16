@@ -25,6 +25,7 @@ import '../../project/controllers/project_controller.dart';
 import '../../review/review_prompt.dart';
 import '../controllers/export_controller.dart';
 import '../models/export_artifact.dart';
+import '../widgets/gallery_save_status.dart';
 import '../models/export_models.dart';
 import 'export_sheet.dart' show RenderProgressBar;
 
@@ -365,7 +366,10 @@ class _RendersPanel extends ConsumerWidget {
     ]..sort((a, b) => b.$2.at.compareTo(a.$2.at));
 
     final cards = <Widget>[
-      if (run.phase == ExportPhase.done) _DoneCard(run: run, portrait: portrait),
+      if (run.phase == ExportPhase.done) ...[
+        GallerySaveStatus(run: run),
+        _DoneCard(run: run, portrait: portrait),
+      ],
       if (run.phase == ExportPhase.failed) _FailedCard(run: run, portrait: portrait),
       for (final (title, summary) in earlier.take(6)) _EarlierRow(title: title, summary: summary),
     ];
@@ -458,6 +462,7 @@ class _DoneCard extends ConsumerWidget {
         'done',
       ].join(' · '),
       actions: [
+        if (!AppPlatform.isMobile || run.codec == Codec.png)
         _Pill(label: portrait ? 'Save' : 'Save to device', fill: p.inkSurface, ink: p.onInk, onTap: save),
         if (canShare)
           _Pill(

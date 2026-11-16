@@ -17,7 +17,8 @@ class Entitlement {
   static const freeProjectLimit = 2;
 
   /// "two projects" — the cap as copy says it.
-  static String get freeProjectsInWords => '${numberWord(freeProjectLimit)} ${freeProjectLimit == 1 ? 'project' : 'projects'}';
+  static String get freeProjectsInWords =>
+      '${numberWord(freeProjectLimit)} ${freeProjectLimit == 1 ? 'project' : 'projects'}';
 
   final Plan plan;
 
@@ -30,6 +31,9 @@ class Entitlement {
   final DateTime? renewsAt;
   final bool willRenew;
   final Uri? managementUrl;
+  final String? billingStore;
+  final bool billingIssue;
+  final DateTime? graceEndsAt;
 
   /// Set while Pro is a free trial: when it ends.
   final DateTime? trialEndsAt;
@@ -37,7 +41,8 @@ class Entitlement {
   /// Free after having had Pro (a trial or a subscription that ended).
   final bool lapsed;
 
-  const Entitlement.free({bool lapsed = false}) : this._free(lapsed: lapsed, isResolved: true);
+  const Entitlement.free({bool lapsed = false})
+    : this._free(lapsed: lapsed, isResolved: true);
 
   const Entitlement.checking() : this._free(lapsed: false, isResolved: false);
 
@@ -47,12 +52,23 @@ class Entitlement {
       renewsAt = null,
       willRenew = false,
       managementUrl = null,
+      billingStore = null,
+      billingIssue = false,
+      graceEndsAt = null,
       trialEndsAt = null;
 
-  const Entitlement.pro({this.period, this.renewsAt, this.willRenew = true, this.managementUrl, this.trialEndsAt})
-    : plan = Plan.pro,
-      isResolved = true,
-      lapsed = false;
+  const Entitlement.pro({
+    this.period,
+    this.renewsAt,
+    this.willRenew = true,
+    this.managementUrl,
+    this.trialEndsAt,
+    this.billingStore,
+    this.billingIssue = false,
+    this.graceEndsAt,
+  }) : plan = Plan.pro,
+       isResolved = true,
+       lapsed = false;
 
   bool get isPro => plan == Plan.pro;
   bool get isTrial => isPro && trialEndsAt != null;
@@ -73,10 +89,13 @@ class Entitlement {
   bool get showsAds => isResolved && !isPro;
 
   /// Whether one more project fits, given how many exist.
-  bool canAddProject(int existing) => projectLimit == null || existing < projectLimit!;
+  bool canAddProject(int existing) =>
+      projectLimit == null || existing < projectLimit!;
 
   /// Free slots left, or null when unlimited.
-  int? slotsLeft(int existing) => projectLimit == null ? null : (projectLimit! - existing).clamp(0, projectLimit!);
+  int? slotsLeft(int existing) => projectLimit == null
+      ? null
+      : (projectLimit! - existing).clamp(0, projectLimit!);
 }
 
 /// A purchasable Pro option as the paywall (6.5) lists it.
@@ -86,6 +105,7 @@ class PlanOffer {
   final String detail;
   final String? badge;
   final String packageId;
+  final bool isSandbox;
 
   /// The free trial this account would get, in days; null when there's
   /// none — no trial on the product, or the account has had one.
@@ -100,6 +120,7 @@ class PlanOffer {
     required this.detail,
     this.badge,
     required this.packageId,
+    this.isSandbox = false,
     this.trialDays,
     this.pricePerMonth,
   });
@@ -110,11 +131,15 @@ class PlanOffer {
   String get perPeriod => period == BillingPeriod.yearly ? '/yr' : '/mo';
 
   /// "Start 14-day free trial", or the plain price without a trial.
-  String get ctaLabel => hasTrial ? 'Start $trialDays-day free trial' : 'Start Pro — $price$perPeriod';
+  String get ctaLabel => hasTrial
+      ? 'Start $trialDays-day free trial'
+      : 'Start Pro — $price$perPeriod';
 
   /// "14 days free, then \$2.50 a month" / "7 days free, then \$4.99/mo".
   String get trialSubtitle {
-    final then = period == BillingPeriod.yearly && pricePerMonth != null ? '$pricePerMonth a month' : '$price$perPeriod';
+    final then = period == BillingPeriod.yearly && pricePerMonth != null
+        ? '$pricePerMonth a month'
+        : '$price$perPeriod';
     return hasTrial ? '$trialDays days free, then $then' : detail;
   }
 }
@@ -122,6 +147,9 @@ class PlanOffer {
 /// Returned when an action would add a project beyond the plan's cap. A
 /// sentinel (compared by identity) so the UI can route it to the "slots
 /// full" sheet (1.6) rather than showing it as an error.
-const slotsFull = AppFailure(FailureKind.permission, 'Your free project slots are in use.');
+const slotsFull = AppFailure(
+  FailureKind.permission,
+  'Your free project slots are in use.',
+);
 
 bool isSlotsFull(AppFailure failure) => identical(failure, slotsFull);

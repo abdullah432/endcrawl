@@ -14,6 +14,9 @@ import '../../../domain/models/entitlement.dart';
 import '../../library/controllers/library_controller.dart';
 import '../../plan/controllers/plan_controller.dart';
 import '../../plan/screens/pro_sheet.dart';
+import '../../plan/controllers/web_billing.dart';
+import '../../plan/widgets/web_subscription_card.dart';
+import '../../access/controllers/web_access.dart' show runningOnWebProvider;
 
 /// 7.3 — the Pro subscription, and exactly what cancelling means: nothing
 /// is deleted, the free plan's projects stay editable, and ads come back.
@@ -33,7 +36,9 @@ class SubscriptionScreen extends ConsumerWidget {
     final count = ref.watch(projectSummariesProvider).value?.length ?? 0;
     final links = ref.read(externalLinksProvider);
     final yearly = entitlement.period == BillingPeriod.yearly;
-    final manageUrl = (AppPlatform.requiresVerifiedPro
+    final paddle = entitlement.billingStore == 'paddle';
+    final webBilling = ref.watch(webBillingEnabledProvider);
+    final manageUrl = (AppPlatform.usesServerEntitlements
         ? entitlement.managementUrl
         : entitlement.managementUrl ?? AppLinks.manageSubscriptions);
     final renews = entitlement.renewsAt;
@@ -45,7 +50,7 @@ class SubscriptionScreen extends ConsumerWidget {
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Container(
+          if (webBilling && entitlement.isPro) const WebSubscriptionCard() else Container(
             padding: const EdgeInsets.all(18),
             decoration: BoxDecoration(
               gradient: p.primary,
@@ -100,7 +105,7 @@ class SubscriptionScreen extends ConsumerWidget {
                     : '$count of ${entitlement.projectLimit}',
                 chevron: false,
               ),
-              EcGroupRow(
+              if (!ref.watch(runningOnWebProvider)) EcGroupRow(
                 title: 'Ads',
                 value: entitlement.showsAds ? 'On' : 'Off',
                 chevron: false,
@@ -115,25 +120,25 @@ class SubscriptionScreen extends ConsumerWidget {
                   title: 'Get Pro',
                   onTap: () => ProSheet.show(context),
                 ),
-              if (manageUrl != null)
+              if (manageUrl != null && !(webBilling && entitlement.isPro))
                 EcGroupRow(
                   title: 'Change plan',
                   onTap: () => links.openUrl(manageUrl),
                 ),
-              if (manageUrl != null)
+              if (manageUrl != null && !(webBilling && entitlement.isPro))
                 EcGroupRow(
                   title: 'Billing history',
                   onTap: () => links.openUrl(manageUrl),
                 ),
-              if (manageUrl != null)
+              if (manageUrl != null && !(webBilling && entitlement.isPro))
                 EcGroupRow(
-                  title: AppPlatform.requiresVerifiedPro
+                  title: paddle ? 'Manage billing in Paddle' : AppPlatform.usesServerEntitlements
                       ? 'Manage mobile subscription'
                       : 'Manage in ${AppLinks.storeName}',
                   onTap: () => links.openUrl(manageUrl),
                 ),
               EcGroupRow(
-                title: AppPlatform.requiresVerifiedPro
+                title: AppPlatform.usesServerEntitlements
                     ? 'Check access'
                     : 'Restore purchases',
                 onTap: () async {
@@ -150,8 +155,10 @@ class SubscriptionScreen extends ConsumerWidget {
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 6),
             child: Text(
-              AppPlatform.requiresVerifiedPro
-                  ? 'Manage your subscription in its mobile store. Pro stays active until the paid period ends. When it expires, you can preview the ${AppPlatform.isNativeDesktop ? 'desktop' : 'web'} app; editing and exporting require Pro. Your projects stay saved.'
+              webBilling || paddle
+                  ? 'Manage billing with the provider you subscribed through. Cancellation stops renewal; Pro stays active until the subscription ends. Your projects stay saved.'
+                  : AppPlatform.usesServerEntitlements
+                  ? 'Manage your subscription with its billing provider. Pro stays active until the subscription ends. The Free plan then keeps two projects editable and includes standard exports. Your projects stay saved.'
                   : 'Cancel any time in your store settings. Pro stays on until the paid period ends. After that nothing is '
                         'deleted: you keep every project, ${numberWord(Entitlement.freeProjectLimit)} can be edited, and ads come back.',
               style: t.caption.copyWith(height: 1.5),

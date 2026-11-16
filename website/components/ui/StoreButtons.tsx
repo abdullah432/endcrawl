@@ -4,7 +4,7 @@ import { stores } from "@/content/landing";
 import { ButtonLink } from "./ButtonLink";
 import styles from "./StoreButtons.module.css";
 
-/** Google Play, the only store today. */
+/** Download the Android app. */
 export function GooglePlayButton() {
   return (
     <ButtonLink href={links.googlePlay} size="store" variant="light" aria-label="Get LastReel on Google Play">
@@ -19,13 +19,15 @@ export function GooglePlayButton() {
   );
 }
 
-/** iPhone & iPad — not a link: there is nowhere to go yet. */
-export function IosComingSoon() {
+/** Download the published iPhone and iPad app. */
+export function AppStoreButton() {
   return (
-    <p className={styles.soon}>
-      <span className={styles.soonName}>{stores.ios.name}</span>
-      <span className={styles.soonStatus}>{stores.ios.status}</span>
-    </p>
+    <ButtonLink href={links.appStore} size="store" variant="light" aria-label="Download LastReel on the App Store">
+      <span className={styles.stack}>
+        <span className={styles.kicker}>{stores.ios.kicker}</span>
+        <span className={styles.name}>{stores.ios.name}</span>
+      </span>
+    </ButtonLink>
   );
 }
 

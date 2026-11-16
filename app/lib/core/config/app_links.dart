@@ -6,10 +6,12 @@ abstract final class AppLinks {
   static final androidDownload = Uri.parse(
     'https://play.google.com/store/apps/details?id=com.lastreel.app',
   );
-  static final Uri? iosDownload =
-      const String.fromEnvironment('IOS_APP_STORE_URL').isEmpty
-      ? null
-      : Uri.tryParse(const String.fromEnvironment('IOS_APP_STORE_URL'));
+  static final Uri iosDownload = Uri.parse(
+    const String.fromEnvironment(
+      'IOS_APP_STORE_URL',
+      defaultValue: 'https://apps.apple.com/app/last-reel-end-credits-maker/id6822275411',
+    ),
+  );
   static const supportEmail = 'hello@cookoo.dev';
 
   /// Tagged studio link: native browsers may omit their app referrer.
@@ -51,8 +53,12 @@ abstract final class AppLinks {
   /// The published policy, hosted on cookoo.dev — the same page the store
   /// listings link to, so there is only one version to keep current.
   static final privacyPolicy = Uri.parse(
-    'https://cookoo.dev/lastreel/privacy-policy',
+    'https://lastreel.cookoo.dev/privacy',
   );
+
+  static final termsOfService = Uri.https('lastreel.cookoo.dev', '/terms');
+  static final refundPolicy = Uri.https('lastreel.cookoo.dev', '/refunds');
+  static final contact = Uri.https('lastreel.cookoo.dev', '/contact');
 
   /// The web app — the desk editor, Pro on a computer (1.8b's link).
   static final webApp = Uri.parse('https://app.lastreel.cookoo.dev');
@@ -67,12 +73,11 @@ abstract final class AppLinks {
     'https://play.google.com/store/apps/details?id=com.lastreel.app',
   );
 
-  /// LastReel on the App Store. Unset until the listing is public; until
-  /// then nothing links to the iPhone app.
-  static const Uri? appStoreListing = null;
+  /// The published iPhone and iPad listing, shared by every handoff.
+  static final Uri appStoreListing = iosDownload;
 
   /// The app's store page for this device — the web's "Open the LastReel
-  /// app" (1.8c). Null on an iPhone or iPad until [appStoreListing] is set.
+  /// app" (1.8c).
   static Uri? get appListing => switch (defaultTargetPlatform) {
     TargetPlatform.iOS => appStoreListing,
     _ => playStoreListing,

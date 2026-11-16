@@ -1,7 +1,7 @@
 import { Container } from "@/components/ui/Container";
 import { DisplayHeading } from "@/components/ui/DisplayHeading";
 import { Eyebrow } from "@/components/ui/Eyebrow";
-import { GooglePlayButton, IosComingSoon, StoreRow } from "@/components/ui/StoreButtons";
+import { GooglePlayButton, AppStoreButton, StoreRow } from "@/components/ui/StoreButtons";
 import { anchors } from "@/config/site";
 import { hero, heroCredits } from "@/content/landing";
 import { CreditRoll } from "./CreditRoll";
@@ -22,7 +22,7 @@ export function Hero() {
         <p className={styles.lede}>{hero.lede}</p>
         <StoreRow id={anchors.get}>
           <GooglePlayButton />
-          <IosComingSoon />
+          <AppStoreButton />
         </StoreRow>
         <p className={styles.footnote}>{hero.footnote}</p>
         <CreditRoll lines={heroCredits} status={hero.rollStatus} stamp={hero.rollStamp} />

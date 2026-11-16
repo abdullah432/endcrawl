@@ -2,6 +2,8 @@ export type BillingEntitlement = {
   schemaVersion: 1; plan: 'free' | 'pro'; period: 'monthly' | 'yearly' | null;
   expiresAtMs: number | null; trialEndsAtMs: number | null; willRenew: boolean;
   managementUrl: string | null; lapsed: boolean; verifiedAtMs: number; sourceUpdatedAtMs: number;
+  billingStore: string | null;
+  billingIssue: boolean; graceEndsAtMs: number | null;
 };
 export type SubscriptionSnapshot = {
   schemaVersion: 1; uid: string; provider: 'revenuecat';
@@ -18,18 +20,37 @@ const time = (value: unknown): number | null => {
 };
 
 /** Normalizes canonical customer information; events never grant access directly. */
-export function normalizeEntitlement(body: RecordValue, now: number): BillingEntitlement {
+export type EntitlementOptions = { allowSandboxPaddle?: boolean; paddlePricePeriods?: Record<string, 'monthly' | 'yearly'> };
+export function normalizeEntitlement(body: RecordValue, now: number, options: EntitlementOptions = {}): BillingEntitlement {
   const subscriber = body.subscriber ?? {};
-  const pro = subscriber.entitlements?.pro;
-  const subscription = subscriber.subscriptions?.[pro?.product_identifier] ?? {};
+  let pro = subscriber.entitlements?.pro;
+  let subscription = subscriber.subscriptions?.[pro?.product_identifier] ?? {};
+  // A sandbox purchase must not mask a real subscription on the same account.
+  if (subscription.store === 'paddle' && subscription.is_sandbox === true && !options.allowSandboxPaddle) {
+    const candidates = Object.entries(subscriber.subscriptions ?? {})
+      .filter(([id, value]) => {
+        const sub = value as RecordValue;
+        const knownPro = ['lastreel_pro', 'lastreel_pro:monthly', 'lastreel_pro:yearly',
+          'lastreel_pro_monthly', 'lastreel_pro_yearly'].includes(id) || !!options.paddlePricePeriods?.[id];
+        return knownPro && sub && !sub.refunded_at &&
+          !(sub.store === 'paddle' && sub.is_sandbox === true) &&
+          Math.max(time(sub.expires_date) ?? 0, time(sub.grace_period_expires_date) ?? 0) > now;
+      }).sort((a, b) => (time((b[1] as RecordValue).expires_date) ?? 0) - (time((a[1] as RecordValue).expires_date) ?? 0));
+    if (candidates[0]) {
+      const [id, value] = candidates[0];
+      subscription = value as RecordValue;
+      pro = { product_identifier: id, expires_date: subscription.expires_date };
+    }
+  }
   const expiry = time(pro?.expires_date);
   const grace = time(subscription.grace_period_expires_date);
   const effectiveExpiry = grace == null ? expiry : Math.max(expiry ?? 0, grace);
   const validExpiry = pro?.expires_date == null || expiry != null;
-  const active = !!pro && validExpiry && (effectiveExpiry == null || effectiveExpiry > now);
+  const allowed = subscription.store !== 'paddle' || subscription.is_sandbox !== true || options.allowSandboxPaddle === true;
+  const active = !!pro && allowed && validExpiry && (effectiveExpiry == null || effectiveExpiry > now);
   const product = subscription.product_plan_identifier ?? pro?.product_identifier?.split(':').at(-1);
-  const period = ['monthly', 'lastreel_pro_monthly'].includes(product) ? 'monthly'
-    : ['yearly', 'annual', 'lastreel_pro_yearly'].includes(product) ? 'yearly' : null;
+  const period = options.paddlePricePeriods?.[pro?.product_identifier] ?? (['monthly', 'lastreel_pro_monthly'].includes(product) ? 'monthly'
+    : ['yearly', 'annual', 'lastreel_pro_yearly'].includes(product) ? 'yearly' : null);
   const url = subscriber.management_url ?? ({
     play_store: 'https://play.google.com/store/account/subscriptions',
     app_store: 'https://apps.apple.com/account/subscriptions',
@@ -41,6 +62,9 @@ export function normalizeEntitlement(body: RecordValue, now: number): BillingEnt
     trialEndsAtMs: active && subscription.period_type === 'trial' ? effectiveExpiry : null,
     willRenew: active && !subscription.unsubscribe_detected_at,
     managementUrl: typeof url === 'string' && /^https:\/\/(apps\.apple\.com|play\.google\.com)\//.test(url) ? url : null,
+    billingStore: active && typeof subscription.store === 'string' ? subscription.store : null,
+    billingIssue: active && time(subscription.billing_issues_detected_at) != null,
+    graceEndsAtMs: active && grace != null && grace > now ? grace : null,
     lapsed: !!pro && !active, verifiedAtMs: now,
     sourceUpdatedAtMs: typeof body.request_date_ms === 'number' ? body.request_date_ms : now,
   };
@@ -54,8 +78,10 @@ export function subscriptionSnapshot(uid: string, body: RecordValue,
     ? Object.entries(subscriptions).filter((entry): entry is [string, RecordValue] =>
       !!entry[1] && typeof entry[1] === 'object' && !Array.isArray(entry[1])) : [];
   const entitledProduct = body.subscriber?.entitlements?.pro?.product_identifier;
-  const selected = entries.find(([product]) => product === entitledProduct) ??
-    entries.sort((a, b) => (time(b[1].expires_date) ?? 0) - (time(a[1].expires_date) ?? 0))[0];
+  const selected = entries.find(([product, sub]) => product === entitledProduct &&
+    (!entitlement.billingStore || sub.store === entitlement.billingStore)) ??
+    entries.filter(([, sub]) => !entitlement.billingStore || sub.store === entitlement.billingStore)
+      .sort((a, b) => (time(b[1].expires_date) ?? 0) - (time(a[1].expires_date) ?? 0))[0];
   const [productId, subscription] = selected ?? [null, null];
   const periodEnd = time(subscription?.expires_date);
   const graceEnd = time(subscription?.grace_period_expires_date);

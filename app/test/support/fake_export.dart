@@ -133,11 +133,14 @@ class FakeExportDestinations implements ExportDestinations {
   Future<Result<void>> download(ExportArtifact artifact) => share(artifact);
   final List<String> shared = [];
   final List<String> savedToPhotos = [];
+  Result<void> photoResult = const Ok(null);
+  Future<void>? photoCompletion;
 
   @override
   Future<Result<void>> saveToPhotos(ExportArtifact artifact) async {
     savedToPhotos.add(artifact.location);
-    return const Ok(null);
+    await photoCompletion;
+    return photoResult;
   }
 
   @override

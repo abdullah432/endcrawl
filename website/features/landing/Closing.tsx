@@ -2,7 +2,7 @@ import { ButtonLink } from "@/components/ui/ButtonLink";
 import { Container } from "@/components/ui/Container";
 import { DisplayHeading } from "@/components/ui/DisplayHeading";
 import { Eyebrow } from "@/components/ui/Eyebrow";
-import { GooglePlayButton, StoreRow } from "@/components/ui/StoreButtons";
+import { GooglePlayButton, AppStoreButton, StoreRow } from "@/components/ui/StoreButtons";
 import { links } from "@/config/site";
 import { closing } from "@/content/landing";
 import styles from "./Closing.module.css";
@@ -18,6 +18,7 @@ export function Closing() {
         <DisplayHeading heading={closing.heading} size="closing" id="closing-title" />
         <StoreRow>
           <GooglePlayButton />
+          <AppStoreButton />
           <ButtonLink href={links.webApp} size="store" variant="outlineDark">
             {closing.webApp}
           </ButtonLink>

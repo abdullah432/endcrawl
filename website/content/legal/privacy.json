@@ -1,0 +1,47 @@
+{
+  "title": "Privacy policy",
+  "summary": "This policy describes information used to run LastReel, sync your work and recognise your subscription.",
+  "updated": "3 November 2026",
+  "sections": [
+    {
+      "heading": "Who to contact",
+      "body": "LastReel is provided under the COOKOO TECHNOLOGIES (SMC-PRIVATE) LIMITED brand. Contact hello@cookoo.dev for privacy requests or questions about how LastReel processes information."
+    },
+    {
+      "heading": "Information we process",
+      "body": "We process account identifiers, your name and email when provided by your sign-in method, authentication records, project content and settings, account preferences, and subscription status. Sign-in providers process the credentials used for their own sign-in flows. Support requests include the information you choose to send us."
+    },
+    {
+      "heading": "Projects and Firebase",
+      "body": "LastReel uses Google Firebase services for authentication, account data, project sync where enabled, and server-side access checks. Projects and preferences may also be stored locally on your device or in browser storage. Content you enter into a project may contain other people’s personal information; only include information you are authorised to use."
+    },
+    {
+      "heading": "Payments and RevenueCat",
+      "body": "Paddle processes web checkout details and provides receipts and transaction records as merchant of record. Apple or Google process native store purchases. LastReel does not receive your full payment-card number. RevenueCat processes a LastReel account identifier, product and transaction identifiers, billing provider and subscription events so the same account receives the correct Free or Pro access. Our backend stores subscription status and billing-event records for access checks and support."
+    },
+    {
+      "heading": "Analytics, session insights and ads",
+      "body": "The app uses Google Analytics for Firebase for usage analytics; the Usage analytics preference is available under Settings → Privacy & data. Microsoft Clarity is used for session insights on supported platforms and on the website, including interactions and technical/session information. App sessions may be associated with an account identifier. The usage analytics switch controls Google Analytics, not every provider. Supported native Free experiences may use Google advertising services, with consent or platform tracking choices where required. The web editor does not use rewarded ads. Pro removes in-app ads."
+    },
+    {
+      "heading": "Purposes and sharing",
+      "body": "We use this information to operate and secure accounts, sync projects, verify purchases, provide support and understand service use. We share information needed for these purposes with the service providers described here and where required by law. Firebase, RevenueCat, Microsoft, Paddle, Apple and Google process information under their respective roles and policies. Providers may process data outside your country. Applicable safeguards and rights depend on your location and the provider’s terms."
+    },
+    {
+      "heading": "Basis for processing",
+      "body": "Where a legal basis is required, we process information as necessary to provide the service you request, comply with legal obligations, and pursue legitimate interests in maintaining, securing and improving LastReel where those interests are not overridden by your rights. Where consent is required for analytics, advertising or tracking, processing is subject to that consent. You can withdraw consent through available settings or by contacting us without affecting prior lawful processing."
+    },
+    {
+      "heading": "Retention and deletion",
+      "body": "We retain account and synced project data while needed to provide the service. You can delete your account in Settings. Billing providers may retain financial records after deletion for their own legal obligations. Security, dispute and legally required records may also be retained as necessary. Removing an account does not cancel an external subscription. Local browser or device copies may need to be cleared separately."
+    },
+    {
+      "heading": "Your choices and requests",
+      "body": "Use Settings → Privacy & data for available analytics and ad choices and account deletion. Contact hello@cookoo.dev to request access, correction, a copy or deletion of personal information, or to exercise other rights available under local law. We may verify your identity before fulfilling a request. You may also contact your local data-protection authority. Browser privacy controls can limit cookies and local storage, but may affect sign-in or functionality."
+    },
+    {
+      "heading": "Cookies, children and updates",
+      "body": "The website and web app use browser storage for service functionality and analytics/session insights. LastReel is not directed at children; contact us if you believe a child has provided personal information without appropriate authorisation. We will update this dated policy when processing changes. For provider details, see the linked privacy notices below."
+    }
+  ]
+}

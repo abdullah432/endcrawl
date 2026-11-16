@@ -15,7 +15,7 @@ import '../../bootstrap.dart';
 /// admin can write that collection (firestore.rules); the app can only read
 /// its own entry. Never on the web, where Pro is decided by the server.
 final testerAllowedProvider = StreamProvider<bool>((ref) {
-  if (AppPlatform.requiresVerifiedPro) return Stream.value(false);
+  if (AppPlatform.usesServerEntitlements) return Stream.value(false);
   final uid = ref.watch(currentUidProvider);
   if (uid == null) return Stream.value(false);
   return ref

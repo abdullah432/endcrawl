@@ -3,6 +3,7 @@ import '../../../core/config/app_platform.dart';
 import 'package:flutter/foundation.dart';
 import '../models/export_artifact.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../access/controllers/web_access.dart' show runningOnWebProvider;
 import 'package:path/path.dart' show basename;
 
 import '../../../bootstrap.dart';
@@ -35,6 +36,7 @@ import '../controllers/export_controller.dart';
 import '../models/export_models.dart';
 import '../../home/tablet_layout.dart';
 import 'tablet_render_page.dart';
+import '../widgets/gallery_save_status.dart';
 
 final _exportPresentationProvider = Provider((ref) => _ExportPresentation());
 
@@ -333,7 +335,7 @@ class _Settings extends ConsumerWidget {
               const SizedBox(height: 8),
             ],
             if (access == ExportAccess.locked) ...[
-              EcButton(
+              if (!ref.watch(runningOnWebProvider)) EcButton(
                 label: '▶  Watch ad · render once',
                 onPressed: busyWith != null
                     ? null
@@ -346,7 +348,7 @@ class _Settings extends ConsumerWidget {
               if (!ref.watch(iosFreeLaunchProvider)) ...[
                 const SizedBox(height: 8),
                 EcButton.secondary(
-                  label: 'Go Pro · every render, no ads',
+                  label: ref.watch(runningOnWebProvider) ? 'Go Pro' : 'Go Pro · every render, no ads',
                   onPressed: () => ProSheet.show(context),
                 ),
               ],
@@ -1441,7 +1443,7 @@ class _Ready extends ConsumerWidget {
           ),
           const SizedBox(height: 16),
           EcHeadline(
-            'Ready',
+            'Export ready',
             emphasis: '.',
             style: t.displayM.copyWith(fontSize: 34),
             textAlign: TextAlign.center,
@@ -1453,49 +1455,24 @@ class _Ready extends ConsumerWidget {
             style: t.mono.copyWith(fontSize: 11),
           ),
           const SizedBox(height: 20),
+          GallerySaveStatus(run: run),
           EcGroup(
             children: [
-              EcGroupRow(
-                title: kIsWeb
-                    ? 'Download'
-                    : AppPlatform.isNativeDesktop
-                    ? 'Save to Mac'
-                    : 'Save to Files',
-                subtitle: basename(path),
-                onTap: () => deliver(
-                  (kIsWeb || AppPlatform.isNativeDesktop)
-                      ? destinations.download(artifact)
-                      : destinations.share(artifact, origin: origin()),
-                ),
-              ),
-              // Photos holds video; an image sequence goes to Files.
-              if (AppPlatform.isMobile && run.codec != Codec.png)
+              if (kIsWeb || AppPlatform.isNativeDesktop)
                 EcGroupRow(
-                  title: 'Save to Photos',
-                  onTap: () => deliver(
-                    destinations.saveToPhotos(artifact),
-                    done: 'Saved to Photos',
-                  ),
-                ),
-              if (AppPlatform.isMobile)
-                EcGroupRow(
-                  title: 'Send to Frame.io',
-                  chevron: false,
-                  trailing: const EcStatusPill('Soon'),
-                  onTap: () => showEcToast(
-                    context,
-                    'Frame.io is coming soon — share the file for now',
-                  ),
+                  title: kIsWeb ? 'Download' : 'Save to Mac',
+                  subtitle: basename(path),
+                  onTap: () => deliver(destinations.download(artifact)),
                 ),
               if (destinations.canShare(artifact))
                 EcGroupRow(
-                  title: 'Share sheet',
-                  onTap: () =>
-                      deliver(destinations.share(artifact, origin: origin())),
+                  title: run.codec == Codec.png ? 'Share file' : 'Share video',
+                  subtitle: 'Choose an app or save a copy to Files',
+                  onTap: () => deliver(destinations.share(artifact, origin: origin())),
                 ),
             ],
           ),
-          // The file has saved by the time this shows; the ad sits below
+          // The rendered file is available; delivery status is shown above. The ad sits below
           // every destination and never stands between the user and them.
           // The tablet's one export ad is the wait's (§5): none once done.
           RateSlot(

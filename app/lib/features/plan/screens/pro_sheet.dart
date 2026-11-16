@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import '../../../core/config/app_platform.dart';
-import '../widgets/mobile_subscription_card.dart';
+import '../../../core/layout/layout_class.dart';
+import '../../access/controllers/web_access.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../bootstrap.dart';
@@ -17,9 +17,11 @@ import '../../../core/widgets/ec_surfaces.dart';
 import '../../../domain/models/entitlement.dart';
 import '../../settings/screens/legal_document_screen.dart';
 import '../../settings/models/legal_document.dart';
+import '../../settings/screens/subscription_screen.dart';
 import '../controllers/plan_controller.dart';
 import '../controllers/release_policy.dart';
 import '../../home/tablet_layout.dart';
+import '../widgets/desktop_paywall.dart';
 
 /// 6.5 — LastReel Pro.
 ///
@@ -37,9 +39,7 @@ class ProSheet extends ConsumerWidget {
     PlanSource source = PlanSource.paywall,
   }) async {
     if (ProviderScope.containerOf(context, listen: false).read(iosFreeLaunchProvider)) return;
-    if (AppPlatform.requiresVerifiedPro) {
-      await MobileSubscriptionCard.show(context);
-    } else if (context.isTablet) {
+    if (ProviderScope.containerOf(context, listen: false).read(verifiedWorkspaceProvider) || context.isTablet) {
       // T6.3 / P6.3: the whole screen, the black panel beside or above.
       await Navigator.of(context).push(
         MaterialPageRoute<void>(fullscreenDialog: true, builder: (_) => ProSheet(source: source)),
@@ -49,28 +49,38 @@ class ProSheet extends ConsumerWidget {
     }
   }
 
-  static const _comparison = <(String, String, String)>[
+  static List<(String, String, String)> _comparison(bool web) => [
     ('Projects', '${Entitlement.freeProjectLimit}', 'Unlimited'),
-    ('Ads', 'Shown', 'None'),
+    if (!web) ('Ads', 'Shown', 'None'),
     ('Blocks, timing, look', 'Everything', 'Everything'),
-    ('Codecs', 'H.264, HEVC', '+ ProRes, PNG'),
+    ('Codecs', web ? 'H.264 MP4' : 'H.264, HEVC', web ? '+ PNG alpha' : '+ ProRes, PNG'),
     ('Resolution', 'Up to 1080p', 'Up to 4K'),
-    ('Pro render on Free', '1 per rewarded ad', 'Every render'),
+    if (!web) ('Pro render on Free', '1 per rewarded ad', 'Every render'),
     ('Watermark', 'None', 'None'),
-    ('LastReel on the web', 'Preview only', 'Full editor'),
+    if (!web) ('LastReel on the web', 'Free features', 'Pro features'),
   ];
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    if (ref.watch(verifiedWorkspaceProvider) && (ref.watch(entitlementProvider).value?.isPro ?? false)) {
+      if (ref.watch(runningOnWebProvider) && MediaQuery.sizeOf(context).width >= 1100) {
+        return const DesktopProActive();
+      }
+      return const SubscriptionScreen();
+    }
     final state = ref.watch(planControllerProvider);
     final controller = ref.read(planControllerProvider.notifier);
     final p = context.palette;
     final t = context.type;
     final selected = state.selected;
+    final web = ref.watch(runningOnWebProvider);
+    if (web && MediaQuery.sizeOf(context).width >= 1100) {
+      return DesktopPaywall(source: source);
+    }
     final trialEnds = selected != null && selected.hasTrial
         ? ref.read(clockProvider)().add(Duration(days: selected.trialDays!))
         : null;
-    if (context.isTablet) return _tablet(context, ref, trialEnds);
+    if (context.isTablet || (ref.watch(verifiedWorkspaceProvider) && context.layoutClass.isWide)) return _tablet(context, ref, trialEnds);
 
     return EcSheet(
       maxHeightFraction: 0.94,
@@ -105,7 +115,7 @@ class ProSheet extends ConsumerWidget {
                   ? 'Loading plans…'
                   : selected == null
                   ? 'Plans unavailable'
-                  : selected.ctaLabel,
+                  : web ? 'Continue with Paddle' : selected.ctaLabel,
               busy: state.purchasing,
               onPressed: state.busy || state.loading || selected == null
                   ? null
@@ -160,12 +170,13 @@ class ProSheet extends ConsumerWidget {
                 const SizedBox(height: 10),
                 EcHeadline(
                   'Unlimited projects.\n',
-                  emphasis: 'Pro formats. No ads.',
+                  emphasis: web ? 'PNG alpha. Up to 4K.' : 'Pro formats. No ads.',
                   style: t.displayL.copyWith(fontSize: 44),
                 ),
                 const SizedBox(height: 10),
                 Text(
-                  'Free has every block, timing and look tool, with H.264 and HEVC up to 1080p. Pro lifts the '
+                  web ? 'Free includes every editing tool and MP4 exports up to 1080p. Pro adds unlimited projects, PNG alpha and up to 4K on supported devices.'
+                  : 'Free has every block, timing and look tool, with H.264 and HEVC up to 1080p. Pro lifts the '
                   '${numberWord(Entitlement.freeProjectLimit)}-project cap, '
                   'unlocks ProRes, PNG and 4K on every render, and removes ads.',
                   style: t.body,
@@ -189,10 +200,11 @@ class ProSheet extends ConsumerWidget {
             const SizedBox(height: 8),
           ],
           const SizedBox(height: 10),
-          _ComparisonTable(rows: _comparison),
+          _ComparisonTable(rows: _comparison(ref.watch(runningOnWebProvider))),
           const SizedBox(height: 16),
           Text(
-            'Payment is charged to your store account. Subscriptions renew automatically at the displayed price for the selected period unless cancelled in your store settings. Cancel anytime; access continues until the paid period ends.',
+            web ? 'Paddle shows the final currency, taxes and total before you confirm. Subscriptions renew automatically. Cancel anytime; access continues until the subscription ends.'
+            : 'Payment is charged to your store account. Subscriptions renew automatically at the displayed price for the selected period unless cancelled in your store settings. Cancel anytime; access continues until the paid period ends.',
             style: t.caption,
           ),
           Wrap(
@@ -203,6 +215,12 @@ class ProSheet extends ConsumerWidget {
                 size: EcButtonSize.small,
                 onPressed: () =>
                     LegalDocumentScreen.open(context, termsOfService),
+              ),
+              EcButton(
+                label: 'Refund & cancellation',
+                variant: EcButtonVariant.text,
+                size: EcButtonSize.small,
+                onPressed: () => LegalDocumentScreen.open(context, refundPolicy),
               ),
               EcButton(
                 label: 'Privacy policy',
@@ -229,7 +247,8 @@ extension on ProSheet {
     final p = context.palette;
     final t = context.type;
     final selected = state.selected;
-    final portrait = context.tabletLayout == TabletLayout.portrait;
+    final portrait = context.isTablet ? context.tabletLayout == TabletLayout.portrait : MediaQuery.sizeOf(context).height > MediaQuery.sizeOf(context).width;
+    final web = ref.watch(runningOnWebProvider);
     final white = Colors.white;
 
     final hero = DecoratedBox(
@@ -268,16 +287,16 @@ extension on ProSheet {
                   TextSpan(
                     children: [
                       const TextSpan(text: 'Unlimited projects. '),
-                      TextSpan(text: 'Pro formats', style: TextStyle(fontStyle: FontStyle.italic, color: white)),
-                      const TextSpan(text: '. No ads.'),
+                      TextSpan(text: web ? 'PNG alpha' : 'Pro formats', style: TextStyle(fontStyle: FontStyle.italic, color: white)),
+                      TextSpan(text: web ? '. Up to 4K.' : '. No ads.'),
                     ],
                   ),
-                  style: t.displayXL.copyWith(fontSize: portrait ? 54 : 52, height: 1.05, color: white),
+                  style: t.displayXL.copyWith(fontSize: web && portrait ? 40 : portrait ? 54 : 52, height: 1.05, color: white),
                 ),
               ),
               const SizedBox(height: 14),
               Text(
-                'Pro also unlocks LastReel on the web, on the same account.',
+                web ? 'One subscription. Pro on every device, with the same account.' : 'Pro also unlocks LastReel on the web, on the same account.',
                 style: t.body.copyWith(fontSize: 14, color: white.withValues(alpha: .75)),
               ),
             ],
@@ -301,14 +320,14 @@ extension on ProSheet {
                   children: [
                     if (!portrait) ...[
                       Text(
-                        'Free has every block, timing and look tool. Pro lifts the '
-                        '${numberWord(Entitlement.freeProjectLimit)}-project cap, unlocks ProRes, PNG and 4K on every '
-                        'render, and removes ads.',
+                        web ? 'Free has every block, timing and look tool, with MP4 exports up to 1080p. Pro lifts the two-project cap and adds PNG alpha and exports up to 4K on supported devices.'
+                        : 'Free has every block, timing and look tool. Pro lifts the '
+                        '${numberWord(Entitlement.freeProjectLimit)}-project cap, unlocks ProRes, PNG and 4K on every render, and removes ads.',
                         style: t.body.copyWith(fontSize: 15, height: 1.5, color: p.ink2),
                       ),
                       const SizedBox(height: 18),
                     ],
-                    _ComparisonTable(rows: ProSheet._comparison, open: true),
+                    _ComparisonTable(rows: ProSheet._comparison(web), open: true),
                     const SizedBox(height: 22),
                     if (!state.loading && state.offers.isEmpty)
                       EcButton(label: 'Retry loading plans', variant: EcButtonVariant.text, onPressed: controller.loadOffers),
@@ -336,7 +355,7 @@ extension on ProSheet {
                   ? 'Loading plans…'
                   : selected == null
                   ? 'Plans unavailable'
-                  : selected.ctaLabel,
+                  : web ? 'Continue with Paddle' : selected.ctaLabel,
               height: 56,
               busy: state.purchasing,
               onPressed: state.busy || state.loading || selected == null
@@ -350,15 +369,16 @@ extension on ProSheet {
             Text(
               selected != null && trialEnds != null
                   ? 'Free until ${formatDayMonth(trialEnds)}, then ${selected.price}${selected.perPeriod}. '
-                        'Cancel before then and you pay nothing. Billing and cancellation happen in ${AppLinks.storeName}.'
-                  : 'Billing and cancellation happen in ${AppLinks.storeName}.',
+                        'Cancel before then and you pay nothing. Billing and cancellation happen in ${web ? 'Paddle' : AppLinks.storeName}.'
+                  : 'Billing and cancellation happen in ${web ? 'Paddle' : AppLinks.storeName}.',
               textAlign: TextAlign.center,
               style: t.caption,
             ),
             const SizedBox(height: 4),
             // The auto-renewal terms every purchase screen must carry.
             Text(
-              'Payment is charged to your store account. Subscriptions renew automatically at the displayed price for the selected period unless cancelled in your store settings. Cancel anytime; access continues until the paid period ends.',
+              web ? 'Paddle shows the final currency, taxes and total before you confirm. Subscriptions renew automatically. Cancel anytime; access continues until the subscription ends.'
+              : 'Payment is charged to your store account. Subscriptions renew automatically at the displayed price for the selected period unless cancelled in your store settings. Cancel anytime; access continues until the paid period ends.',
               textAlign: TextAlign.center,
               style: t.caption,
             ),
@@ -368,7 +388,7 @@ extension on ProSheet {
               spacing: 8,
               children: [
                 EcButton(
-                  label: 'Restore purchase',
+                  label: web ? 'Check access' : 'Restore purchase',
                   variant: EcButtonVariant.text,
                   size: EcButtonSize.small,
                   busy: state.restoring,
@@ -385,6 +405,12 @@ extension on ProSheet {
                   variant: EcButtonVariant.plain,
                   size: EcButtonSize.small,
                   onPressed: () => LegalDocumentScreen.open(context, termsOfService),
+                ),
+                EcButton(
+                  label: 'Refunds',
+                  variant: EcButtonVariant.plain,
+                  size: EcButtonSize.small,
+                  onPressed: () => LegalDocumentScreen.open(context, refundPolicy),
                 ),
                 EcButton(
                   label: 'Privacy',

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../access/controllers/web_access.dart' show runningOnWebProvider;
 
 import '../../../core/theme/theme_context.dart';
 import '../../../core/theme/tokens.dart';
@@ -82,7 +83,7 @@ class SlotsFullSheet extends ConsumerWidget {
                 const SizedBox(height: 12),
                 const PlanBenefit('Unlimited projects and render history'),
                 const SizedBox(height: 8),
-                const PlanBenefit('ProRes, PNG alpha and 4K exports'),
+                PlanBenefit(ref.watch(runningOnWebProvider) ? 'PNG alpha and exports up to 4K' : 'ProRes, PNG alpha and 4K exports'),
                 const SizedBox(height: 8),
                 const PlanBenefit('No ads anywhere in the app'),
                 if (trial) ...[

@@ -31,6 +31,7 @@ import '../../settings/screens/settings_screen.dart';
 import '../../home/tablet_layout.dart';
 import '../../home/widgets/nav_icons.dart';
 import '../../timing/screens/timing_sheet.dart';
+import '../../timing/screens/font_sheet.dart';
 import '../controllers/editor_ui_controller.dart';
 import '../widgets/block_list.dart';
 import '../widgets/editor_dock.dart';
@@ -339,6 +340,12 @@ class _BarActions extends ConsumerWidget {
           margin: const EdgeInsets.symmetric(horizontal: 12),
           color: p.line2,
         ),
+        _GlassPill(
+          height: pill,
+          onTap: () => FontSheet.show(context),
+          child: Text('Font', style: t.buttonSmall.copyWith(fontSize: 13)),
+        ),
+        const SizedBox(width: 8),
         _GlassPill(
           height: pill,
           onTap: () => TimingSheet.show(context),

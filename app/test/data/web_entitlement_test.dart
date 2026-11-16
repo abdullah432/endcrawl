@@ -16,6 +16,10 @@ void main() {
     final active = entitlementFromLedger(data, now);
     expect(active.isTrial, isTrue);
     expect(active.period, BillingPeriod.monthly);
+    final issue = entitlementFromLedger({...data, 'billingIssue': true,
+      'graceEndsAtMs': now.add(const Duration(days: 8)).millisecondsSinceEpoch}, now);
+    expect(issue.billingIssue, isTrue);
+    expect(issue.graceEndsAt, now.add(const Duration(days: 8)));
     final expired = entitlementFromLedger(
       data,
       now.add(const Duration(days: 8)),

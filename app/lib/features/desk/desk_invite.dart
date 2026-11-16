@@ -66,9 +66,8 @@ class _DeskChoices {
 
 /// 1.8a / 1.8b — "LastReel on a big screen", raised on the library.
 ///
-/// Free (1.8a) sells the upgrade, since the desk editor is part of Pro, and
-/// can preview the web app first; Pro (1.8b) gets the web app's link to a
-/// computer, by their own email app or the clipboard.
+/// Free accounts can open the normal web editor; Pro features follow the same
+/// account. Pro (1.8b) can send the web link to a computer by email or clipboard.
 ///
 /// When it shows, as the design's notes have it: by chance on opening the
 /// library (one session in [chanceOneIn] once it is due), never mid-edit or
@@ -265,7 +264,7 @@ class _DeskInviteSheetState extends State<_DeskInviteSheet> {
           children: [
             Expanded(
               child: Text(
-                caps(pro ? 'Included with your Pro plan' : 'LastReel Pro · desktop & web'),
+                caps(pro ? 'Pro on every device' : 'LastReel · desktop & web'),
                 style: t.eyebrow.copyWith(color: pro ? p.ok : p.accent),
               ),
             ),
@@ -293,8 +292,8 @@ class _DeskInviteSheetState extends State<_DeskInviteSheet> {
           Text(
             pro
                 ? 'Open LastReel in your computer’s browser. Your projects are already there.'
-                : 'The desktop editor is part of Pro. Not sure yet? Preview it on the web first, '
-                    'with the projects you already have.',
+                : 'Open LastReel in your computer’s browser and edit with the Free plan. '
+                    'Your projects and Pro features follow the same account.',
             style: t.body.copyWith(fontSize: 14, color: p.ink2, height: 1.5),
           ),
           if (pro) ...[
@@ -354,7 +353,7 @@ class _DeskInviteSheetState extends State<_DeskInviteSheet> {
             EcButton(label: 'Upgrade to Pro', onPressed: () => _pick(_DeskAction.upgrade)),
             const SizedBox(height: 8),
             EcButton.secondary(
-              label: 'Preview on the web',
+              label: 'Open web app',
               height: 50,
               trailing: icon(Icons.open_in_new_rounded, size: 15),
               onPressed: () => _pick(_DeskAction.preview),

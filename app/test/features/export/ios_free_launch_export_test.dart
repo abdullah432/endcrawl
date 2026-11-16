@@ -1,3 +1,4 @@
+import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lastreel/core/widgets/ec_ad_slot.dart';
@@ -27,6 +28,8 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(finder);
     await tester.pumpAndSettle();
+    await tester.runAsync(() => GoogleFonts.pendingFonts());
+    await tester.pumpAndSettle();
   }
 
   Future<void> openExport(WidgetTester tester) async {
@@ -50,7 +53,7 @@ void main() {
     await finishRender(tester);
     expect(app.encoder.started.single.codec, Codec.h264);
     expect(app.ads.rewardedShown, 0);
-    expect(find.text('Save to Files'), findsOneWidget);
+    expect(find.text('Share video'), findsOneWidget);
     expect(app.ads.exportInterstitialPreloaded, greaterThanOrEqualTo(1));
     expect(app.ads.exportInterstitialShown, 1);
     expect(find.text('SPONSORED'), findsOneWidget);
@@ -74,7 +77,7 @@ void main() {
       await finishRender(tester);
       expect(app.ads.rewardedShown, 1);
       expect(app.encoder.started.single.codec, Codec.prores422);
-      expect(find.text('Save to Files'), findsOneWidget);
+      expect(find.text('Share video'), findsOneWidget);
       expect(find.byType(EcAdSlot), findsOneWidget);
       await tester.tapAt(const Offset(10, 10));
       await tester.pumpAndSettle();

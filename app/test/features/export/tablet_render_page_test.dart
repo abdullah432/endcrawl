@@ -1,3 +1,4 @@
+import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lastreel/domain/models/entitlement.dart';
@@ -41,6 +42,8 @@ void main() {
   Future<void> tap(WidgetTester tester, String text) async {
     await tester.ensureVisible(find.text(text).last);
     await tester.tap(find.text(text).last);
+    await tester.pumpAndSettle();
+    await tester.runAsync(() => GoogleFonts.pendingFonts());
     await tester.pumpAndSettle();
   }
 
@@ -112,7 +115,7 @@ void main() {
     expect(find.text('Rendered.'), findsOneWidget);
     // The ad is the wait's: gone once the render ends.
     expect(renderAd(), findsNothing);
-    await tap(tester, 'Save to device');
+    expect(find.text('Saved to Gallery'), findsOneWidget);
     expect(app.destinations.savedToPhotos, hasLength(1));
     await tap(tester, 'Share');
     expect(app.destinations.shared, hasLength(1));
@@ -156,7 +159,7 @@ void main() {
       greaterThan(tester.getBottomLeft(find.text('Keep working · renders in background')).dy),
     );
     await finish(tester);
-    await tap(tester, 'Save');
+    expect(find.text('Saved to Gallery'), findsOneWidget);
     expect(app.destinations.savedToPhotos, hasLength(1));
     expect(tester.takeException(), isNull);
   });

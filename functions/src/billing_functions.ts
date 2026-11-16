@@ -8,25 +8,31 @@ import { affectedAccounts } from './entitlements.js';
 import { reconcileEntitlement } from './reconcile.js';
 import { db } from './firebase.js';
 import { billingEnabled } from './billing_rollout.js';
+import { allowsSandboxPaddle, paddlePricePeriods } from './web_billing_config.js';
 
 // Customer Info GET supports the existing public app key. No privileged
 // RevenueCat key capable of grants/refunds/deletion is needed by this backend.
-const apiKey = defineSecret('REVENUECAT_API_KEY');
+export const apiKey = defineSecret('REVENUECAT_API_KEY');
 const webhookAuth = defineSecret('REVENUECAT_WEBHOOK_AUTH');
 const billingMode = defineString('BILLING_ROLLOUT_MODE', { default: 'off' });
 const billingPilotUid = defineString('BILLING_PILOT_UID', { default: '' });
 const billingPilotUids = defineString('BILLING_PILOT_UIDS', { default: '' });
-const enabled = (uid: string) => billingEnabled(uid, {
+export const enabled = (uid: string) => billingEnabled(uid, {
   mode: billingMode.value(), pilotUid: billingPilotUid.value(), pilotUids: billingPilotUids.value(),
 });
 
-async function reconcile(uid: string) {
-  return reconcileEntitlement(uid, db, async (account) => {
-    const response = await fetch(`https://api.revenuecat.com/v1/subscribers/${encodeURIComponent(account)}`, {
+export async function loadCustomer(uid: string) {
+    const response = await fetch(`https://api.revenuecat.com/v1/subscribers/${encodeURIComponent(uid)}`, {
       headers: { Authorization: `Bearer ${apiKey.value()}` }, signal: AbortSignal.timeout(15000),
     });
     if (!response.ok) throw new Error(`RevenueCat returned ${response.status}`);
-    return response.json();
+    const body = await response.json();
+    if (!body.subscriber || typeof body.subscriber !== 'object') throw new Error('Invalid customer information');
+    return body;
+}
+async function reconcile(uid: string) {
+  return reconcileEntitlement(uid, db, loadCustomer, Date.now(), {
+    allowSandboxPaddle: allowsSandboxPaddle(uid), paddlePricePeriods: paddlePricePeriods(),
   });
 }
 

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lastreel/domain/models/entitlement.dart';
 import 'package:lastreel/features/export/controllers/export_controller.dart';
+import 'package:lastreel/features/export/models/export_models.dart';
 import 'package:lastreel/features/plan/controllers/web_access.dart';
 import '../../support/app_harness.dart';
 import '../../support/fake_entitlement_repository.dart';
@@ -11,7 +12,7 @@ import '../../support/fixtures.dart';
 
 void main() {
   testWidgets(
-    'Free web is visible but operations are blocked; verified Pro unlocks it',
+    'Free web uses normal export limits; verified Pro unlocks premium formats',
     (tester) async {
       final plan = FakeEntitlementRepository();
       final app = AppHarness(
@@ -25,7 +26,8 @@ void main() {
       final scope = ProviderScope.containerOf(
         tester.element(find.text('Projects').first),
       );
-      expect(scope.read(webAccessAllowedProvider), isFalse);
+      expect(scope.read(webAccessAllowedProvider), isTrue);
+      scope.read(exportControllerProvider.notifier).setCodec(Codec.png);
       expect(scope.read(exportControllerProvider.notifier).start(), isFalse);
       expect(app.encoder.started, isEmpty);
       plan.entitlement = const Entitlement.pro();
@@ -35,7 +37,7 @@ void main() {
       await tester.pumpAndSettle();
       plan.entitlement = const Entitlement.free(lapsed: true);
       await tester.pumpAndSettle();
-      expect(scope.read(webAccessAllowedProvider), isFalse);
+      expect(scope.read(webAccessAllowedProvider), isTrue);
       expect(scope.read(exportControllerProvider.notifier).start(), isFalse);
     },
   );

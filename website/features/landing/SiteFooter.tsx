@@ -16,7 +16,7 @@ export function SiteFooter() {
           {footerNav.map((item) => {
             const external = /^https?:/.test(item.href);
             return (
-              <a key={item.label} href={item.href} {...(external ? { target: "_blank", rel: "noopener noreferrer" } : {})}>
+              <a key={item.label} href={item.href.startsWith("#") ? `/${item.href}` : item.href} {...(external ? { target: "_blank", rel: "noopener noreferrer" } : {})}>
                 {item.label}
               </a>
             );

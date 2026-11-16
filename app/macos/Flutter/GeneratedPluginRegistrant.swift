@@ -5,12 +5,12 @@
 import FlutterMacOS
 import Foundation
 
+import cookoo_video_export
+import firebase_core
 import cloud_firestore
 import cloud_functions
-import cookoo_video_export
 import firebase_analytics
 import firebase_auth
-import firebase_core
 import gal
 import google_sign_in_ios
 import in_app_review
@@ -22,12 +22,12 @@ import url_launcher_macos
 import webview_flutter_wkwebview
 
 func RegisterGeneratedPlugins(registry: FlutterPluginRegistry) {
+  CookooVideoExportPlugin.register(with: registry.registrar(forPlugin: "CookooVideoExportPlugin"))
+  FLTFirebaseCorePlugin.register(with: registry.registrar(forPlugin: "FLTFirebaseCorePlugin"))
   FLTFirebaseFirestorePlugin.register(with: registry.registrar(forPlugin: "FLTFirebaseFirestorePlugin"))
   FirebaseFunctionsPlugin.register(with: registry.registrar(forPlugin: "FirebaseFunctionsPlugin"))
-  CookooVideoExportPlugin.register(with: registry.registrar(forPlugin: "CookooVideoExportPlugin"))
   FirebaseAnalyticsPlugin.register(with: registry.registrar(forPlugin: "FirebaseAnalyticsPlugin"))
   FLTFirebaseAuthPlugin.register(with: registry.registrar(forPlugin: "FLTFirebaseAuthPlugin"))
-  FLTFirebaseCorePlugin.register(with: registry.registrar(forPlugin: "FLTFirebaseCorePlugin"))
   GalPlugin.register(with: registry.registrar(forPlugin: "GalPlugin"))
   GoogleSignInPlugin.register(with: registry.registrar(forPlugin: "GoogleSignInPlugin"))
   InAppReviewPlugin.register(with: registry.registrar(forPlugin: "InAppReviewPlugin"))

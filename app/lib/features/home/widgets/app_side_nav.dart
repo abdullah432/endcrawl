@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../bootstrap.dart';
 import '../../../core/config/app_links.dart';
-import '../../../core/config/app_platform.dart';
 import '../../../core/theme/theme_context.dart';
 import '../../../core/utils/formatting.dart';
 import '../../../core/widgets/ec_dashed_border.dart';
@@ -11,7 +10,6 @@ import '../../../core/widgets/ec_logo.dart';
 import '../../../core/widgets/ec_surfaces.dart';
 import '../../../domain/models/entitlement.dart';
 import '../../access/controllers/web_access.dart';
-import '../../access/screens/web_access_screen.dart';
 import '../../library/controllers/library_controller.dart';
 import '../../plan/controllers/release_policy.dart';
 import '../tablet_layout.dart';
@@ -180,42 +178,11 @@ class _PlanStatus extends ConsumerWidget {
     final count = ref.watch(projectSummariesProvider).value?.length ?? 0;
     final web = ref.watch(verifiedWorkspaceProvider);
 
-    if (ref.watch(webPreviewProvider)) {
-      return EcDashedBorder(
-        radius: 18,
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text('PREVIEW · FREE', style: t.eyebrow),
-              const SizedBox(height: 10),
-              Text(AppPlatform.isNativeDesktop ? 'Editing on desktop needs Pro.' : 'Editing on the web needs Pro.', style: t.displayS.copyWith(fontSize: 20, height: 1.1)),
-              const SizedBox(height: 10),
-              SizedBox(
-                height: 38,
-                child: FilledButton(
-                  style: FilledButton.styleFrom(
-                    backgroundColor: p.inkSurface,
-                    foregroundColor: p.onInk,
-                    shape: const StadiumBorder(),
-                    textStyle: t.buttonSmall.copyWith(fontSize: 13),
-                  ),
-                  onPressed: () => WebAccessScreen.open(context),
-                  child: const Text('How to get Pro'),
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-
-    final store = web ? 'Google Play' : AppLinks.storeName;
+    final store = entitlement.billingStore == 'paddle' ? 'Paddle' : web ? 'your subscription provider' : AppLinks.storeName;
     final limit = ref.watch(projectLimitProvider);
     final (title, detail) = entitlement.isPro
-        ? (desktop ? 'Pro · active' : 'Pro', desktop ? 'Billed through $store' : 'via $store')
-        : ('Free', limit == null ? '$count projects · ads on' : '$count of $limit projects · ads on');
+        ? (entitlement.billingIssue ? 'Pro · payment due' : desktop ? 'Pro · active' : 'Pro', desktop ? 'Billed through $store' : 'via $store')
+        : ('Free', limit == null ? '$count projects${web ? '' : ' · ads on'}' : '$count of $limit projects${web ? '' : ' · ads on'}');
     final content = Row(
       children: [
         if (entitlement.isPro) ...[

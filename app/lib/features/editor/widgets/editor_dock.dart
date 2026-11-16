@@ -17,13 +17,14 @@ import '../../blocks/screens/add_block_sheet.dart';
 import '../../export/screens/export_sheet.dart';
 import '../../paste/screens/paste_sheet.dart';
 import '../../timing/screens/timing_sheet.dart';
+import '../../timing/screens/font_sheet.dart';
 import '../../project/controllers/project_controller.dart';
 import '../controllers/editor_ui_controller.dart';
 import 'status_line.dart';
 import '../../access/controllers/web_access.dart';
 
-/// The four actions, floating over the list as one glass dock (3.1):
-/// + Block, Paste, Timing (showing the runtime) and Export.
+/// The editing actions, floating over the list as one glass dock (3.1):
+/// + Block, Paste, Font, Timing (showing the runtime) and Export.
 class EditorDock extends ConsumerWidget {
   const EditorDock({super.key});
 
@@ -60,6 +61,11 @@ class EditorDock extends ConsumerWidget {
                 glyph: const Icon(Icons.keyboard_tab_rounded, size: 16),
                 label: 'Paste',
                 onTap: editable ? () => PasteSheet.show(context) : null,
+              ),
+              _DockItem(
+                glyph: const Icon(Icons.text_fields_rounded, size: 18),
+                label: 'Font',
+                onTap: editable ? () => FontSheet.show(context) : null,
               ),
               _DockItem(
                 glyph: Text(runtime, style: context.type.mono.copyWith(fontSize: 11, color: healthy ? p.ink : p.warn)),

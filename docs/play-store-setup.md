@@ -2,6 +2,15 @@
 
 App: Last Reel: End Credits Maker (`com.lastreel.app`).
 
+## Listing update — 2026-11-16
+
+The English (United States) short description below and the full-description
+correction to **two editable free projects** were saved and submitted together
+for Google review. No release, screenshots or declarations were changed.
+Publishing overview shows the two listing changes in review; publication is
+subject to Google's checks and review. The September setup notes below are
+historical, not the current release status.
+
 ## Current Console status
 
 All initial app-information/store-listing tasks are completed. The owner added
@@ -54,7 +63,7 @@ Last Reel: End Credits Maker
 
 ### Short description
 
-Create cinematic rolling end credits with cast, crew, timing and video export.
+Create rolling credits for films and school videos. Export without a watermark.
 
 ### Full description
 
@@ -75,7 +84,7 @@ KEEP YOUR WORK TOGETHER
 Sign in with Google or email to save and sync your projects. Autosave helps you keep editing without a manual save step.
 
 FREE AND PRO
-The free plan includes up to three projects, the credit editing tools, and video exports up to 1080p without a watermark. The app contains ads.
+The free plan includes up to two editable projects, the credit editing tools, and video exports up to 1080p without a watermark. The app contains ads.
 
 Optional LastReel Pro monthly or yearly subscriptions unlock unlimited projects, remove ads, and provide Pro export options, including PNG sequences and up to 4K on supported devices. Local prices and billing periods are shown in the app before purchase. Subscriptions renew automatically unless canceled through Google Play.
 

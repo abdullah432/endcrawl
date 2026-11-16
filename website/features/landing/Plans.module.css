@@ -88,3 +88,7 @@
     border-radius: 24px;
   }
 }
+
+.pricing { display: grid; gap: 8px; font-size: 17px; }
+.pricing strong { font-size: 26px; font-weight: 500; }
+.pricing small { color: #ccc; font-size: 13px; line-height: 1.6; max-width: 50ch; }

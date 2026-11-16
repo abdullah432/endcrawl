@@ -1,4 +1,5 @@
 import 'dart:math';
+import 'package:google_fonts/google_fonts.dart';
 import 'dart:typed_data';
 
 import 'package:lastreel/domain/engine/roll_engine.dart';
@@ -60,6 +61,33 @@ double _spread(List<double> xs) {
 }
 
 void main() {
+  testWidgets('all bundled credit fonts produce distinct exports offline', (tester) async {
+    final previous = GoogleFonts.config.allowRuntimeFetching;
+    GoogleFonts.config.allowRuntimeFetching = false;
+    addTearDown(() => GoogleFonts.config.allowRuntimeFetching = previous);
+    await tester.runAsync(() async {
+      final pictures = <Uint8List>[];
+      for (final face in CreditFace.values) {
+        final renderer = await FrameRenderer.open(
+          settings: ProjectSettings(formatId: '1x1', face: face),
+          blocks: const [HoldBlock(id: 'font', lines: ['Maya Okonkwo'], hold: 2)],
+          geometry: computeGeometry(formatW: 1080, formatH: 1080, face: face),
+          outputWidth: 360,
+          outputHeight: 360,
+        );
+        final hold = renderer.engine.segments.whereType<HoldSegment>().single;
+        final pixels = await renderer.renderRgba((hold.f0 + hold.lengthFrames / 2).round());
+        expect(_lit(pixels, 360), isTrue);
+        pictures.add(pixels);
+        renderer.dispose();
+      }
+      expect(pictures[0], isNot(orderedEquals(pictures[1])));
+      expect(pictures[0], isNot(orderedEquals(pictures[2])));
+      expect(pictures[1], isNot(orderedEquals(pictures[2])));
+    });
+    await tester.pumpAndSettle();
+  });
+
   testWidgets('smoothing reduces sharp moving edges but leaves hold cards unchanged', (tester) async {
     await tester.runAsync(() async {
       const settings = ProjectSettings(formatId: '1x1', mode: TimingMode.speed, ppf: 11);

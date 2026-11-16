@@ -1,11 +1,13 @@
 # Responsive app and Pro web access
 
-The mobile app keeps its existing Free/Pro rules, purchasing, controllers, models,
-autosave, playback and rendering engine. Web is a Pro workspace: signed-in Free
-accounts can see the app behind a single access gate, but cannot edit, create,
-play, export or invoke other workspace actions. Sign-in, subscription recheck,
-mobile download and sign-out remain available. There is no browser checkout,
-Stripe integration, web advertising path or new usage quota.
+The app uses the normal Free/Pro flow on web, native desktop and mobile. Free
+accounts can create and edit two projects, play their rolls and use standard
+exports; premium formats/resolutions and unlimited projects require Pro. There
+is no web preview tier, separate access screen or mobile subscription handoff.
+Web upgrade actions open the shared responsive paywall and use Paddle through
+RevenueCat when enabled; see [web billing](web-billing.md). Native mobile store
+billing, controllers, models, autosave and rendering remain shared. Web has no
+advertising or rewarded-ad purchase path.
 
 ## Presentation
 
@@ -54,9 +56,9 @@ compositions above unchanged.
 
 Signed-in browser windows below 720 logical pixels show the shared
 `BiggerScreensPage` for both Free and Pro, including an access screen pushed
-above the library. Desktop windows retain the existing verified Pro gate.
+above the library. Desktop windows use the normal Free/Pro workspace; there is no whole-editor Pro gate.
 
-Build from `app/` with `flutter build web --release`, then deploy from the
+Build from `app/` with `flutter build web --release --dart-define=PROFILE_SYNC_ENABLED=true --dart-define=WEB_BILLING_ENABLED=true`, then deploy from the
 repository root with `firebase deploy --only hosting:app --project endcrawl-620c2`.
 The custom bootstrap is inlined into `index.html` and gives compiled entry points
 a `lastreelBuild` query parameter derived from Flutter's release token. Keep this

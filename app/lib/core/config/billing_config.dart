@@ -2,6 +2,8 @@ import 'package:flutter/foundation.dart';
 
 abstract final class BillingConfig {
   static const entitlementId = 'pro';
+  static const paddleMonthlyPrices = String.fromEnvironment('PADDLE_MONTHLY_PRICE_IDS');
+  static const paddleYearlyPrices = String.fromEnvironment('PADDLE_YEARLY_PRICE_IDS');
   // Public client SDK keys, never service-account or secret REST API keys.
   static const androidKey = String.fromEnvironment(
     'REVENUECAT_ANDROID_API_KEY',
