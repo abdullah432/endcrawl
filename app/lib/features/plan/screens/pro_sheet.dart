@@ -527,7 +527,7 @@ class _ComparisonTable extends StatelessWidget {
     final t = context.type;
     Widget row(String a, String b, String c, {bool header = false}) {
       final base = header
-          ? t.pill.copyWith(color: p.muted)
+          ? t.pill.copyWith(fontSize: 11, color: p.muted)
           : t.bodyS.copyWith(fontSize: open ? 14 : 12);
       return Container(
         color: header && !open ? p.tint : null,

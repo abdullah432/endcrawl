@@ -19,12 +19,12 @@ void main() {
     expect(ReviewPrompt.due(askedDaysAgo(30, ReviewAnswer.later), now), isTrue);
   });
 
-  test('a low rating waits 30 days too', () {
+  test('private feedback waits 30 days too', () {
     expect(ReviewPrompt.due(askedDaysAgo(5, ReviewAnswer.low), now), isFalse);
     expect(ReviewPrompt.due(askedDaysAgo(31, ReviewAnswer.low), now), isTrue);
   });
 
-  test('once someone has rated, it never asks again', () {
+  test('once someone went to the store, it never asks again', () {
     expect(ReviewPrompt.due(askedDaysAgo(400, ReviewAnswer.rated), now), isFalse);
   });
 

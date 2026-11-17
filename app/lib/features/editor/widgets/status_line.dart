@@ -64,7 +64,7 @@ class StatusLine extends StatelessWidget {
                   : rollStatusText(project, withTotal: !onBlack),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: t.mono.copyWith(fontSize: 10, color: ink),
+              style: t.mono.copyWith(fontSize: 11, color: ink),
             ),
           ),
         ],

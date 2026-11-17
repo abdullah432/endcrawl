@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:lastreel/features/review/review_prompt.dart';
 
 import '../../support/app_harness.dart';
 
@@ -28,14 +29,17 @@ void main() {
     expect(find.text('LastReel Pro'), findsOneWidget);
   });
 
-  testWidgets('Rate LastReel asks with the stars, even after the prompt came up', (tester) async {
+  testWidgets('Rate LastReel offers the store and private feedback, even after the prompt came up', (tester) async {
     final app = AppHarness(); // the harness has already been asked
     await openSettings(tester, app);
     final rate = find.text('Rate LastReel');
     await tester.scrollUntilVisible(rate, 200, scrollable: find.byType(Scrollable).first);
     await tester.tap(rate);
     await tester.pumpAndSettle();
-    expect(find.textContaining('Would you rate', findRichText: true), findsOneWidget);
-    expect(find.byKey(const ValueKey('star-5')), findsOneWidget);
+    expect(find.textContaining('working for you?', findRichText: true), findsOneWidget);
+    expect(find.text(ReviewPrompt.rateLabel), findsOneWidget);
+    expect(find.text('Send private feedback'), findsOneWidget);
+    // No stars before the choice: the store doesn't depend on a rating.
+    expect(find.byKey(const ValueKey('star-5')), findsNothing);
   });
 }

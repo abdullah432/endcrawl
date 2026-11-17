@@ -372,7 +372,7 @@ class _RendersPanel extends ConsumerWidget {
 
     final cards = <Widget>[
       if (run.phase == ExportPhase.done) ...[
-        GallerySaveStatus(run: run),
+        GallerySaveStatus(run: run, boxed: true),
         _DoneCard(run: run, portrait: portrait),
       ],
       if (run.phase == ExportPhase.failed) _FailedCard(run: run, portrait: portrait),

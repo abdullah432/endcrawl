@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'read_only_banner.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/theme_context.dart';
 import '../../../core/utils/formatting.dart';
 import '../../../core/widgets/ec_option_sheet.dart';
@@ -62,9 +63,12 @@ class EditorDock extends ConsumerWidget {
                 label: 'Paste',
                 onTap: editable ? () => PasteSheet.show(context) : null,
               ),
+              // "Aa" is set in the face the roll uses, so the current choice
+              // shows without opening the sheet (5.4).
               _DockItem(
-                glyph: const Icon(Icons.text_fields_rounded, size: 18),
+                glyphFor: (fg) => Text('Aa', style: project.face.textStyle(size: 16, weight: FontWeight.w600, color: fg).copyWith(height: 1)),
                 label: 'Font',
+                semanticLabel: 'Font, ${project.face.displayName}',
                 onTap: editable ? () => FontSheet.show(context) : null,
               ),
               _DockItem(
@@ -98,14 +102,19 @@ class EditorDock extends ConsumerWidget {
 }
 
 class _DockItem extends StatelessWidget {
-  final Widget glyph;
+  final Widget? glyph;
+
+  /// A glyph drawn in the item's own colour — the Font item's "Aa".
+  final Widget Function(Color fg)? glyphFor;
   final String label;
+  final String? semanticLabel;
   final bool warn;
 
   /// Null greys the item out — on a read-only project.
   final VoidCallback? onTap;
 
-  const _DockItem({required this.glyph, required this.label, this.warn = false, required this.onTap});
+  const _DockItem({this.glyph, this.glyphFor, required this.label, this.semanticLabel, this.warn = false, required this.onTap})
+      : assert(glyph != null || glyphFor != null);
 
   @override
   Widget build(BuildContext context) {
@@ -126,9 +135,9 @@ class _DockItem extends StatelessWidget {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  glyph,
-                  const SizedBox(height: 2),
-                  Text(label, style: context.type.bodyS.copyWith(fontSize: 11.5, fontWeight: FontWeight.w600, color: fg)),
+                  glyph ?? glyphFor!(fg),
+                  const SizedBox(height: 3),
+                  Text(label, semanticsLabel: semanticLabel, style: context.type.bodyS.copyWith(fontSize: 11.5, fontWeight: FontWeight.w600, color: fg)),
                 ],
               ),
             ),

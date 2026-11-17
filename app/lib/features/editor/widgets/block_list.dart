@@ -52,15 +52,15 @@ class BlockList extends ConsumerWidget {
           padding: const EdgeInsets.fromLTRB(16, 4, 8, 4),
           child: Row(
             children: [
-              Expanded(child: Text(caps(count), style: t.eyebrow)),
+              Expanded(child: Text(caps(count), style: t.eyebrow.copyWith(fontSize: 11, letterSpacing: 11 * .14))),
               if (blocks.isNotEmpty && !ref.watch(editorReadOnlyProvider))
                 TextButton(
                   onPressed: ui.selectMode ? uiController.exitSelectMode : uiController.enterSelectMode,
                   style: TextButton.styleFrom(
                     foregroundColor: p.accent,
-                    minimumSize: const Size(0, 32),
+                    minimumSize: const Size(44, 44),
                     padding: const EdgeInsets.symmetric(horizontal: 8),
-                    textStyle: t.bodyS.copyWith(fontSize: 12.5, fontWeight: ui.selectMode ? FontWeight.w700 : FontWeight.w600),
+                    textStyle: t.bodyS.copyWith(fontSize: 13, fontWeight: ui.selectMode ? FontWeight.w700 : FontWeight.w600),
                   ),
                   child: Text(ui.selectMode ? 'Done' : 'Select'),
                 ),

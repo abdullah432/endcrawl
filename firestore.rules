@@ -31,7 +31,7 @@ rules_version = '2';
 // the client can grant itself.
 //
 // Collection: feedback/{id}   (the rating prompt's report to the team)
-// Fields: uid, rating (1..5), topics (<= 6 strings), message (<= 2000
+// Fields: uid, rating (0..5; 0 = not given), topics (<= 6 strings), message (<= 2000
 //   chars), appVersion, platform, createdAt (server time).
 // Create-only: the app can send feedback but never read it back; the team
 // reads it in the Firebase console.
@@ -166,7 +166,8 @@ service cloud.firestore {
         && incoming().keys().hasAll(['uid', 'rating', 'topics', 'message', 'appVersion', 'platform', 'createdAt'])
         && incoming().uid == request.auth.uid
         && incoming().rating is int
-        && incoming().rating >= 1
+        // 0 = no rating given (the rating on private feedback is optional).
+        && incoming().rating >= 0
         && incoming().rating <= 5
         && incoming().topics is list
         && incoming().topics.size() <= 6

@@ -28,22 +28,30 @@ class EcAdSlot extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 4),
+          padding: const EdgeInsets.only(left: 4),
           child: Row(
             children: [
-              Expanded(child: Text(caps(label), style: t.section.copyWith(letterSpacing: 1.5))),
-              if (onHideAds != null) InkWell(
-                onTap: onHideAds,
-                borderRadius: BorderRadius.circular(6),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 2),
-                  child: Text(caps(hideLabel), style: t.section.copyWith(letterSpacing: 1.5)),
+              // 11 px is the floor for these labels at phone size.
+              Expanded(child: Text(caps(label), style: t.section.copyWith(fontSize: 11, letterSpacing: 1.5))),
+              if (onHideAds != null)
+                InkWell(
+                  onTap: onHideAds,
+                  borderRadius: BorderRadius.circular(6),
+                  // A 44 px tap target around the small label.
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(minHeight: 44, minWidth: 44),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 4),
+                      child: Center(
+                        widthFactor: 1,
+                        child: Text(caps(hideLabel), style: t.section.copyWith(fontSize: 11, letterSpacing: 1.5, color: context.palette.accent)),
+                      ),
+                    ),
+                  ),
                 ),
-              ),
             ],
           ),
         ),
-        const SizedBox(height: 4),
         creative,
       ],
     );
@@ -75,7 +83,7 @@ class EcAdPlaceholder extends StatelessWidget {
             height: 44,
             alignment: Alignment.center,
             decoration: BoxDecoration(color: p.tint, borderRadius: BorderRadius.circular(EcRadius.tile)),
-            child: Text('AD', style: t.pill.copyWith(color: p.muted)),
+            child: Text('AD', style: t.pill.copyWith(fontSize: 11, color: p.muted)),
           ),
           const SizedBox(width: 12),
           Expanded(

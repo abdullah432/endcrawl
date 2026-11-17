@@ -195,7 +195,9 @@ class EcCodeTile extends StatelessWidget {
       decoration: BoxDecoration(color: fill, borderRadius: BorderRadius.circular(EcRadius.tile)),
       child: Text(
         code,
-        style: context.type.code.copyWith(color: fg, fontSize: code.length > 3 ? 8.5 : null),
+        // At full tile size the code reads at the 11 px floor; the compact
+        // tiles in dense rows keep their smaller size.
+        style: context.type.code.copyWith(color: fg, fontSize: size >= 36 ? 11 : (code.length > 3 ? 8.5 : null)),
       ),
     );
   }
@@ -218,7 +220,7 @@ class EcGradientPill extends StatelessWidget {
       decoration: BoxDecoration(gradient: p.primary, borderRadius: BorderRadius.circular(EcRadius.pill)),
       child: Text(
         label.toUpperCase(),
-        style: context.type.pill.copyWith(fontSize: 8.5, color: p.onInk, letterSpacing: .85),
+        style: context.type.pill.copyWith(fontSize: 11, color: p.onInk, letterSpacing: 1),
       ),
     );
   }
@@ -228,7 +230,10 @@ class EcStatusPill extends StatelessWidget {
   final String label;
   final EcTone tone;
 
-  const EcStatusPill(this.label, {super.key, this.tone = EcTone.neutral});
+  /// Overrides the pill's 9 px type — the badges on 6.1 read at 11 px.
+  final double? fontSize;
+
+  const EcStatusPill(this.label, {super.key, this.tone = EcTone.neutral, this.fontSize});
 
   @override
   Widget build(BuildContext context) {
@@ -242,7 +247,7 @@ class EcStatusPill extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(color: fill, borderRadius: BorderRadius.circular(EcRadius.pill)),
-      child: Text(caps(label), style: context.type.pill.copyWith(color: fg)),
+      child: Text(caps(label), style: context.type.pill.copyWith(color: fg, fontSize: fontSize)),
     );
   }
 }

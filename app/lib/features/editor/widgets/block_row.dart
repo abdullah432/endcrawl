@@ -215,7 +215,7 @@ class BlockRow extends ConsumerWidget {
                   ),
                 ),
                 const SizedBox(width: 8),
-                Text(seconds == null ? '—' : formatClock(seconds), style: t.mono.copyWith(fontSize: 10.5)),
+                Text(seconds == null ? '—' : formatClock(seconds), style: t.mono.copyWith(fontSize: 11)),
                 if (!selecting && !readOnly)
                   ReorderableDragStartListener(
                     index: index,

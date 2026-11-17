@@ -8,10 +8,11 @@ enum ReviewAnswer {
   /// "Not now", or closed without picking.
   later,
 
-  /// One to three stars — went to the team, not the store.
+  /// Sent private feedback to the team (6.2b). The stored name predates
+  /// the split between feedback and the store, so it is kept as it was.
   low,
 
-  /// Four or five stars — sent on to the store's review card.
+  /// Went to the store's review (6.2c) — never asked again.
   rated,
 }
 

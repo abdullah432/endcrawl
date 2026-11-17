@@ -105,7 +105,7 @@ class ExportSheet extends ConsumerWidget {
 
     final rate = ref.watch(inlineRateProvider);
     if (rate.phase == InlineRatePhase.feedback) {
-      return _WhatToFix(rating: rate.rating, run: mine ? run : null);
+      return _PrivateFeedback(run: mine ? run : null);
     }
 
     final phase = switch (mine ? run.phase : null) {
@@ -425,7 +425,7 @@ class _Settings extends ConsumerWidget {
                           children: [
                             Text(
                               label,
-                              style: t.caption.copyWith(fontSize: 10.5),
+                              style: t.caption.copyWith(fontSize: 11.5),
                             ),
                             const SizedBox(height: 2),
                             Text(
@@ -635,7 +635,7 @@ class _TabletSettings extends ConsumerWidget {
                 ? Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('LOCKED FOR THIS RENDER', style: t.eyebrow.copyWith(fontSize: 9.5)),
+                      Text('LOCKED FOR THIS RENDER', style: t.eyebrow.copyWith(fontSize: 11)),
                       const SizedBox(height: 4),
                       Text(facts, style: t.mono.copyWith(fontSize: 12.5, color: p.ink)),
                     ],
@@ -729,7 +729,7 @@ class _TabletSettings extends ConsumerWidget {
       children: [
         portrait
             ? Text('Resolution', style: t.label.copyWith(fontSize: 13, color: p.ink))
-            : Text('RESOLUTION', style: t.eyebrow.copyWith(fontSize: 10, letterSpacing: 1.4)),
+            : Text('RESOLUTION', style: t.eyebrow.copyWith(fontSize: 11, letterSpacing: 1.5)),
         const SizedBox(height: 8),
         resolution,
       ],
@@ -870,9 +870,9 @@ class _TabletCodecCard extends StatelessWidget {
                           if (showPro && codec.isPro) ...[
                             const SizedBox(width: 8),
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
                               decoration: BoxDecoration(color: p.inkSurface, borderRadius: BorderRadius.circular(999)),
-                              child: Text('PRO', style: t.pill.copyWith(fontSize: 8.5, color: p.onInk, letterSpacing: .8)),
+                              child: Text('PRO', style: t.pill.copyWith(fontSize: 11, color: p.onInk, letterSpacing: .9)),
                             ),
                           ],
                         ],
@@ -1051,7 +1051,7 @@ class _CodecRow extends StatelessWidget {
                         ],
                         if (codec.alpha) ...[
                           const SizedBox(width: 6),
-                          const EcStatusPill('Alpha', tone: EcTone.accent),
+                          const EcStatusPill('Alpha', tone: EcTone.accent, fontSize: 11),
                         ],
                       ],
                     ),
@@ -1187,7 +1187,7 @@ class _Rendering extends ConsumerWidget {
                           const SizedBox(height: 3),
                           Text(
                             'frame ${run.frame} / ${run.totalFrames}',
-                            style: t.mono.copyWith(fontSize: 10.5),
+                            style: t.mono.copyWith(fontSize: 11),
                           ),
                         ],
                       ),
@@ -1205,7 +1205,7 @@ class _Rendering extends ConsumerWidget {
                   run.frame == 0
                       ? 'Preparing…'
                       : '${formatAbout(run.secondsLeft)} left',
-                  style: t.mono.copyWith(fontSize: 10.5),
+                  style: t.mono.copyWith(fontSize: 11),
                 ),
               ],
             ),
@@ -1224,10 +1224,11 @@ class _Rendering extends ConsumerWidget {
   }
 }
 
-class _WhatToFix extends ConsumerWidget {
-  final int rating;
+/// 6.2b inside the export sheet — the render keeps showing in a compact
+/// row above the form.
+class _PrivateFeedback extends ConsumerWidget {
   final ExportRun? run;
-  const _WhatToFix({required this.rating, required this.run});
+  const _PrivateFeedback({required this.run});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -1236,8 +1237,14 @@ class _WhatToFix extends ConsumerWidget {
     final run = this.run;
     final container = ProviderScope.containerOf(context, listen: false);
     void finish(RatingFeedback? report) {
-      ReviewPrompt.sendToTeam(container, report, rating);
+      ReviewPrompt.sendToTeam(container, report);
       ref.read(inlineRateProvider.notifier).close();
+    }
+
+    Future<void> toStore() async {
+      final controller = ref.read(inlineRateProvider.notifier);
+      controller.close();
+      await ReviewPrompt.toStore(container);
     }
 
     return EcSheet(
@@ -1258,15 +1265,15 @@ class _WhatToFix extends ConsumerWidget {
                     run.phase == ExportPhase.done
                         ? '100%'
                         : '${(run.progress * 100).floor()}% · ${formatClock(run.secondsLeft.toDouble())}',
-                    style: t.mono.copyWith(fontSize: 10.5, color: p.accent),
+                    style: t.mono.copyWith(fontSize: 11, color: p.accent),
                   ),
                 ],
               ),
             ),
       child: ReviewFeedbackForm(
-        rating: rating,
         onSend: finish,
-        onSkip: () => finish(null),
+        onStore: toStore,
+        onClose: () => finish(null),
       ),
     );
   }
@@ -1457,9 +1464,11 @@ class _Ready extends ConsumerWidget {
             style: t.mono.copyWith(fontSize: 11),
           ),
           const SizedBox(height: 20),
-          GallerySaveStatus(run: run),
+          // The save is automatic, so it reads as the group's first row — a
+          // status, not a destination — with Share as the one action.
           EcGroup(
             children: [
+              if (run.gallerySave != GallerySave.notApplicable) GallerySaveStatus(run: run),
               if (kIsWeb || AppPlatform.isNativeDesktop)
                 EcGroupRow(
                   title: kIsWeb ? 'Download' : 'Save to Mac',
@@ -1469,15 +1478,18 @@ class _Ready extends ConsumerWidget {
               if (destinations.canShare(artifact))
                 EcGroupRow(
                   title: run.codec == Codec.png ? 'Share file' : 'Share video',
-                  subtitle: 'Choose an app or save a copy to Files',
+                  subtitle: 'Send to an app, or save a copy to Files',
                   onTap: () => deliver(destinations.share(artifact, origin: origin())),
                 ),
             ],
           ),
-          // The rendered file is available; delivery status is shown above. The ad sits below
-          // every destination and never stands between the user and them.
+          // The ad sits below every destination and never stands between
+          // the user and them; it waits until the save has settled, so it
+          // never shows beside "Saving…".
           RateSlot(
-            ad: context.isTablet
+            ad: run.gallerySave == GallerySave.saving
+                ? const SizedBox.shrink()
+                : context.isTablet
                 ? TabletAdSlot(
                     AdPlacement.exportComplete,
                     layout: AdLayout.strip,

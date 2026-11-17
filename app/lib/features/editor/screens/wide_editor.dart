@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../bootstrap.dart';
 import '../../../core/layout/layout_class.dart';
 import '../../../core/theme/ec_type.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/theme_context.dart';
 import '../../../core/utils/formatting.dart';
 import '../../../core/widgets/ec_button.dart';
@@ -343,7 +344,15 @@ class _BarActions extends ConsumerWidget {
         _GlassPill(
           height: pill,
           onTap: () => FontSheet.show(context),
-          child: Text('Font', style: t.buttonSmall.copyWith(fontSize: 13)),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Set in the roll's face, like the phone dock (5.4).
+              Text('Aa', style: project.face.textStyle(size: 14, weight: FontWeight.w600, color: p.ink).copyWith(height: 1)),
+              const SizedBox(width: 6),
+              Text('Font', style: t.buttonSmall.copyWith(fontSize: 13)),
+            ],
+          ),
         ),
         const SizedBox(width: 8),
         _GlassPill(

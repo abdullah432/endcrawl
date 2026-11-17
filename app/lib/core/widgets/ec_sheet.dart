@@ -127,41 +127,36 @@ class EcSheet extends StatelessWidget {
                   ? Align(
                       alignment: Alignment.centerRight,
                       child: Padding(
-                        padding: const EdgeInsets.all(12),
-                        child: EcCircleButton.tint(
-                          icon: Icons.close_rounded,
-                          size: 34,
-                          tooltip: 'Close',
-                          onPressed: () => closeEcSheet(context),
-                        ),
+                        padding: const EdgeInsets.all(7),
+                        child: _CloseTarget(onPressed: () => closeEcSheet(context)),
                       ),
                     )
                   : const SizedBox(height: 12))
             : Padding(
-                padding: const EdgeInsets.fromLTRB(20, 16, 20, 14),
+                // The close button's 44 px target takes 5 px of the padding
+                // on each side, so the 34 px circle sits where it did.
+                padding: const EdgeInsets.fromLTRB(20, 11, 15, 9),
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          if (eyebrow != null) ...[
-                            EcEyebrow(eyebrow!),
-                            const SizedBox(height: 6),
+                      child: Padding(
+                        // Gives back the 5 px the row's padding lost.
+                        padding: const EdgeInsets.symmetric(vertical: 5),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (eyebrow != null) ...[
+                              EcEyebrow(eyebrow!),
+                              const SizedBox(height: 6),
+                            ],
+                            Text(title!, style: t.displayM),
                           ],
-                          Text(title!, style: t.displayM),
-                        ],
+                        ),
                       ),
                     ),
-                    if (showClose)
-                      EcCircleButton.tint(
-                        icon: Icons.close_rounded,
-                        size: 34,
-                        tooltip: 'Close',
-                        onPressed: () => closeEcSheet(context),
-                      ),
+                    if (showClose) _CloseTarget(onPressed: () => closeEcSheet(context)),
                   ],
                 ),
               ));
@@ -295,4 +290,22 @@ class EcSectionLabel extends StatelessWidget {
       ),
     );
   }
+}
+
+/// The sheet's round ✕: a 34 px circle inside a 44 px tap target.
+class _CloseTarget extends StatelessWidget {
+  final VoidCallback onPressed;
+  const _CloseTarget({required this.onPressed});
+
+  @override
+  Widget build(BuildContext context) => GestureDetector(
+    behavior: HitTestBehavior.opaque,
+    onTap: onPressed,
+    child: SizedBox.square(
+      dimension: 44,
+      child: Center(
+        child: EcCircleButton.tint(icon: Icons.close_rounded, size: 34, tooltip: 'Close', onPressed: onPressed),
+      ),
+    ),
+  );
 }

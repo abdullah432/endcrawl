@@ -169,7 +169,7 @@ class _LookCard extends StatelessWidget {
           Row(
             children: [
               Expanded(child: Text(title, style: t.titleS.copyWith(fontSize: 13.5))),
-              if (badge != null) Text(caps(badge!), style: t.pill.copyWith(fontSize: 8.5, color: p.accent)),
+              if (badge != null) Text(caps(badge!), style: t.pill.copyWith(fontSize: 11, color: p.accent)),
             ],
           ),
           const SizedBox(height: 3),

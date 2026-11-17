@@ -244,8 +244,8 @@ class SettingsGroups {
         title: 'Contact support',
         onTap: () => links.composeEmail(AppLinks.supportEmail, subject: version == null ? 'LastReel support' : '$version support'),
       ),
-      // The same stars as the render-time prompt: 4–5 go to the store, under
-      // 4 to "What should we fix?". The web has no store review to open.
+      // The same two paths as the render-time prompt: the store's review, or
+      // private feedback to the team. The web has no store review to open.
       EcGroupRow(
         title: 'Rate LastReel',
         onTap: ref.read(runningOnWebProvider) ? _settings.rate : () => ReviewPrompt.askNow(context),

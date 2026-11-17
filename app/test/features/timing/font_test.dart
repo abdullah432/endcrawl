@@ -37,7 +37,7 @@ void main() {
         tester.element(find.byType(FontSheet)),
       );
       final before = container.read(projectControllerProvider);
-      await tester.tap(find.text(CreditFace.serif.displayName));
+      await tester.tap(find.text(CreditFace.serif.label));
       await tester.pumpAndSettle();
       await tester.runAsync(() => GoogleFonts.pendingFonts());
       await tester.pumpAndSettle();

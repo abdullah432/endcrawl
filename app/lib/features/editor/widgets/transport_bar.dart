@@ -105,7 +105,7 @@ class _TransportButton extends StatelessWidget {
   }
 }
 
-/// A 32 px glass pill that opens a look setting.
+/// A 36 px glass pill that opens a look setting, with a 44 px tap area.
 class LookPill extends StatelessWidget {
   final String label;
   final VoidCallback onTap;
@@ -115,24 +115,36 @@ class LookPill extends StatelessWidget {
   Widget build(BuildContext context) {
     final p = context.palette;
     final shape = BorderRadius.circular(EcRadius.pill);
-    return Material(
-      type: MaterialType.transparency,
-      borderRadius: shape,
-      clipBehavior: Clip.antiAlias,
-      child: Ink(
-        height: 32,
-        decoration: BoxDecoration(color: p.glass, borderRadius: shape, border: Border.all(color: p.glassEdge)),
-        child: InkWell(
-          onTap: onTap,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            child: Center(
-              widthFactor: 1,
-              child: Text(
-                label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: context.type.bodyS.copyWith(fontSize: 11.5, fontWeight: FontWeight.w500, color: p.ink),
+    // The pill draws at 36 px; the band around it still takes the tap, so
+    // the target meets 44 px without the pill looking heavier.
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      child: SizedBox(
+        height: 44,
+        child: Center(
+          widthFactor: 1,
+          child: Material(
+            type: MaterialType.transparency,
+            borderRadius: shape,
+            clipBehavior: Clip.antiAlias,
+            child: Ink(
+              height: 36,
+              decoration: BoxDecoration(color: p.glass, borderRadius: shape, border: Border.all(color: p.glassEdge)),
+              child: InkWell(
+                onTap: onTap,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 13),
+                  child: Center(
+                    widthFactor: 1,
+                    child: Text(
+                      label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: context.type.bodyS.copyWith(fontSize: 12.5, fontWeight: FontWeight.w500, color: p.ink),
+                    ),
+                  ),
+                ),
               ),
             ),
           ),

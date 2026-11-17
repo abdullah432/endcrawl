@@ -15,4 +15,18 @@ enum CreditFace {
         CreditFace.serif => 'Transitional serif · EB Garamond',
         CreditFace.condensed => 'Condensed · Archivo Narrow',
       };
+
+  /// The style name on its own — the font sheet's row title (5.4).
+  String get label => switch (this) {
+        CreditFace.grotesque => 'Grotesque',
+        CreditFace.serif => 'Transitional serif',
+        CreditFace.condensed => 'Condensed',
+      };
+
+  /// The typeface — the font sheet's mono line under [label].
+  String get family => switch (this) {
+        CreditFace.grotesque => 'Archivo',
+        CreditFace.serif => 'EB Garamond',
+        CreditFace.condensed => 'Archivo Narrow',
+      };
 }

@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import '../../core/config/app_platform.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -13,6 +14,7 @@ import '../../core/widgets/ec_button.dart';
 import '../../core/widgets/ec_chip.dart';
 import '../../core/widgets/ec_fields.dart';
 import '../../core/widgets/ec_headline.dart';
+import '../../core/widgets/ec_scaffold.dart';
 import '../../core/widgets/ec_sheet.dart';
 import '../../core/widgets/ec_toast.dart';
 import '../ads/ads_providers.dart';
@@ -46,12 +48,22 @@ class ShownThisSession extends Notifier<bool> {
 
 /// Where the rating ask is on screen, when it's inside the Rendering sheet
 /// (6.2a–c) rather than a sheet of its own.
-enum InlineRatePhase { off, asking, thanks, feedback }
+enum InlineRatePhase {
+  off,
+
+  /// 6.2a — the two paths: the store, or private feedback.
+  asking,
+
+  /// 6.2c — the store's review is opening.
+  opening,
+
+  /// 6.2b — private feedback, in place of the render's own view.
+  feedback,
+}
 
 class InlineRate {
   final InlineRatePhase phase;
-  final int rating;
-  const InlineRate(this.phase, {this.rating = 5});
+  const InlineRate(this.phase);
 }
 
 class InlineRateController extends Notifier<InlineRate> {
@@ -59,10 +71,8 @@ class InlineRateController extends Notifier<InlineRate> {
   InlineRate build() => const InlineRate(InlineRatePhase.off);
 
   void ask() => state = const InlineRate(InlineRatePhase.asking);
-  void thank(int rating) =>
-      state = InlineRate(InlineRatePhase.thanks, rating: rating);
-  void askWhatToFix(int rating) =>
-      state = InlineRate(InlineRatePhase.feedback, rating: rating);
+  void openStore() => state = const InlineRate(InlineRatePhase.opening);
+  void askFeedback() => state = const InlineRate(InlineRatePhase.feedback);
   void close() => state = const InlineRate(InlineRatePhase.off);
 }
 
@@ -70,34 +80,37 @@ final inlineRateProvider = NotifierProvider<InlineRateController, InlineRate>(
   InlineRateController.new,
 );
 
-/// The one-time rating ask, while the first render runs.
+/// What the person picked on 6.2a or 6.2b.
+enum RateChoice { store, feedback }
+
+/// The rating ask, while a render runs.
 ///
 /// 6.2a — it takes the place of the ad in the Rendering sheet, so it never
 /// covers the progress; if the person went back to work, it comes up as a
-/// sheet of its own instead. Five stars are selected initially and can be
-/// reduced before submission.
-/// 6.2c — four or five: "Thank you", then the store's own review card (the
-/// same as Settings → Rate LastReel). 6.2b — one to three: "What should we
-/// fix?", which reaches the team privately and never the store. Every
-/// answer is logged to the team. Once someone has rated it never asks
-/// again; "Not now" or a low rating can be asked again 30 days later, up to
-/// [maxAsks] times in all (see [due]).
+/// sheet of its own instead. It offers two paths side by side and asks for
+/// no stars first, so a rating never decides who reaches the store:
+/// 6.2c — the store's own review (the same as Settings → Rate LastReel);
+/// 6.2b — private feedback to the team, which never goes to the store and
+/// keeps the store one tap away. Once someone has gone to the store it
+/// never asks again; "Not now" or feedback can be asked again 30 days
+/// later, up to [maxAsks] times in all (see [due]).
 abstract final class ReviewPrompt {
-  /// At or above this, the person is sent to the store; below, to the team.
-  static const storeThreshold = 4;
-
-  /// How long "Thank you" stays before the store's card opens.
-  static const thanksPause = Duration(milliseconds: 1200);
-
-  /// Between asks: "Not now" or a low rating waits this long.
+  /// Between asks: "Not now" or private feedback waits this long.
   static const quiet = Duration(days: 30);
 
   /// Asked on its own at most this often per device, however it went.
   static const maxAsks = 3;
 
-  /// Whether it may ask now: never again once someone has rated (4–5 went
-  /// to the store, and asking again only annoys); otherwise 30 days after
-  /// the last ask, and no more than [maxAsks] times in all.
+  /// The store the review goes to: Google Play on Android, else the App Store.
+  static String get storeName =>
+      defaultTargetPlatform == TargetPlatform.android ? 'Google Play' : 'the App Store';
+
+  /// "Rate on the App Store" / "Rate on Google Play".
+  static String get rateLabel => 'Rate on $storeName';
+
+  /// Whether it may ask now: never again once someone went to the store
+  /// (asking again only annoys); otherwise 30 days after the last ask, and
+  /// no more than [maxAsks] times in all.
   static bool due(ReviewPromptStore store, DateTime now) {
     if (store.lastAnswer == ReviewAnswer.rated) return false;
     if (store.timesAsked >= maxAsks) return false;
@@ -124,7 +137,7 @@ abstract final class ReviewPrompt {
     await _askInSheet(context, container);
   }
 
-  /// Settings → Rate LastReel: the same stars, asked because the person
+  /// Settings → Rate LastReel: the same two paths, asked because the person
   /// chose to — so it ignores whether the prompt already came up.
   static Future<void> askNow(BuildContext context) async {
     final container = ProviderScope.containerOf(context, listen: false);
@@ -139,56 +152,57 @@ abstract final class ReviewPrompt {
     ProviderContainer container, {
     bool whileRendering = true,
   }) async {
-    final analytics = container.read(analyticsProvider);
-    final rating = await showEcSheet<int>(
+    final choice = await showEcSheet<RateChoice>(
       context,
       builder: (_) => ReviewPromptSheet(whileRendering: whileRendering),
     );
-    if (rating == null) {
-      await container
-          .read(reviewPromptStoreProvider)
-          .recordAnswer(ReviewAnswer.later);
-      return analytics.logEvent('review_prompt_later');
+    switch (choice) {
+      case null:
+        return later(container);
+      case RateChoice.store:
+        return toStore(container);
+      case RateChoice.feedback:
+        container.read(analyticsProvider).logEvent('review_prompt_feedback');
+        if (!context.mounted) return;
+        final result = await showEcSheet<Object>(
+          context,
+          builder: (_) => const ReviewFeedbackSheet(),
+        );
+        if (result == RateChoice.store) return toStore(container);
+        sendToTeam(container, result is RatingFeedback ? result : null);
     }
-    if (rating >= storeThreshold) return toStore(container, rating);
-
-    analytics.logEvent('review_prompt_low', {'rating': rating});
-    if (!context.mounted) return;
-    final report = await showEcSheet<RatingFeedback>(
-      context,
-      builder: (_) => ReviewFeedbackSheet(rating: rating),
-    );
-    sendToTeam(container, report, rating);
   }
 
-  /// Four or five stars: logged to the team, then the store's review card.
-  static Future<void> toStore(ProviderContainer container, int rating) async {
-    container.read(analyticsProvider).logEvent('review_prompt_rate', {
-      'rating': rating,
-    });
-    await container
-        .read(reviewPromptStoreProvider)
-        .recordAnswer(ReviewAnswer.rated);
-    container
-        .read(feedbackRepositoryProvider)
-        .submit(RatingFeedback(rating: rating));
+  /// "Not now", or closed without picking.
+  static Future<void> later(ProviderContainer container) async {
+    await container.read(reviewPromptStoreProvider).recordAnswer(ReviewAnswer.later);
+    container.read(analyticsProvider).logEvent('review_prompt_later');
+  }
+
+  /// The store's own review card — the same as Settings → Rate LastReel.
+  static Future<void> toStore(ProviderContainer container) async {
+    container.read(analyticsProvider).logEvent('review_prompt_rate');
+    await container.read(reviewPromptStoreProvider).recordAnswer(ReviewAnswer.rated);
     await container.read(settingsControllerProvider).rate();
   }
 
-  /// One to three stars: the report, or on Skip the stars alone.
-  static void sendToTeam(
-    ProviderContainer container,
-    RatingFeedback? report,
-    int rating,
-  ) {
+  /// Private feedback: the report goes to the team, never the store. Closed
+  /// without sending, it counts as "Not now".
+  static void sendToTeam(ProviderContainer container, RatingFeedback? report) {
+    if (report == null) {
+      later(container);
+      return;
+    }
     container.read(reviewPromptStoreProvider).recordAnswer(ReviewAnswer.low);
-    container
-        .read(feedbackRepositoryProvider)
-        .submit(report ?? RatingFeedback(rating: rating));
+    container.read(analyticsProvider).logEvent('review_prompt_feedback_sent', {
+      'rating': report.rating,
+      'topics': report.topics.length,
+    });
+    container.read(feedbackRepositoryProvider).submit(report);
     // Raised from the root navigator's own overlay context, which can't
     // look itself up; show the thanks on that overlay directly.
     final overlay = rootNavigatorKey.currentState?.overlay;
-    if (report != null && overlay != null && overlay.mounted) {
+    if (overlay != null && overlay.mounted) {
       showEcToastOn(overlay, 'Thanks. The team reads every one.');
     }
   }
@@ -262,63 +276,40 @@ class _ReviewPromptTriggerState extends ConsumerState<ReviewPromptTrigger> {
 }
 
 /// 6.2a as a sheet of its own — for when the Rendering sheet isn't open.
-class ReviewPromptSheet extends StatefulWidget {
+/// Pops the [RateChoice], or nothing for "Not now".
+class ReviewPromptSheet extends StatelessWidget {
   /// "While you wait" sits above the question only during a render.
   final bool whileRendering;
   const ReviewPromptSheet({super.key, this.whileRendering = true});
 
   @override
-  State<ReviewPromptSheet> createState() => _ReviewPromptSheetState();
-}
-
-class _ReviewPromptSheetState extends State<ReviewPromptSheet> {
-  int? _thanked;
-
-  void _rate(int rating) {
-    if (rating < ReviewPrompt.storeThreshold) {
-      return Navigator.of(context).pop(rating);
-    }
-    // 6.2c — a moment of thanks before the store's card takes over.
-    setState(() => _thanked = rating);
-    Future.delayed(ReviewPrompt.thanksPause, () {
-      if (mounted) Navigator.of(context).pop(rating);
-    });
-  }
-
-  @override
   Widget build(BuildContext context) {
     return EcSheet(
-      child: _thanked != null
-          ? const RatingThanks()
-          : RateQuestion(
-              onRate: _rate,
-              onLater: () => Navigator.of(context).pop(),
-              whileRendering: widget.whileRendering,
-            ),
+      child: RateQuestion(
+        onStore: () => Navigator.of(context).pop(RateChoice.store),
+        onFeedback: () => Navigator.of(context).pop(RateChoice.feedback),
+        onLater: () => Navigator.of(context).pop(),
+        whileRendering: whileRendering,
+      ),
     );
   }
 }
 
-/// "Would you rate LastReel?" — the stars, full to start, and the answer.
-class RateQuestion extends StatefulWidget {
-  final ValueChanged<int> onRate;
+/// 6.2a — "How's LastReel working for you?" and two equal paths. No stars
+/// first: the store is open to everyone, whatever they think.
+class RateQuestion extends StatelessWidget {
+  final VoidCallback onStore;
+  final VoidCallback onFeedback;
   final VoidCallback onLater;
   final bool whileRendering;
 
   const RateQuestion({
     super.key,
-    required this.onRate,
+    required this.onStore,
+    required this.onFeedback,
     required this.onLater,
     this.whileRendering = true,
   });
-
-  @override
-  State<RateQuestion> createState() => _RateQuestionState();
-}
-
-class _RateQuestionState extends State<RateQuestion> {
-  /// Start at five; tapping any star adjusts the count before submission.
-  int _rating = 5;
 
   @override
   Widget build(BuildContext context) {
@@ -328,97 +319,65 @@ class _RateQuestionState extends State<RateQuestion> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       mainAxisSize: MainAxisSize.min,
       children: [
-        if (widget.whileRendering) ...[
+        if (whileRendering) ...[
           Text(
             caps('While you wait'),
             textAlign: TextAlign.center,
-            style: t.eyebrow.copyWith(fontSize: 9.5),
+            style: t.eyebrow.copyWith(fontSize: 11, letterSpacing: 11 * .14),
           ),
           const SizedBox(height: 8),
         ],
         EcHeadline(
-          'Would you rate ',
-          emphasis: 'LastReel?',
-          style: t.displayM.copyWith(fontSize: 30),
+          'How’s LastReel ',
+          emphasis: 'working for you?',
+          style: t.displayM.copyWith(fontSize: 28, height: 1.05),
           textAlign: TextAlign.center,
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 10),
         Text(
-          'One tap. It goes straight to the people who build it.',
+          'Rate it on ${ReviewPrompt.storeName}, or tell the team privately what to fix.',
           textAlign: TextAlign.center,
-          style: t.bodyS.copyWith(fontSize: 12.5, color: p.muted),
+          style: t.bodyS.copyWith(fontSize: 13, color: p.muted, height: 1.45),
         ),
+        const SizedBox(height: 16),
+        EcButton(label: ReviewPrompt.rateLabel, height: 50, onPressed: onStore),
         const SizedBox(height: 8),
-        StarRating(
-          value: _rating,
-          onChanged: (v) => setState(() => _rating = v),
-        ),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                caps('Not great'),
-                style: t.mono.copyWith(fontSize: 9.5, color: p.faint),
-              ),
-              Text(
-                caps('Love it'),
-                style: t.mono.copyWith(fontSize: 9.5, color: p.faint),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 14),
         EcButton(
-          label: 'Rate LastReel',
-          size: EcButtonSize.medium,
-          onPressed: _rating == 0 ? null : () => widget.onRate(_rating),
+          label: 'Send private feedback',
+          variant: EcButtonVariant.secondary,
+          height: 50,
+          onPressed: onFeedback,
         ),
+        const SizedBox(height: 4),
         EcButton(
           label: 'Not now',
           variant: EcButtonVariant.plain,
+          size: EcButtonSize.medium,
           expand: true,
-          onPressed: widget.onLater,
+          onPressed: onLater,
         ),
       ],
     );
   }
 }
 
-/// 6.2c — "Thank you. Opening the review…", five stars lit.
-class RatingThanks extends StatelessWidget {
-  const RatingThanks({super.key});
+/// 6.2c, inside the Rendering sheet — the store's own review is opening.
+class OpeningStore extends StatelessWidget {
+  const OpeningStore({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final p = context.palette;
     final t = context.type;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 18),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          ExcludeSemantics(
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                for (var i = 0; i < 5; i++)
-                  Icon(Icons.star_rounded, size: 28, color: p.accentSolid),
-              ],
-            ),
-          ),
-          const SizedBox(height: 10),
-          Semantics(
-            liveRegion: true,
-            child: EcHeadline(
-              'Thank you. ',
-              emphasis: 'Opening the review…',
-              style: t.displayM.copyWith(fontSize: 26),
-              textAlign: TextAlign.center,
-            ),
-          ),
-        ],
+      child: Semantics(
+        liveRegion: true,
+        child: EcHeadline(
+          'Opening the ',
+          emphasis: '${ReviewPrompt.storeName} review…',
+          style: t.displayM.copyWith(fontSize: 26),
+          textAlign: TextAlign.center,
+        ),
       ),
     );
   }
@@ -451,33 +410,24 @@ class _RateSlotState extends ConsumerState<RateSlot> {
     super.dispose();
   }
 
-  void _rate(int rating) {
+  Future<void> _store() async {
     final container = ProviderScope.containerOf(context, listen: false);
     final controller = ref.read(inlineRateProvider.notifier);
-    if (rating >= ReviewPrompt.storeThreshold) {
-      controller.thank(rating);
-      Future.delayed(ReviewPrompt.thanksPause, () async {
-        await ReviewPrompt.toStore(container, rating);
-        controller.close();
-      });
-    } else {
-      ref.read(analyticsProvider).logEvent('review_prompt_low', {
-        'rating': rating,
-      });
-      controller.askWhatToFix(rating);
-    }
+    controller.openStore();
+    await ReviewPrompt.toStore(container);
+    controller.close();
   }
 
   @override
   Widget build(BuildContext context) {
     final p = context.palette;
     final phase = ref.watch(inlineRateProvider.select((s) => s.phase));
-    if (phase != InlineRatePhase.asking && phase != InlineRatePhase.thanks) {
+    if (phase != InlineRatePhase.asking && phase != InlineRatePhase.opening) {
       return widget.ad;
     }
     return Container(
       margin: const EdgeInsets.only(top: 14),
-      padding: const EdgeInsets.fromLTRB(18, 20, 18, 8),
+      padding: const EdgeInsets.fromLTRB(18, 20, 18, 6),
       decoration: BoxDecoration(
         color: p.surface,
         borderRadius: BorderRadius.circular(22),
@@ -491,15 +441,16 @@ class _RateSlotState extends ConsumerState<RateSlot> {
           ),
         ],
       ),
-      child: phase == InlineRatePhase.thanks
-          ? const RatingThanks()
+      child: phase == InlineRatePhase.opening
+          ? const OpeningStore()
           : RateQuestion(
-              onRate: _rate,
+              onStore: _store,
+              onFeedback: () {
+                ref.read(analyticsProvider).logEvent('review_prompt_feedback');
+                ref.read(inlineRateProvider.notifier).askFeedback();
+              },
               onLater: () {
-                ref.read(analyticsProvider).logEvent('review_prompt_later');
-                ref
-                    .read(reviewPromptStoreProvider)
-                    .recordAnswer(ReviewAnswer.later);
+                ReviewPrompt.later(ProviderScope.containerOf(context, listen: false));
                 ref.read(inlineRateProvider.notifier).close();
               },
             ),
@@ -507,7 +458,8 @@ class _RateSlotState extends ConsumerState<RateSlot> {
   }
 }
 
-/// Five tappable stars; tapping the third makes it three. A slider to
+/// Five tappable stars; tapping the third makes it three, and tapping the
+/// current one again clears it (the rating is optional). A slider to
 /// assistive tech, so it can be adjusted without seeing the stars.
 class StarRating extends StatelessWidget {
   final int value;
@@ -520,24 +472,28 @@ class StarRating extends StatelessWidget {
     final p = context.palette;
     return Semantics(
       slider: true,
-      label: 'Rating',
+      label: 'Your rating, optional',
       value: value == 0 ? 'No stars' : '$value of 5 stars',
       increasedValue: value < 5 ? '${value + 1} of 5 stars' : null,
-      decreasedValue: value > 1 ? '${value - 1} of 5 stars' : null,
+      decreasedValue: value > 0 ? (value == 1 ? 'No stars' : '${value - 1} of 5 stars') : null,
       onIncrease: value < 5 ? () => onChanged(value + 1) : null,
-      onDecrease: value > 1 ? () => onChanged(value - 1) : null,
+      onDecrease: value > 0 ? () => onChanged(value - 1) : null,
       child: ExcludeSemantics(
         child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
           children: [
             for (var i = 1; i <= 5; i++)
               IconButton(
                 key: ValueKey('star-$i'),
-                iconSize: 38,
-                onPressed: () => onChanged(i),
+                iconSize: 28,
+                constraints: const BoxConstraints.tightFor(width: 44, height: 44),
+                padding: EdgeInsets.zero,
+                onPressed: () => onChanged(i == value ? 0 : i),
+                // Unfilled stars use muted ink, which keeps 3:1 against
+                // the sheet; the faint tone did not.
                 icon: i <= value
                     ? Icon(Icons.star_rounded, color: p.accentSolid)
-                    : Icon(Icons.star_outline_rounded, color: p.faint),
+                    : Icon(Icons.star_outline_rounded, color: p.muted),
               ),
           ],
         ),
@@ -546,35 +502,36 @@ class StarRating extends StatelessWidget {
   }
 }
 
-/// 6.2b as a sheet of its own.
+/// 6.2b as a sheet of its own. Pops the [RatingFeedback] that was sent,
+/// [RateChoice.store] for "Rate on … instead", or nothing when closed.
 class ReviewFeedbackSheet extends StatelessWidget {
-  final int rating;
-  const ReviewFeedbackSheet({super.key, required this.rating});
+  const ReviewFeedbackSheet({super.key});
 
   @override
   Widget build(BuildContext context) {
     return EcSheet(
       child: ReviewFeedbackForm(
-        rating: rating,
         onSend: (report) => Navigator.of(context).pop(report),
-        onSkip: () => Navigator.of(context).pop(),
+        onStore: () => Navigator.of(context).pop(RateChoice.store),
+        onClose: () => Navigator.of(context).pop(),
       ),
     );
   }
 }
 
-/// 6.2b — one to three stars: what should we fix? Topics and a note go to
-/// the team with the rating; nothing goes to the store.
+/// 6.2b — private feedback, open to everyone. The rating is optional and
+/// starts empty; topics and a note go to the team, never the store, and
+/// the store stays one tap away at the bottom.
 class ReviewFeedbackForm extends StatefulWidget {
-  final int rating;
   final ValueChanged<RatingFeedback> onSend;
-  final VoidCallback onSkip;
+  final VoidCallback onStore;
+  final VoidCallback onClose;
 
   const ReviewFeedbackForm({
     super.key,
-    required this.rating,
     required this.onSend,
-    required this.onSkip,
+    required this.onStore,
+    required this.onClose,
   });
 
   @override
@@ -582,9 +539,18 @@ class ReviewFeedbackForm extends StatefulWidget {
 }
 
 class _ReviewFeedbackFormState extends State<ReviewFeedbackForm> {
-  late int _rating = widget.rating;
+  /// 0 = not given.
+  int _rating = 0;
   final _topics = <FeedbackTopic>{};
   final _message = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    _message.addListener(_changed);
+  }
+
+  void _changed() => setState(() {});
 
   @override
   void dispose() {
@@ -592,49 +558,74 @@ class _ReviewFeedbackFormState extends State<ReviewFeedbackForm> {
     super.dispose();
   }
 
+  bool get _empty => _rating == 0 && _topics.isEmpty && _message.text.trim().isEmpty;
+
   @override
   Widget build(BuildContext context) {
     final p = context.palette;
     final t = context.type;
+    final label = t.eyebrow.copyWith(fontSize: 11, letterSpacing: 11 * .14);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       mainAxisSize: MainAxisSize.min,
       children: [
         Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            Flexible(
-              child: StarRating(
-                value: _rating,
-                onChanged: (v) => setState(() => _rating = v),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.only(left: 4),
+                child: EcHeadline('Private ', emphasis: 'feedback', style: t.displayM),
               ),
             ),
-            Text(
-              '$_rating of 5',
-              style: t.mono.copyWith(fontSize: 11, color: p.muted),
+            SizedBox.square(
+              dimension: 44,
+              child: Center(
+                child: EcCircleButton.tint(
+                  icon: Icons.close_rounded,
+                  size: 34,
+                  tooltip: 'Close',
+                  onPressed: widget.onClose,
+                ),
+              ),
             ),
           ],
         ),
-        const SizedBox(height: 6),
-        EcHeadline(
-          'Sorry it fell short. ',
-          emphasis: 'What should we fix?',
-          style: t.displayM.copyWith(fontSize: 30),
+        const SizedBox(height: 4),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4),
+          child: Text(
+            'Goes straight to the people who build LastReel. Nothing here is posted publicly.',
+            style: t.bodyS.copyWith(color: p.muted, height: 1.45),
+          ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 18),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4),
+          child: Text(caps('Your rating · optional'), style: label),
+        ),
+        const SizedBox(height: 4),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: StarRating(value: _rating, onChanged: (v) => setState(() => _rating = v)),
+        ),
+        const SizedBox(height: 14),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4),
+          child: Text(caps('Topics · optional'), style: label),
+        ),
+        const SizedBox(height: 10),
         Wrap(
           spacing: 8,
           runSpacing: 8,
           children: [
             for (final topic in FeedbackTopic.values)
               EcChip(
-                label: _topics.contains(topic)
-                    ? '✓ ${topic.label}'
-                    : topic.label,
+                label: _topics.contains(topic) ? '✓ ${topic.label}' : topic.label,
                 selected: _topics.contains(topic),
+                height: 40,
                 onTap: () => setState(
-                  () => _topics.contains(topic)
-                      ? _topics.remove(topic)
-                      : _topics.add(topic),
+                  () => _topics.contains(topic) ? _topics.remove(topic) : _topics.add(topic),
                 ),
               ),
           ],
@@ -643,30 +634,34 @@ class _ReviewFeedbackFormState extends State<ReviewFeedbackForm> {
         EcTextArea(
           controller: _message,
           label: 'Tell us more · optional',
+          hint: 'What happened, and what did you expect?',
           minLines: 3,
           maxLines: 6,
         ),
         const SizedBox(height: 10),
-        Text(
-          'Sent privately to the LastReel team with your rating and app version. Never posted to the store.',
-          style: t.caption,
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4),
+          child: Text(
+            'Sent privately with your app version. No project content is included.',
+            style: t.caption.copyWith(fontSize: 12),
+          ),
         ),
         const SizedBox(height: 18),
         EcButton(
           label: 'Send to the team',
-          onPressed: () => widget.onSend(
-            RatingFeedback(
-              rating: _rating,
-              topics: {..._topics},
-              message: _message.text,
-            ),
-          ),
+          onPressed: _empty
+              ? null
+              : () => widget.onSend(
+                    RatingFeedback(rating: _rating, topics: {..._topics}, message: _message.text),
+                  ),
         ),
+        const SizedBox(height: 4),
         EcButton(
-          label: 'Skip',
+          label: '${ReviewPrompt.rateLabel} instead',
           variant: EcButtonVariant.plain,
+          size: EcButtonSize.medium,
           expand: true,
-          onPressed: widget.onSkip,
+          onPressed: widget.onStore,
         ),
       ],
     );

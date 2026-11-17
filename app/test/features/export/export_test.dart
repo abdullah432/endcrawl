@@ -577,7 +577,7 @@ void main() {
         expect(container.read(exportControllerProvider).run, isNotNull);
         completion.complete();
         await tester.pumpAndSettle();
-        expect(find.text('Retry saving'), findsOneWidget);
+        expect(find.bySemanticsLabel(RegExp('Retry saving')), findsOneWidget);
         expect(
           container.read(exportControllerProvider).run!.phase,
           ExportPhase.done,
@@ -588,7 +588,7 @@ void main() {
           GallerySave.failed,
         );
         app.destinations.photoResult = const Ok(null);
-        await tapText(tester, 'Retry saving');
+        await tapText(tester, 'Retry');
         expect(app.destinations.savedToPhotos, hasLength(2));
         expect(
           container.read(exportControllerProvider).run!.gallerySave,
@@ -907,7 +907,7 @@ void main() {
       ),
     );
 
-    final prompt = find.textContaining('LastReel?', findRichText: true);
+    final prompt = find.textContaining('working for you?', findRichText: true);
 
     /// A render long enough (48 × 200 ms) to be asked during.
     Future<void> startLongRender(WidgetTester tester) async {
@@ -973,17 +973,14 @@ void main() {
           find.text('Keep working · renders in background'),
           findsOneWidget,
         );
-        await tester.tap(find.byKey(const ValueKey('star-2')));
-        await tester.pump();
-        await tapText(tester, 'Rate LastReel');
+        await tapText(tester, 'Send private feedback');
         // 6.2b in the same sheet, the render still showing above it.
-        expect(
-          find.textContaining('What should we fix?', findRichText: true),
-          findsOneWidget,
-        );
+        expect(find.byType(ReviewFeedbackForm), findsOneWidget);
         expect(find.text('Rendering'), findsOneWidget);
-        await tapText(tester, 'Skip');
-        expect(app.feedback.sent.single.rating, 2);
+        await tester.tap(find.byTooltip('Close').last);
+        await tester.pumpAndSettle();
+        expect(app.feedback.sent, isEmpty);
+        expect(app.review.lastAnswer, ReviewAnswer.later);
         expect(
           find.text('Keep working · renders in background'),
           findsOneWidget,
@@ -1039,24 +1036,26 @@ void main() {
       },
     );
 
-    testWidgets('Rate LastReel hands over to the store rating', (tester) async {
+    testWidgets('the store is open to everyone, with no stars first', (
+      tester,
+    ) async {
       await openExport(tester);
       await startLongRender(tester);
       await tester.pump(ReviewPromptTrigger.delay);
       await tester.pumpAndSettle();
-      await tester.tap(find.byKey(const ValueKey('star-5')));
+      expect(find.byKey(const ValueKey('star-1')), findsNothing);
+      await tester.tap(find.text(ReviewPrompt.rateLabel));
       await tester.pump();
-      await tester.tap(find.text('Rate LastReel'));
-      await tester.pump();
-      // 6.2c — a moment of thanks, then the store's card.
+      // 6.2c — the store's own review is opening.
       expect(
-        find.textContaining('Opening the review', findRichText: true),
+        find.textContaining('review…', findRichText: true),
         findsOneWidget,
       );
-      await tester.pump(ReviewPrompt.thanksPause);
       await tester.pumpAndSettle();
       expect(prompt, findsNothing);
       expect(app.analytics.names, contains('review_prompt_rate'));
+      expect(app.review.lastAnswer, ReviewAnswer.rated);
+      expect(app.feedback.sent, isEmpty);
       await finish(tester);
     });
 
@@ -1065,6 +1064,11 @@ void main() {
       await startLongRender(tester);
       await tester.pump(ReviewPromptTrigger.delay);
       await tester.pumpAndSettle();
+    }
+
+    Future<void> openFeedback(WidgetTester tester) async {
+      await openPrompt(tester);
+      await tapText(tester, 'Send private feedback');
     }
 
     bool lit(WidgetTester tester, int star) =>
@@ -1077,11 +1081,13 @@ void main() {
             .icon ==
         Icons.star_rounded;
 
-    testWidgets('five stars start selected and can be reduced', (tester) async {
-      await openPrompt(tester);
+    testWidgets('the rating on private feedback starts empty and is optional', (
+      tester,
+    ) async {
+      await openFeedback(tester);
       expect([
         for (var i = 1; i <= 5; i++) lit(tester, i),
-      ], everyElement(isTrue));
+      ], everyElement(isFalse));
 
       await tester.tap(find.byKey(const ValueKey('star-3')));
       await tester.pump();
@@ -1089,73 +1095,71 @@ void main() {
         [for (var i = 1; i <= 5; i++) lit(tester, i)],
         [true, true, true, false, false],
       );
+      // Tapping the same star again clears it.
+      await tester.tap(find.byKey(const ValueKey('star-3')));
+      await tester.pump();
+      expect([
+        for (var i = 1; i <= 5; i++) lit(tester, i),
+      ], everyElement(isFalse));
       await finish(tester);
     });
 
-    testWidgets(
-      'four or five stars go to the store, and the stars reach the team',
-      (tester) async {
-        await openPrompt(tester);
-        await tester.tap(find.byKey(const ValueKey('star-4')));
-        await tester.pump();
-        await tester.tap(find.text('Rate LastReel'));
-        await tester.pump(ReviewPrompt.thanksPause);
-        await tester.pumpAndSettle();
-        expect(
-          find.textContaining('What should we fix?', findRichText: true),
-          findsNothing,
-        );
-        expect(app.feedback.sent.single.rating, 4);
-        expect(app.analytics.names, contains('review_prompt_rate'));
-        await finish(tester);
-      },
-    );
-
-    testWidgets(
-      'under four stars asks what to fix and sends it to the team, not the store',
-      (tester) async {
-        await openPrompt(tester);
-        await tester.tap(find.byKey(const ValueKey('star-2')));
-        await tester.pump();
-        await tapText(tester, 'Rate LastReel');
-        expect(
-          find.textContaining('What should we fix?', findRichText: true),
-          findsOneWidget,
-        );
-        expect(app.analytics.names, isNot(contains('review_prompt_rate')));
-
-        await tapText(tester, 'Export speed');
-        await tapText(tester, 'Ads');
-        await tester.enterText(
-          find.byType(TextField).last,
-          'ProRes renders take ages.',
-        );
-        await tester.tap(find.text('Send to the team'));
-        // The toast counts down for four seconds; look before it leaves.
-        for (var i = 0; i < 5; i++) {
-          await tester.pump(const Duration(milliseconds: 100));
-        }
-
-        final sent = app.feedback.sent.single;
-        expect(sent.rating, 2);
-        expect(sent.topics, {FeedbackTopic.exportSpeed, FeedbackTopic.ads});
-        expect(sent.message, 'ProRes renders take ages.');
-        expect(find.text('Thanks. The team reads every one.'), findsOneWidget);
-        await finish(tester);
-      },
-    );
-
-    testWidgets('skipping the questions still sends the stars alone', (
+    testWidgets('private feedback keeps the store one tap away', (
       tester,
     ) async {
-      await openPrompt(tester);
-      await tester.tap(find.byKey(const ValueKey('star-1')));
+      await openFeedback(tester);
+      await tapText(tester, '${ReviewPrompt.rateLabel} instead');
+      expect(find.byType(ReviewFeedbackForm), findsNothing);
+      expect(app.analytics.names, contains('review_prompt_rate'));
+      expect(app.review.lastAnswer, ReviewAnswer.rated);
+      expect(app.feedback.sent, isEmpty);
+      await finish(tester);
+    });
+
+    testWidgets('private feedback goes to the team, not the store', (
+      tester,
+    ) async {
+      await openFeedback(tester);
+      await tester.tap(find.byKey(const ValueKey('star-2')));
       await tester.pump();
-      await tapText(tester, 'Rate LastReel');
-      await tapText(tester, 'Skip');
+      await tapText(tester, 'Export speed');
+      await tapText(tester, 'Ads');
+      await tester.enterText(
+        find.byType(TextField).last,
+        'ProRes renders take ages.',
+      );
+      await tester.pump();
+      await tester.ensureVisible(find.text('Send to the team'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Send to the team'));
+      // The toast counts down for four seconds; look before it leaves.
+      for (var i = 0; i < 5; i++) {
+        await tester.pump(const Duration(milliseconds: 100));
+      }
+
       final sent = app.feedback.sent.single;
-      expect(sent.rating, 1);
-      expect(sent.topics, isEmpty);
+      expect(sent.rating, 2);
+      expect(sent.topics, {FeedbackTopic.exportSpeed, FeedbackTopic.ads});
+      expect(sent.message, 'ProRes renders take ages.');
+      expect(app.analytics.names, isNot(contains('review_prompt_rate')));
+      expect(app.review.lastAnswer, ReviewAnswer.low);
+      expect(find.text('Thanks. The team reads every one.'), findsOneWidget);
+      await finish(tester);
+    });
+
+    testWidgets('Send waits for something to send; no rating is needed', (
+      tester,
+    ) async {
+      await openFeedback(tester);
+      await tapText(tester, 'Send to the team'); // nothing chosen yet
+      expect(app.feedback.sent, isEmpty);
+      expect(find.byType(ReviewFeedbackForm), findsOneWidget);
+
+      await tapText(tester, 'Crashes or bugs');
+      await tapText(tester, 'Send to the team');
+      final sent = app.feedback.sent.single;
+      expect(sent.rating, 0);
+      expect(sent.topics, {FeedbackTopic.crashes});
       await finish(tester);
     });
 
